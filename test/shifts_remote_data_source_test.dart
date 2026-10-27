@@ -153,6 +153,68 @@ void main() {
       await _createDataSource(client)
           .closeShift(shiftId: 'shift-id', actualCash: 50000);
     });
+
+    test('lists shifts with the requested status filter', () async {
+      final client = MockClient((request) async {
+        expect(request.method, 'GET');
+        expect(request.url, Uri.parse('$baseUrl/shifts?status=open'));
+        return http.Response(
+          jsonEncode([
+            {
+              '_id': 'shift-id',
+              'status': 'open',
+              'start_time': '2026-10-27T02:00:00.000Z',
+              'starting_cash': 50000,
+              'expected_cash': 65000,
+              'total_sales': 15000,
+              'total_transactions': 1,
+              'user_id': {'name': 'Kasir Baru', 'email': 'kasir@kawula.id'},
+            },
+          ]),
+          200,
+        );
+      });
+
+      final shifts = await _createDataSource(client).getShifts(status: 'open');
+
+      expect(shifts.single.cashierName, 'Kasir Baru');
+      expect(shifts.single.status, 'open');
+    });
+
+    test('force-closes a shift using actual cash and optional notes', () async {
+      final client = MockClient((request) async {
+        expect(request.method, 'POST');
+        expect(request.url, Uri.parse('$baseUrl/shifts/shift-id/force-close'));
+        expect(jsonDecode(request.body), {
+          'actual_cash': 48000,
+          'notes': 'Kas kecil kurang',
+        });
+        return http.Response(
+          jsonEncode({
+            '_id': 'shift-id',
+            'status': 'closed',
+            'start_time': '2026-10-27T02:00:00.000Z',
+            'end_time': '2026-10-27T10:00:00.000Z',
+            'starting_cash': 50000,
+            'expected_cash': 55000,
+            'actual_cash': 48000,
+            'cash_difference': -7000,
+            'total_sales': 5000,
+            'total_transactions': 1,
+          }),
+          200,
+        );
+      });
+
+      final shift = await _createDataSource(client).forceCloseShift(
+        shiftId: 'shift-id',
+        actualCash: 48000,
+        notes: ' Kas kecil kurang ',
+      );
+
+      expect(shift.status, 'closed');
+      expect(shift.cashDifference, -7000);
+    });
   });
 }
 

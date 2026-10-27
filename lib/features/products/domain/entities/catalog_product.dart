@@ -17,6 +17,13 @@ class ProductDiscount {
   final num value;
 }
 
+class ProductImage {
+  const ProductImage({required this.url, required this.isMain});
+
+  final String url;
+  final bool isMain;
+}
+
 class ProductVariantOption {
   const ProductVariantOption({
     required this.name,
@@ -54,6 +61,7 @@ class CatalogProduct {
     required this.isActive,
     required this.category,
     required this.variantGroups,
+    this.images = const [],
     this.stock,
     this.discount,
   });
@@ -65,6 +73,7 @@ class CatalogProduct {
   final bool isActive;
   final ProductCategory? category;
   final List<ProductVariantGroup> variantGroups;
+  final List<ProductImage> images;
   final num? stock;
   final ProductDiscount? discount;
 

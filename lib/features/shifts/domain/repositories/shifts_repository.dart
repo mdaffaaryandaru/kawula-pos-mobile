@@ -1,6 +1,7 @@
 import '../entities/active_shift.dart';
+import 'admin_shifts_repository.dart';
 
-abstract interface class ShiftsRepository {
+abstract interface class ShiftsRepository implements AdminShiftsRepository {
   Future<ActiveShift?> getActive();
 
   Future<CashAvailability> getCashAvailability();

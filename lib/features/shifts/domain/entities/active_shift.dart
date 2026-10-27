@@ -12,6 +12,9 @@ class ActiveShift {
     this.endTime,
     this.actualCash,
     this.cashDifference,
+    this.cashierName,
+    this.cashierEmail,
+    this.notes = '',
   });
 
   final String id;
@@ -26,6 +29,9 @@ class ActiveShift {
   final DateTime? endTime;
   final num? actualCash;
   final num? cashDifference;
+  final String? cashierName;
+  final String? cashierEmail;
+  final String notes;
 }
 
 class CashAvailability {

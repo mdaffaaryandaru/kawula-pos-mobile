@@ -11,15 +11,24 @@ import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/data/models/checkout_models.dart';
 import 'package:kawula_pos/features/users/domain/repositories/user_management_repository.dart';
+import 'package:kawula_pos/features/products/domain/entities/product_management.dart';
+import 'package:kawula_pos/features/categories/domain/entities/managed_category.dart';
+import 'package:kawula_pos/features/categories/domain/repositories/categories_repository.dart';
+import 'package:kawula_pos/features/products/domain/repositories/product_management_repository.dart';
+import 'package:kawula_pos/features/balances/domain/entities/balance.dart';
+import 'package:kawula_pos/features/balances/domain/repositories/balances_repository.dart';
+import 'package:kawula_pos/features/shifts/domain/entities/admin_shift_detail.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:kawula_pos/main.dart';
 
 void main() {
-  testWidgets('routes admin to PIN management instead of cashier shifts', (
+  testWidgets('routes admin to dashboard and exposes admin features', (
     tester,
   ) async {
     final authRepository = _FakeAuthRepository(role: 'Admin');
     final shiftsRepository = _FakeShiftsRepository();
     final userManagementRepository = _FakeUserManagementRepository();
+    final categoriesRepository = _FakeCategoriesRepository();
 
     await tester.pumpWidget(
       KawulaPosApp(
@@ -27,7 +36,10 @@ void main() {
         shiftsRepository: shiftsRepository,
         catalogRepository: _FakeCatalogRepository(),
         checkoutRepository: _FakeCheckoutRepository(),
+        balancesRepository: _FakeBalancesRepository(),
         userManagementRepository: userManagementRepository,
+        productManagementRepository: _FakeProductManagementRepository(),
+        categoriesRepository: categoriesRepository,
       ),
     );
     await tester.pumpAndSettle();
@@ -36,9 +48,22 @@ void main() {
     await tester.tap(find.text('Masuk'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Dashboard'), findsOneWidget);
+    expect(find.text('Produk'), findsOneWidget);
+    expect(find.text('Kategori'), findsOneWidget);
     expect(find.text('Pengaturan kasir'), findsOneWidget);
-    expect(find.text('Shift kasir'), findsNothing);
+    expect(find.text('Keuangan'), findsOneWidget);
+    expect(find.text('Shift kasir'), findsOneWidget);
     expect(shiftsRepository.activeChecks, 0);
+
+    await tester.tap(find.text('Keuangan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Belum ada saldo tercatat.'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Pengaturan kasir'));
+    await tester.pumpAndSettle();
     expect(
       find.text('kasirbaru@kawula.id\nKasir · PIN belum diatur'),
       findsOneWidget,
@@ -69,6 +94,19 @@ void main() {
       find.text('kasirbaru@kawula.id\nKasir · PIN sudah diatur'),
       findsOneWidget,
     );
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kategori'));
+    await tester.pumpAndSettle();
+    expect(find.text('Kategori'), findsOneWidget);
+    await tester.tap(find.text('Tambah kategori'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), 'Makanan');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Menu makanan');
+    await tester.tap(find.text('Simpan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Makanan'), findsOneWidget);
   });
 
   testWidgets('logs in and logs out through the authentication gate', (
@@ -85,7 +123,10 @@ void main() {
         shiftsRepository: shiftsRepository,
         catalogRepository: catalogRepository,
         checkoutRepository: checkoutRepository,
+        balancesRepository: _FakeBalancesRepository(),
         userManagementRepository: _FakeUserManagementRepository(),
+        productManagementRepository: _FakeProductManagementRepository(),
+        categoriesRepository: _FakeCategoriesRepository(),
       ),
     );
     await tester.pumpAndSettle();
@@ -303,6 +344,42 @@ class _FakeShiftsRepository implements ShiftsRepository {
       totalTransactions: 0,
     );
   }
+
+  @override
+  Future<List<ActiveShift>> getShifts({String? status}) async => [];
+
+  @override
+  Future<AdminShiftDetail> getShiftDetail(String shiftId) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<ActiveShift> forceCloseShift({
+    required String shiftId,
+    required num actualCash,
+    required String notes,
+  }) async => throw UnimplementedError();
+}
+
+class _FakeBalancesRepository implements BalancesRepository {
+  @override
+  Future<List<BalanceAccount>> getBalances() async => [];
+
+  @override
+  Future<List<BalanceHistoryEntry>> getHistory() async => [];
+
+  @override
+  Future<void> recordExpense({
+    required String paymentMethod,
+    required num amount,
+    required String notes,
+  }) async {}
+
+  @override
+  Future<void> adjustBalance({
+    required String paymentMethod,
+    required num actualBalance,
+    required String notes,
+  }) async {}
 }
 
 class _FakeCheckoutRepository implements CheckoutRepository {
@@ -538,5 +615,79 @@ class _FakeUserManagementRepository implements UserManagementRepository {
       role: userId == 'cashier-id' ? 'Kasir' : 'Admin',
       hasPin: true,
     );
+  }
+}
+
+class _FakeProductManagementRepository implements ProductManagementRepository {
+  @override
+  Future<List<String>> uploadProductImages(List<XFile> images) async =>
+      images.map((image) => '/uploads/products/${image.name}').toList();
+
+  @override
+  Future<List<ManagedCategory>> getCategories() async => const [];
+
+  @override
+  Future<List<ManagedProduct>> getProducts() async => const [];
+
+  @override
+  Future<List<ManagedVariantGroup>> getVariantGroups() async => const [];
+
+  @override
+  Future<ManagedProduct> saveProduct({
+    String? productId,
+    required String name,
+    required num price,
+    required num stock,
+    required String categoryId,
+    required List<String> variantGroupIds,
+    required List<ProductImage> images,
+    required bool isActive,
+  }) async => ManagedProduct(
+    product: CatalogProduct(
+      id: productId ?? 'product-id',
+      name: name,
+      price: price,
+      stock: stock,
+      imageUrl: '',
+      isActive: isActive,
+      category: ProductCategory(
+        id: categoryId,
+        name: 'Kategori',
+        isActive: true,
+      ),
+      variantGroups: const [],
+    ),
+    variantGroupIds: variantGroupIds,
+  );
+
+  @override
+  Future<void> deleteProduct(String productId) async {}
+}
+
+class _FakeCategoriesRepository implements CategoriesRepository {
+  ManagedCategory? savedCategory;
+
+  @override
+  Future<List<ManagedCategory>> getCategories() async => [?savedCategory];
+
+  @override
+  Future<ManagedCategory> saveCategory({
+    String? categoryId,
+    required String name,
+    required String description,
+    required bool isActive,
+  }) async {
+    savedCategory = ManagedCategory(
+      id: categoryId ?? 'category-id',
+      name: name,
+      description: description,
+      isActive: isActive,
+    );
+    return savedCategory!;
+  }
+
+  @override
+  Future<void> deleteCategory(String categoryId) async {
+    savedCategory = null;
   }
 }

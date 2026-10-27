@@ -14,10 +14,14 @@ class ActiveShiftModel extends ActiveShift {
     super.endTime,
     super.actualCash,
     super.cashDifference,
+    super.cashierName,
+    super.cashierEmail,
+    super.notes,
   });
 
   factory ActiveShiftModel.fromJson(Map<String, dynamic> json) {
     final outlet = json['outlet_id'];
+    final user = json['user_id'];
     return ActiveShiftModel(
       id: _stringValue(json['_id'] ?? json['id'], '_id'),
       status: _stringValue(json['status'], 'status'),
@@ -44,6 +48,13 @@ class ActiveShiftModel extends ActiveShift {
       cashDifference: json['cash_difference'] is num
           ? json['cash_difference'] as num
           : null,
+      cashierName: user is Map<String, dynamic> && user['name'] is String
+          ? user['name'] as String
+          : null,
+      cashierEmail: user is Map<String, dynamic> && user['email'] is String
+          ? user['email'] as String
+          : null,
+      notes: json['notes'] is String ? json['notes'] as String : '',
     );
   }
 
