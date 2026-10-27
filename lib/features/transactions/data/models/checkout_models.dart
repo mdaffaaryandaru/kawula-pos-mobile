@@ -1,0 +1,249 @@
+import '../../domain/entities/checkout.dart';
+
+class CheckoutPaymentMethodModel extends CheckoutPaymentMethod {
+  const CheckoutPaymentMethodModel({
+    required super.name,
+    required super.code,
+  });
+
+  factory CheckoutPaymentMethodModel.fromJson(Map<String, dynamic> json) {
+    final name = json['name'];
+    final code = json['code'];
+    if (name is! String || code is! String) {
+      throw const FormatException('Data metode pembayaran tidak valid.');
+    }
+    return CheckoutPaymentMethodModel(name: name, code: code);
+  }
+}
+
+class CheckoutSettingsModel extends CheckoutSettings {
+  const CheckoutSettingsModel({
+    required super.taxPercentage,
+    required super.serviceCharge,
+    super.storeName,
+    super.address,
+    super.logoUrl,
+  });
+
+  factory CheckoutSettingsModel.fromJson(Map<String, dynamic> json) {
+    final tax = json['tax_percentage'] ?? 0;
+    final service = json['service_charge'] ?? 0;
+    if (tax is! num || service is! num) {
+      throw const FormatException('Pengaturan pajak toko tidak valid.');
+    }
+    return CheckoutSettingsModel(
+      taxPercentage: tax,
+      serviceCharge: service,
+      storeName: json['store_name'] is String
+          ? json['store_name'] as String
+          : '',
+      address: json['address'] is String ? json['address'] as String : '',
+      logoUrl: json['logo_url'] is String ? json['logo_url'] as String : '',
+    );
+  }
+}
+
+class CheckoutResultModel extends CheckoutResult {
+  const CheckoutResultModel({
+    required super.id,
+    required super.status,
+    required super.totalAmount,
+    required super.paymentMethod,
+    required super.paidAmount,
+    required super.changeAmount,
+    required super.createdAt,
+    super.subtotal,
+    super.taxAmount,
+    super.serviceCharge,
+    super.discountAmount,
+    super.items,
+    super.notes,
+  });
+
+  factory CheckoutResultModel.fromJson(Map<String, dynamic> json) {
+    final id = json['_id'] ?? json['id'];
+    final status = json['status'];
+    final total = json['total_amount'];
+    final method = json['payment_method'];
+    final paid = json['paid_amount'] ?? 0;
+    final change = json['change_amount'] ?? 0;
+    final createdAtValue = json['createdAt'] ?? json['created_at'];
+    final itemsJson = json['items'];
+    if (id is! String ||
+        status is! String ||
+        total is! num ||
+        method is! String ||
+        paid is! num ||
+        change is! num) {
+      throw const FormatException('Respons transaksi tidak lengkap.');
+    }
+    if (itemsJson != null && itemsJson is! List) {
+      throw const FormatException('Daftar item transaksi tidak valid.');
+    }
+    return CheckoutResultModel(
+      id: id,
+      status: status,
+      totalAmount: total,
+      paymentMethod: method,
+      paidAmount: paid,
+      changeAmount: change,
+      createdAt: createdAtValue is String
+          ? DateTime.tryParse(createdAtValue)
+          : null,
+      subtotal: json['subtotal'] is num ? json['subtotal'] as num : null,
+      taxAmount: json['tax_amount'] is num
+          ? json['tax_amount'] as num
+          : null,
+      serviceCharge: json['service_charge'] is num
+          ? json['service_charge'] as num
+          : null,
+      discountAmount: json['discount_amount'] is num
+          ? json['discount_amount'] as num
+          : null,
+      items: itemsJson is List
+          ? itemsJson
+                .map((item) {
+                  if (item is! Map<String, dynamic>) {
+                    throw const FormatException(
+                      'Data item transaksi tidak valid.',
+                    );
+                  }
+                  return CheckoutResultItemModel.fromJson(item);
+                })
+                .toList(growable: false)
+          : const [],
+      notes: json['notes'] is String ? json['notes'] as String : '',
+    );
+  }
+}
+
+class CheckoutResultItemModel extends CheckoutResultItem {
+  const CheckoutResultItemModel({
+    required super.productName,
+    required super.quantity,
+    required super.price,
+    super.selectedVariants,
+    super.notes,
+  });
+
+  factory CheckoutResultItemModel.fromJson(Map<String, dynamic> json) {
+    final product = json['product_id'];
+    final productName = product is Map<String, dynamic>
+        ? product['name']
+        : product is String
+        ? product
+        : null;
+    final quantity = json['quantity'];
+    final price = json['price'];
+    final variants = json['selected_variants'] ?? const [];
+    if (productName is! String ||
+        quantity is! num ||
+        price is! num ||
+        variants is! List) {
+      throw const FormatException('Data item transaksi tidak lengkap.');
+    }
+    return CheckoutResultItemModel(
+      productName: productName,
+      quantity: quantity.toInt(),
+      price: price,
+      selectedVariants: variants
+          .map((variant) {
+            if (variant is! Map<String, dynamic> ||
+                variant['group_name'] is! String ||
+                variant['option_name'] is! String) {
+              throw const FormatException('Data varian transaksi tidak valid.');
+            }
+            return CheckoutResultVariant(
+              groupName: variant['group_name'] as String,
+              optionName: variant['option_name'] as String,
+            );
+          })
+          .toList(growable: false),
+      notes: json['notes'] is String ? json['notes'] as String : '',
+    );
+  }
+}
+
+class TransactionRecordModel extends TransactionRecord {
+  const TransactionRecordModel({
+    required super.id,
+    required super.status,
+    required super.totalAmount,
+    required super.paymentMethod,
+    required super.paidAmount,
+    required super.changeAmount,
+    required super.createdAt,
+    required super.items,
+    super.notes,
+  });
+
+  factory TransactionRecordModel.fromJson(Map<String, dynamic> json) {
+    final id = json['_id'] ?? json['id'];
+    final status = json['status'];
+    final total = json['total_amount'];
+    final method = json['payment_method'] ?? '';
+    final paid = json['paid_amount'] ?? 0;
+    final change = json['change_amount'] ?? 0;
+    final createdAtValue = json['createdAt'] ?? json['created_at'];
+    final itemsJson = json['items'];
+    if (id is! String ||
+        status is! String ||
+        total is! num ||
+        method is! String ||
+        paid is! num ||
+        change is! num ||
+        itemsJson is! List) {
+      throw const FormatException('Data transaksi tidak lengkap.');
+    }
+
+    return TransactionRecordModel(
+      id: id,
+      status: status,
+      totalAmount: total,
+      paymentMethod: method,
+      paidAmount: paid,
+      changeAmount: change,
+      createdAt: createdAtValue is String
+          ? DateTime.tryParse(createdAtValue)
+          : null,
+      items: itemsJson
+          .map((item) {
+            if (item is! Map<String, dynamic>) {
+              throw const FormatException('Data item transaksi tidak valid.');
+            }
+            return TransactionRecordItemModel.fromJson(item);
+          })
+          .toList(growable: false),
+      notes: json['notes'] is String ? json['notes'] as String : '',
+    );
+  }
+}
+
+class TransactionRecordItemModel extends TransactionRecordItem {
+  const TransactionRecordItemModel({
+    required super.productName,
+    required super.quantity,
+    required super.price,
+    super.notes,
+  });
+
+  factory TransactionRecordItemModel.fromJson(Map<String, dynamic> json) {
+    final product = json['product_id'];
+    final name = product is Map<String, dynamic>
+        ? product['name']
+        : product is String
+        ? product
+        : null;
+    final quantity = json['quantity'];
+    final price = json['price'];
+    if (name is! String || quantity is! num || price is! num) {
+      throw const FormatException('Data item transaksi tidak lengkap.');
+    }
+    return TransactionRecordItemModel(
+      productName: name,
+      quantity: quantity.toInt(),
+      price: price,
+      notes: json['notes'] is String ? json['notes'] as String : '',
+    );
+  }
+}
