@@ -1,0 +1,268 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../transactions/domain/repositories/checkout_repository.dart';
+import '../../../transactions/presentation/bloc/checkout_cubit.dart';
+import '../../../transactions/presentation/pages/checkout_page.dart';
+import '../bloc/cart_cubit.dart';
+import 'product_formatters.dart';
+
+class ProductCartSheet extends StatelessWidget {
+  const ProductCartSheet({
+    super.key,
+    required this.checkoutRepository,
+    required this.outletId,
+  });
+
+  final CheckoutRepository checkoutRepository;
+  final String? outletId;
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.8,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) {
+        return BlocBuilder<CartCubit, CartState>(
+          builder: (context, cart) {
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Keranjang (${cart.totalQuantity})',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ),
+                      if (!cart.isEmpty)
+                        TextButton(
+                          onPressed: context.read<CartCubit>().clear,
+                          child: const Text('Kosongkan'),
+                        ),
+                      IconButton(
+                        tooltip: 'Tutup keranjang',
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: cart.isEmpty
+                      ? const Center(child: Text('Keranjang masih kosong.'))
+                      : ListView.separated(
+                          controller: scrollController,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: cart.items.length,
+                          separatorBuilder: (_, _) => const Divider(height: 20),
+                          itemBuilder: (context, index) {
+                            final item = cart.items[index];
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item.product.name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      if (item.selectedVariants.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 4,
+                                          ),
+                                          child: Text(
+                                            item.selectedVariants
+                                                .map(
+                                                  (variant) =>
+                                                      '${variant.groupName}: ${variant.optionName}',
+                                                )
+                                                .join(', '),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall,
+                                          ),
+                                        ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${formatRupiah(item.unitPrice)} × ${item.quantity}',
+                                      ),
+                                      TextButton.icon(
+                                        onPressed: () => _editNotes(
+                                          context,
+                                          item.selectionKey,
+                                          item.notes,
+                                        ),
+                                        icon: const Icon(Icons.edit_note),
+                                        label: Text(
+                                          item.notes.isEmpty
+                                              ? 'Tambah catatan'
+                                              : 'Catatan: ${item.notes}',
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Kurangi jumlah',
+                                  onPressed: () => context
+                                      .read<CartCubit>()
+                                      .decrement(item.selectionKey),
+                                  icon: const Icon(Icons.remove_circle_outline),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: Text('${item.quantity}'),
+                                ),
+                                IconButton(
+                                  tooltip: 'Tambah jumlah',
+                                  onPressed: () => context
+                                      .read<CartCubit>()
+                                      .increment(item.selectionKey),
+                                  icon: const Icon(Icons.add_circle_outline),
+                                ),
+                                IconButton(
+                                  tooltip: 'Hapus produk',
+                                  onPressed: () => context
+                                      .read<CartCubit>()
+                                      .remove(item.selectionKey),
+                                  icon: const Icon(Icons.delete_outline),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                ),
+                if (!cart.isEmpty)
+                  SafeArea(
+                    top: false,
+                    minimum: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Estimasi subtotal'),
+                            Text(
+                              formatRupiah(cart.estimatedSubtotal),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Total final dihitung oleh server saat checkout.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 12),
+                        FilledButton(
+                          onPressed: () => _openCheckout(context),
+                          child: const Text('Lanjut ke pembayaran'),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _editNotes(
+    BuildContext context,
+    String selectionKey,
+    String currentNotes,
+  ) async {
+    final notes = await showDialog<String>(
+      context: context,
+      builder: (_) => _CartNotesDialog(initialNotes: currentNotes),
+    );
+    if (notes != null && context.mounted) {
+      context.read<CartCubit>().updateNotes(selectionKey, notes);
+    }
+  }
+
+  void _openCheckout(BuildContext context) {
+    final navigator = Navigator.of(context);
+    final cartCubit = context.read<CartCubit>();
+    navigator.pop();
+    navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => BlocProvider.value(
+          value: cartCubit,
+          child: BlocProvider(
+            create: (_) => CheckoutCubit(checkoutRepository)..load(),
+            child: CheckoutPage(outletId: outletId),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CartNotesDialog extends StatefulWidget {
+  const _CartNotesDialog({required this.initialNotes});
+
+  final String initialNotes;
+
+  @override
+  State<_CartNotesDialog> createState() => _CartNotesDialogState();
+}
+
+class _CartNotesDialogState extends State<_CartNotesDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialNotes);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Catatan produk'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        maxLength: 200,
+        maxLines: 3,
+        decoration: const InputDecoration(hintText: 'Contoh: tanpa gula'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _controller.text.trim()),
+          child: const Text('Simpan'),
+        ),
+      ],
+    );
+  }
+}
