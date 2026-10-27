@@ -30,6 +30,7 @@ class CatalogProductModel extends CatalogProduct {
     required super.isActive,
     required super.category,
     required super.variantGroups,
+    super.images,
     super.stock,
     super.discount,
   });
@@ -56,6 +57,23 @@ class CatalogProductModel extends CatalogProduct {
                 .whereType<Map<String, dynamic>>()
                 .map(_parseVariantGroup)
                 .toList()
+          : const [],
+      images: json['images'] is List
+          ? (json['images'] as List)
+                .whereType<Map<String, dynamic>>()
+                .map((image) {
+                  final url = image['url'];
+                  if (url is! String) {
+                    throw const FormatException(
+                      'Data gambar produk tidak valid.',
+                    );
+                  }
+                  return ProductImage(
+                    url: url,
+                    isMain: image['is_main'] == true,
+                  );
+                })
+                .toList(growable: false)
           : const [],
       stock: json['stock'] is num ? json['stock'] as num : null,
     );

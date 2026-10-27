@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../../../framework/core/exceptions/api_exception.dart';
+import '../../../transactions/data/models/checkout_models.dart';
+import '../../domain/entities/admin_shift_detail.dart';
 import '../models/active_shift_model.dart';
 
 class ShiftsRemoteDataSource {
@@ -20,7 +22,6 @@ class ShiftsRemoteDataSource {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       _throwResponseError(response);
     }
-
     if (response.body.trim().isEmpty) return null;
 
     final Object? decoded;
@@ -34,6 +35,69 @@ class ShiftsRemoteDataSource {
       return ActiveShiftModel.fromJson(decoded);
     }
     throw const ApiException('Respons shift aktif tidak valid.');
+  }
+
+  Future<List<ActiveShiftModel>> getShifts({String? status}) async {
+    final uri = _uri('shifts');
+    final response = await _client.get(
+      status == null ? uri : uri.replace(queryParameters: {'status': status}),
+      headers: await _authorizedHeaders(),
+    );
+    final body = _decodeResponse(response);
+    if (body is! List) {
+      throw const ApiException('Respons daftar shift tidak valid.');
+    }
+    return body
+        .map((item) {
+          if (item is! Map<String, dynamic>) {
+            throw const ApiException('Data shift dari server tidak valid.');
+          }
+          return ActiveShiftModel.fromJson(item);
+        })
+        .toList(growable: false);
+  }
+
+  Future<AdminShiftDetail> getShiftDetail(String shiftId) async {
+    final body = _decodeObject(
+      await _client.get(
+        _uri('shifts/$shiftId'),
+        headers: await _authorizedHeaders(),
+      ),
+    );
+    final shift = body['shift'];
+    final transactions = body['transactions'];
+    if (shift is! Map<String, dynamic> || transactions is! List) {
+      throw const ApiException('Respons detail shift tidak valid.');
+    }
+    return AdminShiftDetail(
+      shift: ActiveShiftModel.fromJson(shift),
+      transactions: transactions
+          .map((item) {
+            if (item is! Map<String, dynamic>) {
+              throw const ApiException(
+                'Data transaksi pada detail shift tidak valid.',
+              );
+            }
+            return TransactionRecordModel.fromJson(item);
+          })
+          .toList(growable: false),
+    );
+  }
+
+  Future<ActiveShiftModel> forceCloseShift({
+    required String shiftId,
+    required num actualCash,
+    required String notes,
+  }) async {
+    final response = await _client.post(
+      _uri('shifts/$shiftId/force-close'),
+      headers: await _authorizedHeaders(),
+      body: jsonEncode({
+        'actual_cash': actualCash,
+        if (notes.trim().isNotEmpty) 'notes': notes.trim(),
+      }),
+    );
+    return ActiveShiftModel.fromJson(_decodeObject(response));
   }
 
   Future<CashAvailabilityModel> getCashAvailability() async {

@@ -5,12 +5,21 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'config/api_config.dart';
+import 'features/balances/data/datasources/balances_remote_data_source.dart';
+import 'features/balances/data/repositories/balances_repository_impl.dart';
+import 'features/balances/domain/repositories/balances_repository.dart';
 import 'features/auth/data/datasources/auth_local_data_source.dart';
 import 'features/auth/data/datasources/auth_remote_data_source.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/presentation/bloc/auth_cubit.dart';
 import 'features/auth/presentation/pages/auth_gate.dart';
+import 'features/categories/data/datasources/categories_remote_data_source.dart';
+import 'features/categories/data/repositories/categories_repository_impl.dart';
+import 'features/categories/domain/repositories/categories_repository.dart';
+import 'features/products/data/datasources/product_management_remote_data_source.dart';
+import 'features/products/data/repositories/product_management_repository_impl.dart';
+import 'features/products/domain/repositories/product_management_repository.dart';
 import 'features/products/data/datasources/catalog_remote_data_source.dart';
 import 'features/products/data/repositories/catalog_repository_impl.dart';
 import 'features/products/domain/repositories/catalog_repository.dart';
@@ -53,8 +62,26 @@ Future<void> main() async {
       localDataSource.readToken,
     ),
   );
+  final balancesRepository = BalancesRepositoryImpl(
+    BalancesRemoteDataSource(client, ApiConfig.baseUrl, localDataSource.readToken),
+  );
   final userManagementRepository = UserManagementRepositoryImpl(
     UsersRemoteDataSource(client, ApiConfig.baseUrl, localDataSource.readToken),
+  );
+  final categoriesRepository = CategoriesRepositoryImpl(
+    CategoriesRemoteDataSource(
+      client,
+      ApiConfig.baseUrl,
+      localDataSource.readToken,
+    ),
+  );
+  final productManagementRepository = ProductManagementRepositoryImpl(
+    ProductManagementRemoteDataSource(
+      client,
+      ApiConfig.baseUrl,
+      localDataSource.readToken,
+    ),
+    categoriesRepository,
   );
 
   runApp(
@@ -63,7 +90,10 @@ Future<void> main() async {
       shiftsRepository: shiftsRepository,
       catalogRepository: catalogRepository,
       checkoutRepository: checkoutRepository,
+      balancesRepository: balancesRepository,
       userManagementRepository: userManagementRepository,
+      productManagementRepository: productManagementRepository,
+      categoriesRepository: categoriesRepository,
     ),
   );
 }
@@ -75,14 +105,20 @@ class KawulaPosApp extends StatelessWidget {
     required this.shiftsRepository,
     required this.catalogRepository,
     required this.checkoutRepository,
+    required this.balancesRepository,
     required this.userManagementRepository,
+    required this.productManagementRepository,
+    required this.categoriesRepository,
   });
 
   final AuthRepository authRepository;
   final ShiftsRepository shiftsRepository;
   final CatalogRepository catalogRepository;
   final CheckoutRepository checkoutRepository;
+  final BalancesRepository balancesRepository;
   final UserManagementRepository userManagementRepository;
+  final ProductManagementRepository productManagementRepository;
+  final CategoriesRepository categoriesRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +141,10 @@ class KawulaPosApp extends StatelessWidget {
           shiftsRepository: shiftsRepository,
           catalogRepository: catalogRepository,
           checkoutRepository: checkoutRepository,
+          balancesRepository: balancesRepository,
           userManagementRepository: userManagementRepository,
+          productManagementRepository: productManagementRepository,
+          categoriesRepository: categoriesRepository,
         ),
       ),
     );

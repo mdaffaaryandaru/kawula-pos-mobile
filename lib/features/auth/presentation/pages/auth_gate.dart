@@ -4,13 +4,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_cubit.dart';
 import '../bloc/auth_state.dart';
 import 'login_page.dart';
+import '../../../balances/domain/repositories/balances_repository.dart';
+import '../../../categories/domain/repositories/categories_repository.dart';
 import '../../../shifts/domain/repositories/shifts_repository.dart';
 import '../../../shifts/presentation/bloc/shifts_cubit.dart';
 import '../../../shifts/presentation/pages/shift_page.dart';
 import '../../../products/domain/repositories/catalog_repository.dart';
 import '../../../transactions/domain/repositories/checkout_repository.dart';
 import '../../../users/domain/repositories/user_management_repository.dart';
-import '../../../users/presentation/pages/admin_users_page.dart';
+import '../../../products/domain/repositories/product_management_repository.dart';
+import '../../../dashboard/presentation/pages/admin_dashboard_page.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({
@@ -18,13 +21,19 @@ class AuthGate extends StatelessWidget {
     required this.shiftsRepository,
     required this.catalogRepository,
     required this.checkoutRepository,
+    required this.balancesRepository,
     required this.userManagementRepository,
+    required this.productManagementRepository,
+    required this.categoriesRepository,
   });
 
   final ShiftsRepository shiftsRepository;
   final CatalogRepository catalogRepository;
   final CheckoutRepository checkoutRepository;
+  final BalancesRepository balancesRepository;
   final UserManagementRepository userManagementRepository;
+  final ProductManagementRepository productManagementRepository;
+  final CategoriesRepository categoriesRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -34,10 +43,16 @@ class AuthGate extends StatelessWidget {
           AuthChecking() => const _LoadingPage(),
           AuthSubmitting() => LoginPage(),
           AuthUnauthenticated() => LoginPage(errorMessage: state.errorMessage),
-          AuthAuthenticated() when state.user.role == 'Admin' => AdminUsersPage(
-            admin: state.user,
-            repository: userManagementRepository,
-          ),
+          AuthAuthenticated() when state.user.role == 'Admin' =>
+            AdminDashboardPage(
+              admin: state.user,
+              userManagementRepository: userManagementRepository,
+              productManagementRepository: productManagementRepository,
+              categoriesRepository: categoriesRepository,
+              balancesRepository: balancesRepository,
+              checkoutRepository: checkoutRepository,
+              shiftsRepository: shiftsRepository,
+            ),
           AuthAuthenticated() => BlocProvider(
             create: (_) => ShiftsCubit(shiftsRepository)..loadActive(),
             child: ShiftPage(
