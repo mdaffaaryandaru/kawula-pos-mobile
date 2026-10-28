@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../products/presentation/bloc/cart_cubit.dart';
+import '../../../members/domain/entities/member.dart';
 import '../../domain/repositories/checkout_repository.dart';
 import 'checkout_state.dart';
 
@@ -8,6 +9,9 @@ class CheckoutCubit extends Cubit<CheckoutState> {
   CheckoutCubit(this._repository) : super(const CheckoutLoading());
 
   final CheckoutRepository _repository;
+
+  Future<List<Member>> searchMembers(String search) =>
+      _repository.searchMembers(search);
 
   Future<void> load() async {
     emit(const CheckoutLoading());
@@ -28,6 +32,7 @@ class CheckoutCubit extends Cubit<CheckoutState> {
     required num paidAmount,
     required String? pin,
     required bool openBill,
+    String? memberId,
   }) async {
     final currentState = state;
     if (currentState is! CheckoutReady) return;
@@ -57,6 +62,7 @@ class CheckoutCubit extends Cubit<CheckoutState> {
         paidAmount: paidAmount,
         pin: pin,
         openBill: openBill,
+        memberId: memberId,
       );
       emit(CheckoutCompleted(result, currentState.settings));
     } catch (error) {

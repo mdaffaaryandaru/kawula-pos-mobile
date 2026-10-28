@@ -60,9 +60,12 @@ class AdminShiftsPage extends StatelessWidget {
   }
 
   Widget _shiftList(BuildContext context, AdminShiftsLoaded state) {
+    final openShiftCount = state.shifts
+        .where((shift) => shift.status == 'open')
+        .length;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Shift kasir'),
+        title: const _ShiftLogoTitle(title: 'Shift kasir'),
         actions: [
           IconButton(
             tooltip: 'Muat ulang',
@@ -76,14 +79,20 @@ class AdminShiftsPage extends StatelessWidget {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: DropdownButtonFormField<String>(
               initialValue: state.statusFilter ?? 'all',
-              decoration: const InputDecoration(labelText: 'Filter status'),
+              decoration: const InputDecoration(
+                labelText: 'Filter status',
+                prefixIcon: Icon(Icons.filter_list),
+              ),
               items: const [
                 DropdownMenuItem(value: 'all', child: Text('Semua shift')),
                 DropdownMenuItem(value: 'open', child: Text('Sedang berjalan')),
-                DropdownMenuItem(value: 'closed', child: Text('Ditutup manual')),
+                DropdownMenuItem(
+                  value: 'closed',
+                  child: Text('Ditutup manual'),
+                ),
                 DropdownMenuItem(
                   value: 'auto_closed',
                   child: Text('Ditutup otomatis'),
@@ -92,6 +101,13 @@ class AdminShiftsPage extends StatelessWidget {
               onChanged: (value) => context.read<AdminShiftsCubit>().load(
                 status: value == null || value == 'all' ? null : value,
               ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            child: _ShiftListSummary(
+              shiftCount: state.shifts.length,
+              openShiftCount: openShiftCount,
             ),
           ),
           if (state.errorMessage != null)
@@ -162,7 +178,96 @@ class _AdminShiftsAppBar extends StatelessWidget
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
-  Widget build(BuildContext context) => AppBar(title: const Text('Shift kasir'));
+  Widget build(BuildContext context) =>
+      AppBar(title: const _ShiftLogoTitle(title: 'Shift kasir'));
+}
+
+class _ShiftLogoTitle extends StatelessWidget {
+  const _ShiftLogoTitle({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Image.asset(
+            'assets/images/logo.jpg',
+            width: 32,
+            height: 32,
+            fit: BoxFit.cover,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(title),
+      ],
+    );
+  }
+}
+
+class _ShiftListSummary extends StatelessWidget {
+  const _ShiftListSummary({
+    required this.shiftCount,
+    required this.openShiftCount,
+  });
+
+  final int shiftCount;
+  final int openShiftCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: theme.colorScheme.primaryContainer,
+              child: const Icon(Icons.schedule_outlined),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$shiftCount shift ditemukan',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '$openShiftCount sedang berjalan · mengikuti filter',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F5EE),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '$openShiftCount aktif',
+                style: const TextStyle(
+                  color: Color(0xFF16834A),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ShiftCard extends StatelessWidget {
@@ -174,22 +279,154 @@ class _ShiftCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: ListTile(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: onTap,
-        leading: Icon(
-          shift.status == 'open'
-              ? Icons.timelapse
-              : Icons.check_circle_outline,
-          color: shift.status == 'open' ? Colors.orange : Colors.green,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Theme.of(context)
+                        .colorScheme
+                        .primaryContainer,
+                    child: Text(_initials(shift.cashierName ?? 'Kasir')),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          shift.cashierName ?? 'Kasir',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        if (shift.cashierEmail != null)
+                          Text(
+                            shift.cashierEmail!,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _ShiftStatusChip(status: shift.status),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  const Icon(Icons.storefront_outlined, size: 18),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      shift.outletName ?? 'Outlet',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.schedule_outlined, size: 18),
+                  const SizedBox(width: 6),
+                  Text(_dateTime(shift.startTime)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ShiftCardMetric(
+                      label: 'Modal awal',
+                      value: _rupiah(shift.startingCash),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ShiftCardMetric(
+                      label: 'Penjualan',
+                      value: _rupiah(shift.totalSales),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(Icons.receipt_long_outlined, size: 18),
+                  const SizedBox(width: 6),
+                  Text('${shift.totalTransactions} transaksi'),
+                  const Spacer(),
+                  Text(
+                    'Detail',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.chevron_right, size: 20),
+                ],
+              ),
+            ],
+          ),
         ),
-        title: Text(shift.cashierName ?? 'Kasir'),
-        subtitle: Text(
-          '${_shiftStatus(shift.status)} · ${shift.outletName ?? 'Outlet'}\n'
-          '${_dateTime(shift.startTime)} · Modal ${_rupiah(shift.startingCash)}'
-          '\n${shift.totalTransactions} transaksi · Penjualan ${_rupiah(shift.totalSales)}',
+      ),
+    );
+  }
+}
+
+class _ShiftCardMetric extends StatelessWidget {
+  const _ShiftCardMetric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleSmall
+              ?.copyWith(fontWeight: FontWeight.w700),
         ),
-        isThreeLine: true,
-        trailing: const Icon(Icons.chevron_right),
+      ],
+    );
+  }
+}
+
+class _ShiftStatusChip extends StatelessWidget {
+  const _ShiftStatusChip({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final isOpen = status == 'open';
+    final color = isOpen
+        ? const Color(0xFF16834A)
+        : Theme.of(context).colorScheme.onSurfaceVariant;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        _shiftStatus(status),
+        style: TextStyle(color: color, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -221,7 +458,7 @@ class _AdminShiftDetailPageState extends State<AdminShiftDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Detail shift')),
+      appBar: AppBar(title: const _ShiftLogoTitle(title: 'Detail shift')),
       body: FutureBuilder<AdminShiftDetail>(
         future: _detail,
         builder: (context, snapshot) {
@@ -270,6 +507,28 @@ class _AdminShiftDetailPageState extends State<AdminShiftDetailPage> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              _ShiftDetailHeader(shift: shift),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ShiftDetailMetric(
+                      icon: Icons.payments_outlined,
+                      label: 'Penjualan',
+                      value: _rupiah(shift.totalSales),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _ShiftDetailMetric(
+                      icon: Icons.receipt_long_outlined,
+                      label: 'Transaksi',
+                      value: '${shift.totalTransactions}',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -277,26 +536,11 @@ class _AdminShiftDetailPageState extends State<AdminShiftDetailPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        shift.cashierName ?? 'Kasir',
-                        style: Theme.of(context).textTheme.titleLarge,
+                        'Rekap kas',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
-                      if (shift.cashierEmail != null)
-                        Text(shift.cashierEmail!),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${shift.outletName ?? 'Outlet'} · ${_shiftStatus(shift.status)}',
-                      ),
-                      const SizedBox(height: 12),
-                      _ShiftValue(
-                        label: 'Mulai',
-                        value: _dateTime(shift.startTime),
-                      ),
-                      _ShiftValue(
-                        label: 'Selesai',
-                        value: shift.endTime == null
-                            ? 'Belum selesai'
-                            : _dateTime(shift.endTime!),
-                      ),
+                      const SizedBox(height: 10),
                       _ShiftValue(
                         label: 'Modal awal',
                         value: _rupiah(shift.startingCash),
@@ -314,7 +558,11 @@ class _AdminShiftDetailPageState extends State<AdminShiftDetailPage> {
                         _ShiftValue(
                           label: 'Selisih kas',
                           value: _rupiah(shift.cashDifference!),
+                          valueColor: shift.cashDifference == 0
+                              ? const Color(0xFF16834A)
+                              : Theme.of(context).colorScheme.error,
                         ),
+                      const Divider(height: 24),
                       _ShiftValue(
                         label: 'Total penjualan',
                         value: _rupiah(shift.totalSales),
@@ -324,22 +572,40 @@ class _AdminShiftDetailPageState extends State<AdminShiftDetailPage> {
                         value: '${shift.totalTransactions}',
                       ),
                       if (shift.notes.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text('Catatan: ${shift.notes}'),
+                        const Divider(height: 24),
+                        Text(
+                          'Catatan shift',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(shift.notes),
                       ],
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
-                'Transaksi (${detail.transactions.length})',
-                style: Theme.of(context).textTheme.titleMedium,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Transaksi',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  Text(
+                    '${detail.transactions.length} catatan',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               if (detail.transactions.isEmpty)
                 const Card(
-                  child: ListTile(title: Text('Belum ada transaksi pada shift.')),
+                  child: ListTile(
+                    title: Text('Belum ada transaksi pada shift.'),
+                  ),
                 )
               else
                 ...detail.transactions.map(
@@ -405,18 +671,22 @@ class _AdminShiftDetailPageState extends State<AdminShiftDetailPage> {
       Navigator.pop(context, true);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Force close gagal: $error')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Force close gagal: $error')));
     }
   }
 }
 
 class _ShiftValue extends StatelessWidget {
-  const _ShiftValue({required this.label, required this.value});
+  const _ShiftValue({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
 
   final String label;
   final String value;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -428,9 +698,128 @@ class _ShiftValue extends StatelessWidget {
           Text(label),
           const SizedBox(width: 12),
           Flexible(
-            child: Text(value, textAlign: TextAlign.end),
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                color: valueColor,
+                fontWeight: valueColor == null ? null : FontWeight.w600,
+              ),
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ShiftDetailHeader extends StatelessWidget {
+  const _ShiftDetailHeader({required this.shift});
+
+  final ActiveShift shift;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 25,
+                  backgroundColor: theme.colorScheme.primaryContainer,
+                  child: Text(_initials(shift.cashierName ?? 'Kasir')),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        shift.cashierName ?? 'Kasir',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (shift.cashierEmail != null)
+                        Text(
+                          shift.cashierEmail!,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _ShiftStatusChip(status: shift.status),
+              ],
+            ),
+            const Divider(height: 28),
+            Row(
+              children: [
+                const Icon(Icons.storefront_outlined, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    shift.outletName ?? 'Outlet',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _ShiftValue(label: 'Mulai', value: _dateTime(shift.startTime)),
+            _ShiftValue(
+              label: 'Selesai',
+              value: shift.endTime == null
+                  ? 'Belum selesai'
+                  : _dateTime(shift.endTime!),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ShiftDetailMetric extends StatelessWidget {
+  const _ShiftDetailMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: theme.colorScheme.primary),
+            const SizedBox(height: 10),
+            Text(label, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 3),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -447,19 +836,58 @@ class _TransactionCard extends StatelessWidget {
         .map((item) => '${item.quantity} × ${item.productName}')
         .join(', ');
     return Card(
-      child: ListTile(
-        title: Text(
-          '${transaction.status} · ${_rupiah(transaction.totalAmount)}',
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    _transactionStatus(transaction.status),
+                    style: Theme.of(context).textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _rupiah(transaction.totalAmount),
+                  style: Theme.of(context).textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${transaction.paymentMethod} · ${_dateTime(transaction.createdAt)}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            if (details.isNotEmpty) ...[
+              const Divider(height: 20),
+              Text(details),
+            ],
+            if (transaction.notes.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Catatan: ${transaction.notes}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ],
         ),
-        subtitle: Text(
-          '${transaction.paymentMethod} · ${_dateTime(transaction.createdAt)}\n'
-          '$details',
-        ),
-        isThreeLine: true,
       ),
     );
   }
 }
+
+String _transactionStatus(String status) => switch (status.toLowerCase()) {
+  'completed' => 'Selesai',
+  'pending' => 'Belum lunas',
+  'cancelled' => 'Dibatalkan',
+  _ => status,
+};
 
 class _ForceCloseDialog extends StatefulWidget {
   const _ForceCloseDialog({required this.shift});
@@ -499,9 +927,7 @@ class _ForceCloseDialogState extends State<_ForceCloseDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Kas yang diharapkan: ${_rupiah(widget.shift.expectedCash)}',
-            ),
+            Text('Kas yang diharapkan: ${_rupiah(widget.shift.expectedCash)}'),
             const SizedBox(height: 12),
             TextFormField(
               controller: _actualCashController,
@@ -569,6 +995,17 @@ String _shiftStatus(String status) => switch (status) {
   'auto_closed' => 'Ditutup otomatis',
   _ => status,
 };
+
+String _initials(String value) {
+  final parts = value
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .take(2)
+      .toList(growable: false);
+  if (parts.isEmpty) return 'K';
+  return parts.map((part) => part[0].toUpperCase()).join();
+}
 
 String _rupiah(num amount) {
   final digits = amount.abs().toInt().toString();

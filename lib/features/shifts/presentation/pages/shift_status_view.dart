@@ -78,39 +78,81 @@ class _ShiftStatusViewState extends State<ShiftStatusView> {
   }
 
   Widget _activeShift(BuildContext context, ActiveShift shift) {
+    final theme = Theme.of(context);
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: Card(
+            clipBehavior: Clip.antiAlias,
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(Icons.check_circle, size: 52, color: Colors.green),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Shift sedang berjalan',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall,
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAF0FF),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.check_circle,
+                              color: Color(0xFF059669),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Shift sedang berjalan',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const Chip(
+                              label: Text('AKTIF'),
+                              visualDensity: VisualDensity.compact,
+                              backgroundColor: Color(0xFFC9F5E2),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '${shift.outletName ?? 'Outlet'} · '
+                          'Mulai ${_formatTime(shift.startTime)}',
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _ShiftMetric(
+                                label: 'Modal awal',
+                                value: _formatRupiah(shift.startingCash),
+                              ),
+                            ),
+                            Expanded(
+                              child: _ShiftMetric(
+                                label: 'Transaksi',
+                                value: '${shift.totalTransactions}',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Halo, ${widget.user.name}',
-                    textAlign: TextAlign.center,
-                  ),
+                  const SizedBox(height: 8),
+                  Text('Halo, ${widget.user.name}'),
                   const Divider(height: 32),
-                  if (shift.outletName case final outletName?)
-                    _InfoRow(label: 'Outlet', value: outletName),
                   _InfoRow(
-                    label: 'Mulai',
+                    label: 'Waktu mulai',
                     value: _formatDateTime(shift.startTime),
-                  ),
-                  _InfoRow(
-                    label: 'Modal awal',
-                    value: _formatRupiah(shift.startingCash),
                   ),
                   _InfoRow(
                     label: 'Kas yang diharapkan',
@@ -126,12 +168,18 @@ class _ShiftStatusViewState extends State<ShiftStatusView> {
                   ),
                   if (widget.errorMessage != null) ...[
                     const SizedBox(height: 12),
-                    Text(
-                      widget.errorMessage!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      textAlign: TextAlign.center,
+                      child: Text(
+                        widget.errorMessage!,
+                        style: TextStyle(
+                          color: theme.colorScheme.onErrorContainer,
+                        ),
+                      ),
                     ),
                   ],
                   if (_isCloseFormVisible) ...[
@@ -359,34 +407,68 @@ class _ShiftStatusViewState extends State<ShiftStatusView> {
         availability.availableCash >= 0;
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
           child: Card(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(Icons.lock_clock_outlined, size: 48),
-                    const SizedBox(height: 12),
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: Theme.of(context)
+                          .colorScheme
+                          .primaryContainer,
+                      child: Icon(
+                        Icons.lock_clock_outlined,
+                        size: 30,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     Text(
                       'Belum ada shift aktif',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      style: Theme.of(context).textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Buka shift untuk mulai menggunakan kasir.',
-                      textAlign: TextAlign.center,
+                      'Halo, ${widget.user.name}. Buka shift untuk mulai menggunakan kasir.',
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
                     if (availability != null) ...[
-                      _InfoRow(
-                        label: 'Kas tersedia',
-                        value: _formatRupiah(availability.availableCash),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Kas tersedia',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _formatRupiah(availability.availableCash),
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -398,6 +480,7 @@ class _ShiftStatusViewState extends State<ShiftStatusView> {
                     else ...[
                       TextFormField(
                         controller: _cashController,
+                        enabled: !widget.isOpening,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: false,
                         ),
@@ -421,6 +504,7 @@ class _ShiftStatusViewState extends State<ShiftStatusView> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _pinController,
+                        enabled: !widget.isOpening,
                         keyboardType: TextInputType.number,
                         obscureText: true,
                         maxLength: 4,
@@ -510,6 +594,29 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+class _ShiftMetric extends StatelessWidget {
+  const _ShiftMetric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.titleSmall
+              ?.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
+  }
+}
+
 String _formatRupiah(num amount) {
   final digits = amount.round().abs().toString();
   final grouped = digits.replaceAllMapped(
@@ -517,6 +624,12 @@ String _formatRupiah(num amount) {
     (_) => '.',
   );
   return '${amount < 0 ? '- ' : ''}Rp $grouped';
+}
+
+String _formatTime(DateTime dateTime) {
+  final local = dateTime.toLocal();
+  return '${local.hour.toString().padLeft(2, '0')}:'
+      '${local.minute.toString().padLeft(2, '0')}';
 }
 
 String _formatDateTime(DateTime dateTime) {

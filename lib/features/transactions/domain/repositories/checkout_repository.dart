@@ -1,4 +1,5 @@
 import '../../../products/presentation/bloc/cart_cubit.dart';
+import '../../../members/domain/entities/member.dart';
 import '../entities/checkout.dart';
 
 abstract interface class CheckoutRepository {
@@ -7,6 +8,8 @@ abstract interface class CheckoutRepository {
   Future<CheckoutSettings> getSettings();
 
   Future<List<TransactionRecord>> getTransactions();
+
+  Future<List<Member>> searchMembers(String search);
 
   Future<CheckoutResult> payPendingTransaction({
     required String transactionId,
@@ -23,5 +26,6 @@ abstract interface class CheckoutRepository {
     required num paidAmount,
     required String? pin,
     required bool openBill,
+    String? memberId,
   });
 }

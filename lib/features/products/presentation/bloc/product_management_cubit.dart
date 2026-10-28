@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../categories/domain/entities/managed_category.dart';
+import '../../../inventories/domain/entities/inventory_item.dart';
 import '../../../products/domain/entities/catalog_product.dart';
 import '../../domain/entities/product_management.dart';
 import '../../domain/repositories/product_management_repository.dart';
@@ -19,12 +20,16 @@ final class ProductManagementLoaded extends ProductManagementState {
     required this.products,
     required this.categories,
     required this.variantGroups,
+    required this.inventories,
+    required this.productUnits,
     this.errorMessage,
   });
 
   final List<ManagedProduct> products;
   final List<ManagedCategory> categories;
   final List<ManagedVariantGroup> variantGroups;
+  final List<InventoryItem> inventories;
+  final List<ProductUnit> productUnits;
   final String? errorMessage;
 }
 
@@ -99,11 +104,80 @@ class ProductManagementCubit extends Cubit<ProductManagementState> {
     }
   }
 
+  Future<bool> addRecipe({
+    required String productId,
+    required String inventoryId,
+    required num quantity,
+    required String unitId,
+    required num conversionFactor,
+  }) async {
+    try {
+      await _repository.addRecipe(
+        productId: productId,
+        inventoryId: inventoryId,
+        quantity: quantity,
+        unitId: unitId,
+        conversionFactor: conversionFactor,
+      );
+      emit(await _loadData());
+      return true;
+    } catch (error) {
+      _emitOperationError(error);
+      return false;
+    }
+  }
+
+  Future<bool> removeRecipe({
+    required String productId,
+    required int recipeIndex,
+  }) async {
+    try {
+      await _repository.removeRecipe(
+        productId: productId,
+        recipeIndex: recipeIndex,
+      );
+      emit(await _loadData());
+      return true;
+    } catch (error) {
+      _emitOperationError(error);
+      return false;
+    }
+  }
+
   Future<ProductManagementLoaded> _loadData() async {
+    final products = await _repository.getProducts();
+    final errors = <String>[];
+    var categories = <ManagedCategory>[];
+    var variantGroups = <ManagedVariantGroup>[];
+    var inventories = <InventoryItem>[];
+    var productUnits = <ProductUnit>[];
+    try {
+      categories = await _repository.getCategories();
+    } catch (error) {
+      errors.add('Kategori: ${_messageFor(error)}');
+    }
+    try {
+      variantGroups = await _repository.getVariantGroups();
+    } catch (error) {
+      errors.add('Grup varian: ${_messageFor(error)}');
+    }
+    try {
+      inventories = await _repository.getInventories();
+    } catch (error) {
+      errors.add('Bahan inventori: ${_messageFor(error)}');
+    }
+    try {
+      productUnits = await _repository.getProductUnits();
+    } catch (error) {
+      errors.add('Satuan bahan: ${_messageFor(error)}');
+    }
     return ProductManagementLoaded(
-      products: await _repository.getProducts(),
-      categories: await _repository.getCategories(),
-      variantGroups: await _repository.getVariantGroups(),
+      products: products,
+      categories: categories,
+      variantGroups: variantGroups,
+      inventories: inventories,
+      productUnits: productUnits,
+      errorMessage: errors.isEmpty ? null : errors.join('\n'),
     );
   }
 
@@ -115,6 +189,8 @@ class ProductManagementCubit extends Cubit<ProductManagementState> {
           products: currentState.products,
           categories: currentState.categories,
           variantGroups: currentState.variantGroups,
+          inventories: currentState.inventories,
+          productUnits: currentState.productUnits,
           errorMessage: _messageFor(error),
         ),
       );

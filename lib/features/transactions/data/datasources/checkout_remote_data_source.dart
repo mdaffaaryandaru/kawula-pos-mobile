@@ -3,15 +3,26 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../../../framework/core/exceptions/api_exception.dart';
+import '../../../members/domain/entities/member.dart';
+import '../../../members/data/datasources/members_remote_data_source.dart';
 import '../../../products/presentation/bloc/cart_cubit.dart';
 import '../models/checkout_models.dart';
 
 class CheckoutRemoteDataSource {
-  CheckoutRemoteDataSource(this._client, this._baseUrl, this._readToken);
+  CheckoutRemoteDataSource(
+    this._client,
+    this._baseUrl,
+    this._readToken, {
+    required this.membersRemoteDataSource,
+  });
 
   final http.Client _client;
   final String _baseUrl;
   final Future<String?> Function() _readToken;
+  final MembersRemoteDataSource membersRemoteDataSource;
+
+  Future<List<Member>> searchMembers(String search) =>
+      membersRemoteDataSource.searchMembers(search);
 
   Future<List<CheckoutPaymentMethodModel>> getPaymentMethods() async {
     final response = await _client.get(
@@ -96,6 +107,7 @@ class CheckoutRemoteDataSource {
     required num paidAmount,
     required String? pin,
     required bool openBill,
+    String? memberId,
   }) async {
     final body = <String, Object>{
       'outlet_id': outletId,
@@ -120,6 +132,7 @@ class CheckoutRemoteDataSource {
           .toList(),
       'total_amount': estimatedTotal.round(),
       'payment_method': openBill ? 'OPEN_BILL' : paymentMethod,
+      if (memberId != null && memberId.isNotEmpty) 'member_id': memberId,
       if (openBill) 'status': 'pending',
       if (!openBill) 'paid_amount': paidAmount,
       if (!openBill && pin != null) 'pin': pin,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -5,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../products/presentation/bloc/cart_cubit.dart';
 import '../../../products/presentation/pages/product_formatters.dart';
+import '../../../members/domain/entities/member.dart';
 import '../../domain/entities/checkout.dart';
 import '../bloc/checkout_cubit.dart';
 import '../bloc/checkout_state.dart';
@@ -21,6 +24,14 @@ class CheckoutPage extends StatefulWidget {
 class _CheckoutPageState extends State<CheckoutPage> {
   final _cashController = TextEditingController();
   final _pinController = TextEditingController();
+  final _memberSearchController = TextEditingController();
+  final _memberSearchFocusNode = FocusNode();
+  Timer? _memberSearchTimer;
+  List<Member> _memberResults = const [];
+  Member? _selectedMember;
+  bool _isSearchingMembers = false;
+  String? _memberSearchError;
+  int _memberSearchGeneration = 0;
   String? _selectedMethodCode;
   bool _openBill = false;
   String? _validationMessage;
@@ -29,6 +40,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
   void dispose() {
     _cashController.dispose();
     _pinController.dispose();
+    _memberSearchTimer?.cancel();
+    _memberSearchController.dispose();
+    _memberSearchFocusNode.dispose();
     super.dispose();
   }
 
@@ -42,7 +56,23 @@ class _CheckoutPageState extends State<CheckoutPage> {
       },
       builder: (context, state) {
         return Scaffold(
-          appBar: AppBar(title: const Text('Pembayaran')),
+          appBar: AppBar(
+            title: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(
+                    'assets/images/logo.jpg',
+                    width: 32,
+                    height: 32,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text('Pembayaran'),
+              ],
+            ),
+          ),
           body: switch (state) {
             CheckoutLoading() => const Center(
               child: CircularProgressIndicator(),
@@ -102,127 +132,179 @@ class _CheckoutPageState extends State<CheckoutPage> {
         if (errorMessage != null) _InlineError(message: errorMessage),
         if (_validationMessage != null)
           _InlineError(message: _validationMessage!),
-        Text(
-          'Ringkasan pesanan',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 12),
-        for (final item in cart.items)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: Text(
-                    '${item.quantity} × ${item.product.name}'
-                    '${item.selectedVariants.isEmpty ? '' : ' (${item.selectedVariants.map((variant) => variant.optionName).join(', ')})'}'
-                    '${item.notes.isEmpty ? '' : '\nCatatan: ${item.notes}'}',
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Ringkasan pesanan',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                    Chip(
+                      avatar: const Icon(Icons.shopping_bag_outlined, size: 18),
+                      label: Text('${cart.totalQuantity} item'),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Text(formatRupiah(item.unitPrice * item.quantity)),
-              ],
-            ),
-          ),
-        const Divider(height: 28),
-        _AmountRow(
-          label: 'Subtotal estimasi',
-          amount: cart.estimatedSubtotal.round(),
-        ),
-        _AmountRow(
-          label: 'Pajak (${settings.taxPercentage}%)',
-          amount: taxAmount,
-        ),
-        _AmountRow(label: 'Biaya layanan', amount: settings.serviceCharge),
-        const Divider(height: 24),
-        _AmountRow(
-          label: 'Total estimasi',
-          amount: totalAmount,
-          isEmphasized: true,
-        ),
-        const SizedBox(height: 24),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Simpan sebagai open bill'),
-          subtitle: const Text(
-            'Transaksi dibuat sebagai pending dan belum dianggap lunas.',
-          ),
-          value: _openBill,
-          onChanged: isSubmitting
-              ? null
-              : (value) => setState(() {
-                  _openBill = value;
-                  _validationMessage = null;
-                }),
-        ),
-        if (!_openBill) ...[
-          const SizedBox(height: 12),
-          if (methods.isEmpty)
-            const _InlineError(
-              message: 'Tidak ada metode pembayaran aktif. Open bill masih dapat digunakan.',
-            )
-          else
-            DropdownButtonFormField<String>(
-              initialValue: selectedMethod?.code,
-              decoration: const InputDecoration(labelText: 'Metode pembayaran'),
-              items: [
-                for (final method in methods)
-                  DropdownMenuItem(
-                    value: method.code,
-                    child: Text(method.name),
+                const SizedBox(height: 8),
+                for (final item in cart.items)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${item.quantity} × ${item.product.name}'
+                            '${item.selectedVariants.isEmpty ? '' : ' (${item.selectedVariants.map((variant) => variant.optionName).join(', ')})'}'
+                            '${item.notes.isEmpty ? '' : '\nCatatan: ${item.notes}'}',
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(formatRupiah(item.unitPrice * item.quantity)),
+                      ],
+                    ),
                   ),
+                const Divider(height: 28),
+                _AmountRow(
+                  label: 'Subtotal estimasi',
+                  amount: cart.estimatedSubtotal.round(),
+                ),
+                _AmountRow(
+                  label: 'Pajak (${settings.taxPercentage}%)',
+                  amount: taxAmount,
+                ),
+                _AmountRow(
+                  label: 'Biaya layanan',
+                  amount: settings.serviceCharge,
+                ),
+                const Divider(height: 24),
+                _AmountRow(
+                  label: 'Total estimasi',
+                  amount: totalAmount,
+                  isEmphasized: true,
+                ),
               ],
-              onChanged: isSubmitting
-                  ? null
-                  : (value) => setState(() {
-                      _selectedMethodCode = value;
-                      _validationMessage = null;
-                    }),
-            ),
-          if (selectedMethod?.isCash == true) ...[
-            const SizedBox(height: 12),
-            TextField(
-              controller: _cashController,
-              enabled: !isSubmitting,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(
-                labelText: 'Uang diterima',
-                prefixText: 'Rp ',
-              ),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 8),
-            _AmountRow(
-              label: 'Kembalian estimasi',
-              amount: (_parseCashAmount() - totalAmount).clamp(
-                0,
-                double.infinity,
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          TextField(
-            controller: _pinController,
-            enabled: !isSubmitting,
-            keyboardType: TextInputType.number,
-            obscureText: true,
-            maxLength: 4,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(4),
-            ],
-            decoration: const InputDecoration(
-              labelText: 'PIN kasir',
-              helperText: 'Masukkan PIN 4 digit untuk melunasi transaksi.',
             ),
           ),
-        ],
+        ),
+        const SizedBox(height: 16),
+        _memberSelector(context, isSubmitting),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Metode pembayaran',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Simpan sebagai open bill'),
+                  subtitle: const Text(
+                    'Transaksi dibuat sebagai pending dan belum dianggap lunas.',
+                  ),
+                  value: _openBill,
+                  onChanged: isSubmitting
+                      ? null
+                      : (value) => setState(() {
+                          _openBill = value;
+                          _validationMessage = null;
+                        }),
+                ),
+                if (!_openBill) ...[
+                  const SizedBox(height: 12),
+                  if (methods.isEmpty)
+                    const _InlineError(
+                      message: 'Tidak ada metode pembayaran aktif. Open bill masih dapat digunakan.',
+                    )
+                  else
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedMethod?.code,
+                      decoration: const InputDecoration(
+                        labelText: 'Pilih metode pembayaran',
+                      ),
+                      items: [
+                        for (final method in methods)
+                          DropdownMenuItem(
+                            value: method.code,
+                            child: Text(method.name),
+                          ),
+                      ],
+                      onChanged: isSubmitting
+                          ? null
+                          : (value) => setState(() {
+                              _selectedMethodCode = value;
+                              _validationMessage = null;
+                            }),
+                    ),
+                  if (selectedMethod?.isCash == true) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _cashController,
+                      enabled: !isSubmitting,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      decoration: const InputDecoration(
+                        labelText: 'Uang diterima',
+                        prefixText: 'Rp ',
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    const SizedBox(height: 8),
+                    _AmountRow(
+                      label: 'Kembalian estimasi',
+                      amount: (_parseCashAmount() - totalAmount).clamp(
+                        0,
+                        double.infinity,
+                      ),
+                    ),
+                  ],
+                  if (methods.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _pinController,
+                      enabled: !isSubmitting,
+                      keyboardType: TextInputType.number,
+                      obscureText: true,
+                      maxLength: 4,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(4),
+                      ],
+                      decoration: const InputDecoration(
+                        labelText: 'PIN kasir',
+                        helperText:
+                            'Masukkan PIN 4 digit untuk melunasi transaksi.',
+                      ),
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          ),
+        ),
         const SizedBox(height: 20),
-        Text(
-          'Nilai final, pajak, dan biaya layanan akan dihitung ulang oleh server.',
-          style: Theme.of(context).textTheme.bodySmall,
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            'Nilai final, pajak, dan biaya layanan akan dihitung ulang oleh server.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ),
         const SizedBox(height: 16),
         FilledButton(
@@ -284,7 +366,178 @@ class _CheckoutPageState extends State<CheckoutPage> {
       paidAmount: cashAmount,
       pin: openBill ? null : pin,
       openBill: openBill,
+      memberId: _selectedMember?.id,
     );
+  }
+
+  Widget _memberSelector(BuildContext context, bool isSubmitting) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Member (opsional)', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 6),
+            Text(
+              'Pilih member terdaftar untuk mendapatkan stamp. Kosongkan jika bukan member.',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            if (_selectedMember case final member?)
+              InputChip(
+                avatar: const Icon(Icons.person_outline),
+                label: Text('${member.name} · ${member.phoneNumber}'),
+                deleteButtonTooltipMessage: 'Hapus member',
+                onDeleted: isSubmitting
+                    ? null
+                    : () => setState(() {
+                        _selectedMember = null;
+                        _memberSearchController.clear();
+                      }),
+              )
+            else
+              TextField(
+                controller: _memberSearchController,
+                focusNode: _memberSearchFocusNode,
+                enabled: !isSubmitting,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  labelText: 'Cari nama atau nomor telepon',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _isSearchingMembers
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : _memberSearchController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Hapus pencarian',
+                          onPressed: () {
+                            _memberSearchTimer?.cancel();
+                            _memberSearchGeneration++;
+                            _memberSearchController.clear();
+                            setState(() {
+                              _memberResults = const [];
+                              _isSearchingMembers = false;
+                              _memberSearchError = null;
+                            });
+                          },
+                          icon: const Icon(Icons.close),
+                        ),
+                ),
+                onChanged: _onMemberSearchChanged,
+              ),
+            if (_memberSearchError case final error?)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  error,
+                  style: TextStyle(color: theme.colorScheme.error),
+                ),
+              ),
+            if (_memberSearchController.text.trim().length < 2 &&
+                _selectedMember == null)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text('Masukkan minimal 2 karakter untuk mencari.'),
+              ),
+            if (_memberResults.isNotEmpty && _selectedMember == null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 220),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: _memberResults.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final member = _memberResults[index];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const CircleAvatar(
+                          child: Icon(Icons.person_outline),
+                        ),
+                        title: Text(member.name),
+                        subtitle: Text(
+                          '${member.phoneNumber} · ${member.currentStamps} stamp',
+                        ),
+                        onTap: () {
+                          _memberSearchTimer?.cancel();
+                          _memberSearchGeneration++;
+                          _memberSearchFocusNode.unfocus();
+                          setState(() {
+                            _selectedMember = member;
+                            _memberResults = const [];
+                            _memberSearchController.clear();
+                            _memberSearchError = null;
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
+              )
+            else if (_memberSearchController.text.trim().length >= 2 &&
+                !_isSearchingMembers &&
+                _memberSearchError == null &&
+                _memberResults.isEmpty &&
+                _selectedMember == null)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text('Member aktif tidak ditemukan.'),
+              ),
+            if (_openBill && _selectedMember != null)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text('Stamp akan ditambahkan saat open bill dilunasi.'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _onMemberSearchChanged(String value) {
+    _memberSearchTimer?.cancel();
+    final query = value.trim();
+    final generation = ++_memberSearchGeneration;
+    setState(() {
+      _selectedMember = null;
+      _memberResults = const [];
+      _memberSearchError = null;
+      _isSearchingMembers = query.length >= 2;
+    });
+    if (query.length < 2) {
+      setState(() => _isSearchingMembers = false);
+      return;
+    }
+    _memberSearchTimer = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        final members = await context.read<CheckoutCubit>().searchMembers(
+          query,
+        );
+        if (!mounted || generation != _memberSearchGeneration) return;
+        setState(() {
+          _memberResults = members
+              .where((member) => member.isActive)
+              .toList(growable: false);
+          _isSearchingMembers = false;
+        });
+      } catch (error) {
+        if (!mounted || generation != _memberSearchGeneration) return;
+        setState(() {
+          _isSearchingMembers = false;
+          _memberSearchError = 'Member gagal dimuat: $error';
+        });
+      }
+    });
   }
 
   num _parseCashAmount() => num.tryParse(_cashController.text.trim()) ?? 0;
@@ -317,15 +570,51 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Widget _completed(CheckoutResult result, CheckoutSettings settings) {
     final isPending = result.status.toLowerCase() == 'pending';
+    final theme = Theme.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            isPending ? 'Open bill berhasil dibuat' : 'Pembayaran berhasil',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleLarge,
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: isPending
+                  ? theme.colorScheme.tertiaryContainer
+                  : const Color(0xFFE8F5EE),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  isPending
+                      ? Icons.pending_actions_outlined
+                      : Icons.check_circle_outline,
+                  size: 40,
+                  color: isPending
+                      ? theme.colorScheme.onTertiaryContainer
+                      : const Color(0xFF16834A),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  isPending
+                      ? 'Open bill berhasil dibuat'
+                      : 'Pembayaran berhasil',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isPending
+                      ? 'Transaksi ini belum lunas'
+                      : 'Transaksi berhasil dicatat',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           Card(
@@ -334,6 +623,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Center(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Image.asset(
+                        'assets/images/logo.jpg',
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   if (settings.storeName.isNotEmpty)
                     Text(
                       settings.storeName,
@@ -365,6 +666,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         ? 'Tidak tersedia'
                         : _formatReceiptDate(result.createdAt!),
                   ),
+                  if (_selectedMember case final member?)
+                    _ReceiptInfoRow(
+                      label: 'Member',
+                      value: '${member.name} · ${member.phoneNumber}',
+                    ),
                   const Divider(height: 24),
                   if (result.items.isEmpty)
                     const Text(
@@ -504,6 +810,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
       isPending ? 'OPEN BILL - BELUM LUNAS' : 'STRUK PEMBAYARAN',
       'No. transaksi: ${result.id}',
       'Waktu: ${result.createdAt == null ? 'Tidak tersedia' : _formatReceiptDate(result.createdAt!)}',
+      if (_selectedMember case final member?)
+        'Member: ${member.name} (${member.phoneNumber})',
       '',
       for (final item in result.items) ...[
         '${item.quantity} x ${item.productName} - ${formatRupiah(item.price * item.quantity)}',

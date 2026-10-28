@@ -37,27 +37,6 @@ class ProductManagementRemoteDataSource {
         .toList(growable: false);
   }
 
-  Future<List<ManagedVariantGroupModel>> getVariantGroups() async {
-    final response = await _client.get(
-      _uri('variant-groups'),
-      headers: await _authorizedHeaders(),
-    );
-    final body = _decodeResponse(response);
-    if (body is! List) {
-      throw const ApiException('Respons daftar grup varian tidak valid.');
-    }
-    return body
-        .map((item) {
-          if (item is! Map<String, dynamic>) {
-            throw const ApiException(
-              'Data grup varian dari server tidak valid.',
-            );
-          }
-          return ManagedVariantGroupModel.fromJson(item);
-        })
-        .toList(growable: false);
-  }
-
   Future<List<String>> uploadProductImages(List<XFile> images) async {
     if (images.isEmpty) return const [];
     if (images.length > 5) {
@@ -131,6 +110,37 @@ class ProductManagementRemoteDataSource {
         ? await _client.post(uri, headers: headers, body: jsonEncode(payload))
         : await _client.patch(uri, headers: headers, body: jsonEncode(payload));
     return ManagedProductModel.fromJson(_decodeObject(response));
+  }
+
+  Future<void> addRecipe({
+    required String productId,
+    required String inventoryId,
+    required num quantity,
+    required String unitId,
+    required num conversionFactor,
+  }) async {
+    final response = await _client.post(
+      _uri('products/$productId/recipes'),
+      headers: await _authorizedJsonHeaders(),
+      body: jsonEncode({
+        'inventory_id': inventoryId,
+        'quantity': quantity,
+        'unit_id': unitId,
+        'conversion_factor': conversionFactor,
+      }),
+    );
+    _decodeObject(response);
+  }
+
+  Future<void> removeRecipe({
+    required String productId,
+    required int recipeIndex,
+  }) async {
+    final response = await _client.delete(
+      _uri('products/$productId/recipes/$recipeIndex'),
+      headers: await _authorizedHeaders(),
+    );
+    _decodeResponse(response);
   }
 
   Future<void> deleteProduct(String productId) async {

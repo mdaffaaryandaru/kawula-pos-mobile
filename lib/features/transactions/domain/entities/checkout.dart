@@ -93,6 +93,15 @@ class TransactionRecord {
     required this.createdAt,
     required this.items,
     this.notes = '',
+    this.subtotal = 0,
+    this.taxAmount = 0,
+    this.serviceCharge = 0,
+    this.discountAmount = 0,
+    this.cogs = 0,
+    this.refundAmount = 0,
+    this.outletName = '',
+    this.cashierName = '',
+    this.memberName = '',
   });
 
   final String id;
@@ -104,6 +113,15 @@ class TransactionRecord {
   final DateTime? createdAt;
   final List<TransactionRecordItem> items;
   final String notes;
+  final num subtotal;
+  final num taxAmount;
+  final num serviceCharge;
+  final num discountAmount;
+  final num cogs;
+  final num refundAmount;
+  final String outletName;
+  final String cashierName;
+  final String memberName;
 
   bool get isPending => status.toLowerCase() == 'pending';
 }
