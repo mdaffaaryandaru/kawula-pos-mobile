@@ -24,54 +24,118 @@ class _TransactionsHistoryPageState extends State<TransactionsHistoryPage> {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => TransactionsHistoryCubit(widget.repository)..load(),
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Transaksi')),
-        body: BlocBuilder<TransactionsHistoryCubit, TransactionsHistoryState>(
-          builder: (context, state) => switch (state) {
-            TransactionsHistoryLoading() => const Center(
-              child: CircularProgressIndicator(),
+      child: Builder(
+        builder: (providerContext) => Scaffold(
+          appBar: AppBar(
+            title: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(
+                    'assets/images/logo.jpg',
+                    width: 32,
+                    height: 32,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text('Transaksi'),
+              ],
             ),
-            TransactionsHistoryFailure() => _failure(
-              context,
-              state.message,
-            ),
-            TransactionsHistoryLoaded() => _history(context, state),
-          },
+            actions: [
+              IconButton(
+                tooltip: 'Muat ulang',
+                onPressed: providerContext
+                    .read<TransactionsHistoryCubit>()
+                    .load,
+                icon: const Icon(Icons.refresh),
+              ),
+            ],
+          ),
+          body: BlocBuilder<TransactionsHistoryCubit, TransactionsHistoryState>(
+            builder: (context, state) => switch (state) {
+              TransactionsHistoryLoading() => const Center(
+                child: CircularProgressIndicator(),
+              ),
+              TransactionsHistoryFailure() => _failure(context, state.message),
+              TransactionsHistoryLoaded() => _history(context, state),
+            },
+          ),
         ),
       ),
     );
   }
 
-  Widget _history(
-    BuildContext context,
-    TransactionsHistoryLoaded state,
-  ) {
+  Widget _history(BuildContext context, TransactionsHistoryLoaded state) {
     final pending = state.transactions
         .where((transaction) => transaction.isPending)
         .toList(growable: false);
     final transactions = _selectedTab == 0 ? state.transactions : pending;
+    final completedCount = state.transactions
+        .where((transaction) => transaction.status.toLowerCase() == 'completed')
+        .length;
     return Column(
       children: [
         if (state.errorMessage != null)
           _ErrorBanner(message: state.errorMessage!),
         Padding(
-          padding: const EdgeInsets.all(16),
-          child: SegmentedButton<int>(
-            segments: [
-              ButtonSegment(
-                value: 0,
-                label: Text('Semua (${state.transactions.length})'),
-                icon: const Icon(Icons.receipt_long),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Theme.of(context)
+                        .colorScheme
+                        .primaryContainer,
+                    child: const Icon(Icons.receipt_long_outlined),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${state.transactions.length} transaksi',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '$completedCount lunas · ${pending.length} open bill',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              ButtonSegment(
-                value: 1,
-                label: Text('Open bill (${pending.length})'),
-                icon: const Icon(Icons.pending_actions),
-              ),
-            ],
-            selected: {_selectedTab},
-            onSelectionChanged: (selection) =>
-                setState(() => _selectedTab = selection.first),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<int>(
+              segments: [
+                ButtonSegment(
+                  value: 0,
+                  label: Text('Semua (${state.transactions.length})'),
+                  icon: const Icon(Icons.receipt_long),
+                ),
+                ButtonSegment(
+                  value: 1,
+                  label: Text('Open bill (${pending.length})'),
+                  icon: const Icon(Icons.pending_actions),
+                ),
+              ],
+              selected: {_selectedTab},
+              onSelectionChanged: (selection) =>
+                  setState(() => _selectedTab = selection.first),
+            ),
           ),
         ),
         Expanded(
@@ -101,7 +165,11 @@ class _TransactionsHistoryPageState extends State<TransactionsHistoryPage> {
                       return _TransactionCard(
                         transaction: transaction,
                         onSettle: transaction.isPending
-                            ? () => _settle(context, transaction)
+                            ? () => _settle(
+                                context,
+                                transaction,
+                                context.read<TransactionsHistoryCubit>(),
+                              )
                             : null,
                       );
                     },
@@ -142,6 +210,7 @@ class _TransactionsHistoryPageState extends State<TransactionsHistoryPage> {
   Future<void> _settle(
     BuildContext context,
     TransactionRecord transaction,
+    TransactionsHistoryCubit cubit,
   ) async {
     try {
       final methods = (await widget.repository.getPaymentMethods())
@@ -156,23 +225,27 @@ class _TransactionsHistoryPageState extends State<TransactionsHistoryPage> {
       }
       final result = await showDialog<_SettlementInput>(
         context: context,
-        builder: (_) => _SettlementDialog(
-          transaction: transaction,
-          methods: methods,
-        ),
+        builder: (_) =>
+            _SettlementDialog(transaction: transaction, methods: methods),
       );
       if (result == null || !context.mounted) return;
-      await context.read<TransactionsHistoryCubit>().settle(
+      await cubit.settle(
         transaction: transaction,
         paymentMethod: result.paymentMethod,
         paidAmount: result.paidAmount,
         pin: result.pin,
       );
+      if (!context.mounted) return;
+      final currentState = cubit.state;
+      if (currentState is TransactionsHistoryLoaded &&
+          currentState.errorMessage != null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(currentState.errorMessage!)));
+      }
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 }
@@ -186,52 +259,109 @@ class _TransactionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = transaction.status.toLowerCase();
-    final statusLabel = switch (status) {
-      'completed' => 'Lunas',
-      'pending' => 'Open bill',
-      'cancelled' => 'Dibatalkan',
-      'refunded' => 'Refund',
-      _ => transaction.status,
+    final (statusLabel, statusColor, statusIcon) = switch (status) {
+      'completed' => (
+        'Lunas',
+        const Color(0xFF16834A),
+        Icons.check_circle_outline,
+      ),
+      'pending' => (
+        'Open bill',
+        const Color(0xFFC17A00),
+        Icons.pending_actions,
+      ),
+      'cancelled' => (
+        'Dibatalkan',
+        Theme.of(context).colorScheme.error,
+        Icons.cancel_outlined,
+      ),
+      'refunded' => (
+        'Refund',
+        Theme.of(context).colorScheme.onSurfaceVariant,
+        Icons.currency_exchange,
+      ),
+      _ => (
+        transaction.status,
+        Theme.of(context).colorScheme.onSurfaceVariant,
+        Icons.receipt_long_outlined,
+      ),
     };
     final date = transaction.createdAt;
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
-        leading: Icon(
-          transaction.isPending
-              ? Icons.pending_actions
-              : Icons.receipt_long_outlined,
-        ),
-        title: Text(formatRupiah(transaction.totalAmount)),
-        subtitle: Text(
-          '$statusLabel · ${date == null ? 'Waktu tidak tersedia' : _formatDate(date)}',
-        ),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        children: [
-          const Divider(),
-          for (final item in transaction.items)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Expanded(child: Text('${item.quantity} × ${item.productName}')),
-                  Text(formatRupiah(item.price * item.quantity)),
-                ],
+        leading: CircleAvatar(
+          backgroundColor: statusColor.withValues(alpha: 0.12),
+          foregroundColor: statusColor,
+          child: Icon(statusIcon),
+        ),
+        title: Text(
+          formatRupiah(transaction.totalAmount),
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 5),
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              _TransactionStatusChip(label: statusLabel, color: statusColor),
+              Text(
+                date == null ? 'Waktu tidak tersedia' : _formatDate(date),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
-            ),
-          if (transaction.items.any((item) => item.notes.isNotEmpty)) ...[
-            const SizedBox(height: 8),
-            for (final item in transaction.items.where(
-              (item) => item.notes.isNotEmpty,
-            ))
-              Align(
+            ],
+          ),
+        ),
+        children: [
+          const Divider(height: 8),
+          if (transaction.items.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '${item.productName}: ${item.notes}',
+                  'Rincian item tidak disertakan pada respons transaksi.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
-          ],
-          const SizedBox(height: 8),
+            )
+          else
+            for (final item in transaction.items) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${item.quantity} × ${item.productName}',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(formatRupiah(item.price * item.quantity)),
+                  ],
+                ),
+              ),
+              if (item.notes.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(left: 12, bottom: 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Catatan: ${item.notes}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ),
+            ],
+          const Divider(height: 20),
+          _DetailRow(label: 'No. transaksi', value: transaction.id),
           _DetailRow(label: 'Metode', value: transaction.paymentMethod),
           if (transaction.isPending)
             _DetailRow(label: 'Status', value: 'Menunggu pelunasan'),
@@ -273,6 +403,32 @@ class _TransactionCard extends StatelessWidget {
   }
 }
 
+class _TransactionStatusChip extends StatelessWidget {
+  const _TransactionStatusChip({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
 class _SettlementInput {
   const _SettlementInput({
     required this.paymentMethod,
@@ -286,10 +442,7 @@ class _SettlementInput {
 }
 
 class _SettlementDialog extends StatefulWidget {
-  const _SettlementDialog({
-    required this.transaction,
-    required this.methods,
-  });
+  const _SettlementDialog({required this.transaction, required this.methods});
 
   final TransactionRecord transaction;
   final List<CheckoutPaymentMethod> methods;
@@ -321,7 +474,9 @@ class _SettlementDialogState extends State<_SettlementDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Total transaksi: ${formatRupiah(widget.transaction.totalAmount)}'),
+            Text(
+              'Total transaksi: ${formatRupiah(widget.transaction.totalAmount)}',
+            ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               initialValue: method.code,

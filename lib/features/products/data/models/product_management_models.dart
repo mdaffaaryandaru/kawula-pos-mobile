@@ -1,15 +1,17 @@
 import '../../../products/data/models/catalog_models.dart';
-import '../../../products/domain/entities/catalog_product.dart';
+import '../../../inventories/data/models/inventory_models.dart';
 import '../../domain/entities/product_management.dart';
 
 class ManagedProductModel extends ManagedProduct {
   const ManagedProductModel({
     required super.product,
     required super.variantGroupIds,
+    required super.recipes,
   });
 
   factory ManagedProductModel.fromJson(Map<String, dynamic> json) {
     final variantGroups = json['variant_groups'];
+    final recipes = json['recipes'];
     final variantGroupIds = <String>[];
     if (variantGroups is List) {
       for (final item in variantGroups) {
@@ -24,61 +26,18 @@ class ManagedProductModel extends ManagedProduct {
     return ManagedProductModel(
       product: CatalogProductModel.fromJson(json),
       variantGroupIds: variantGroupIds,
+      recipes: recipes is List
+          ? recipes
+                .map((item) {
+                  if (item is! Map<String, dynamic>) {
+                    throw const FormatException(
+                      'Data bahan resep produk tidak valid.',
+                    );
+                  }
+                  return ProductRecipeModel.fromJson(item);
+                })
+                .toList(growable: false)
+          : const [],
     );
   }
-}
-
-class ManagedVariantGroupModel extends ManagedVariantGroup {
-  const ManagedVariantGroupModel({
-    required super.id,
-    required super.name,
-    required super.group,
-  });
-
-  factory ManagedVariantGroupModel.fromJson(Map<String, dynamic> json) {
-    final id = json['_id'] ?? json['id'];
-    final name = json['name'];
-    if (id is! String || name is! String) {
-      throw const FormatException('Data grup varian dari server tidak valid.');
-    }
-    final options = json['options'];
-    if (options is! List) {
-      throw const FormatException('Data grup varian dari server tidak valid.');
-    }
-    return ManagedVariantGroupModel(
-      id: id,
-      name: name,
-      group: ProductVariantGroup(
-        name: name,
-        isRequired: json['is_required'] == true,
-        minSelection: _integer(json['min_selection'], 0),
-        maxSelection: _integer(json['max_selection'], 1),
-        options: options
-            .map((option) {
-              if (option is! Map<String, dynamic> ||
-                  option['name'] is! String) {
-                throw const FormatException(
-                  'Opsi grup varian dari server tidak valid.',
-                );
-              }
-              final adjustment = option['price_adjustment'] ?? 0;
-              if (adjustment is! num) {
-                throw const FormatException(
-                  'Penyesuaian harga varian dari server tidak valid.',
-                );
-              }
-              final optionId = option['_id'] ?? option['id'];
-              return ProductVariantOption(
-                id: optionId is String ? optionId : null,
-                name: option['name'] as String,
-                priceAdjustment: adjustment,
-              );
-            })
-            .toList(growable: false),
-      ),
-    );
-  }
-
-  static int _integer(Object? value, int fallback) =>
-      value is num ? value.toInt() : fallback;
 }

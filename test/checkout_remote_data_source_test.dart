@@ -6,6 +6,24 @@ import 'package:http/testing.dart';
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
 import 'package:kawula_pos/features/transactions/data/datasources/checkout_remote_data_source.dart';
+import 'package:kawula_pos/features/members/data/datasources/members_remote_data_source.dart';
+
+CheckoutRemoteDataSource _checkoutDataSource(
+  http.Client client,
+  String baseUrl,
+) {
+  Future<String?> readToken() async => 'jwt-token';
+  return CheckoutRemoteDataSource(
+    client,
+    baseUrl,
+    readToken,
+    membersRemoteDataSource: MembersRemoteDataSource(
+      client,
+      baseUrl,
+      readToken,
+    ),
+  );
+}
 
 void main() {
   const baseUrl = 'http://localhost:3001/api';
@@ -34,11 +52,7 @@ void main() {
         200,
       );
     });
-    final dataSource = CheckoutRemoteDataSource(
-      client,
-      baseUrl,
-      () async => 'jwt-token',
-    );
+    final dataSource = _checkoutDataSource(client, baseUrl);
 
     final methods = await dataSource.getPaymentMethods();
     final settings = await dataSource.getSettings();
@@ -63,6 +77,7 @@ void main() {
         expect(body['payment_method'], 'CASH');
         expect(body['paid_amount'], 20000);
         expect(body['pin'], '1234');
+        expect(body['member_id'], 'member-id');
         expect(body.containsKey('status'), isFalse);
         final item = (body['items'] as List).single as Map<String, dynamic>;
         expect(item['product_id'], 'product-id');
@@ -107,11 +122,7 @@ void main() {
           201,
         );
       });
-      final dataSource = CheckoutRemoteDataSource(
-        client,
-        baseUrl,
-        () async => 'jwt-token',
-      );
+      final dataSource = _checkoutDataSource(client, baseUrl);
 
       final result = await dataSource.createTransaction(
         outletId: 'outlet-id',
@@ -143,6 +154,7 @@ void main() {
         paidAmount: 20000,
         pin: '1234',
         openBill: false,
+        memberId: 'member-id',
       );
 
       expect(result.id, 'transaction-id');
@@ -166,6 +178,7 @@ void main() {
         expect(body['status'], 'pending');
         expect(body.containsKey('paid_amount'), isFalse);
         expect(body.containsKey('pin'), isFalse);
+        expect(body.containsKey('member_id'), isFalse);
         return http.Response(
           jsonEncode({
             '_id': 'pending-transaction',
@@ -178,11 +191,7 @@ void main() {
           201,
         );
       });
-      final dataSource = CheckoutRemoteDataSource(
-        client,
-        baseUrl,
-        () async => 'jwt-token',
-      );
+      final dataSource = _checkoutDataSource(client, baseUrl);
 
       final result = await dataSource.createTransaction(
         outletId: 'outlet-id',
@@ -213,6 +222,42 @@ void main() {
     },
   );
 
+  test('searches members using the existing authenticated endpoint', () async {
+    final client = MockClient((request) async {
+      expect(request.method, 'GET');
+      expect(request.url.path, '/api/members');
+      expect(request.url.queryParameters['search'], '0812 3456');
+      expect(request.headers['Authorization'], 'Bearer jwt-token');
+      return http.Response(
+        jsonEncode([
+          {
+            '_id': 'member-id',
+            'name': 'Siti Member',
+            'phone_number': '08123456',
+            'current_stamps': 2,
+            'is_active': true,
+          },
+          {
+            '_id': 'inactive-member-id',
+            'name': 'Member Nonaktif',
+            'phone_number': '08100000',
+            'current_stamps': 0,
+            'is_active': false,
+          },
+        ]),
+        200,
+      );
+    });
+    final dataSource = _checkoutDataSource(client, baseUrl);
+
+    final members = await dataSource.searchMembers('0812 3456');
+
+    expect(members, hasLength(2));
+    expect(members.first.id, 'member-id');
+    expect(members.first.currentStamps, 2);
+    expect(members.last.isActive, isFalse);
+  });
+
   test(
     'lists transactions and settles pending bills using the existing API',
     () async {
@@ -228,6 +273,27 @@ void main() {
                 'payment_method': 'OPEN_BILL',
                 'paid_amount': 0,
                 'change_amount': 0,
+                'subtotal': 23000,
+                'tax_amount': 2000,
+                'service_charge': 500,
+                'discount_amount': 500,
+                'cogs': 8000,
+                'refund_amount': 0,
+                'outlet_id': {
+                  '_id': 'outlet-id',
+                  'name': 'Kawula Cafe Main',
+                  'code': 'MAIN',
+                },
+                'created_by': {
+                  '_id': 'cashier-id',
+                  'name': 'Admin Kawula',
+                  'email': 'admin@example.test',
+                },
+                'member_id': {
+                  '_id': 'member-id',
+                  'name': 'Siti Member',
+                  'phone_number': '08123456789',
+                },
                 'createdAt': '2026-10-27T09:00:00.000Z',
                 'items': [
                   {
@@ -262,17 +328,21 @@ void main() {
           200,
         );
       });
-      final dataSource = CheckoutRemoteDataSource(
-        client,
-        baseUrl,
-        () async => 'jwt-token',
-      );
+      final dataSource = _checkoutDataSource(client, baseUrl);
 
       final transactions = await dataSource.getTransactions();
       expect(transactions, hasLength(1));
       expect(transactions.single.isPending, isTrue);
       expect(transactions.single.items.single.productName, 'Kopi Susu');
       expect(transactions.single.items.single.notes, 'panas');
+      expect(transactions.single.subtotal, 23000);
+      expect(transactions.single.taxAmount, 2000);
+      expect(transactions.single.serviceCharge, 500);
+      expect(transactions.single.discountAmount, 500);
+      expect(transactions.single.cogs, 8000);
+      expect(transactions.single.outletName, 'Kawula Cafe Main');
+      expect(transactions.single.cashierName, 'Admin Kawula');
+      expect(transactions.single.memberName, 'Siti Member');
 
       final result = await dataSource.payPendingTransaction(
         transactionId: 'pending-id',

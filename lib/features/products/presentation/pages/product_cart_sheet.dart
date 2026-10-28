@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../theme/app_colors.dart';
 import '../../../transactions/domain/repositories/checkout_repository.dart';
 import '../../../transactions/presentation/bloc/checkout_cubit.dart';
 import '../../../transactions/presentation/pages/checkout_page.dart';
@@ -33,15 +34,32 @@ class ProductCartSheet extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
                   child: Row(
                     children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEAF1FF),
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                        child: const Icon(
+                          Icons.shopping_bag_outlined,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'Keranjang (${cart.totalQuantity})',
-                          style: Theme.of(context).textTheme.titleLarge,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w800,
+                              ),
                         ),
                       ),
                       if (!cart.isEmpty)
                         TextButton(
-                          onPressed: context.read<CartCubit>().clear,
+                          onPressed: () => _confirmClear(context),
                           child: const Text('Kosongkan'),
                         ),
                       IconButton(
@@ -63,48 +81,149 @@ class ProductCartSheet extends StatelessWidget {
                           separatorBuilder: (_, _) => const Divider(height: 20),
                           itemBuilder: (context, index) {
                             final item = cart.items[index];
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        item.product.name,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      if (item.selectedVariants.isNotEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 4,
+                            return AnimatedSize(
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeInOut,
+                              child: Container(
+                                key: ValueKey(item.selectionKey),
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  border: Border.all(color: AppColors.border),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                item.product.name,
+                                                style: const TextStyle(
+                                                  color: AppColors.textPrimary,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 15,
+                                                ),
+                                              ),
+                                              if (item
+                                                  .selectedVariants
+                                                  .isNotEmpty)
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 4,
+                                                      ),
+                                                  child: Text(
+                                                    item.selectedVariants
+                                                        .map(
+                                                          (variant) =>
+                                                              '${variant.groupName}: ${variant.optionName}',
+                                                        )
+                                                        .join(', '),
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .bodySmall
+                                                        ?.copyWith(
+                                                          color: AppColors
+                                                              .textSecondary,
+                                                        ),
+                                                  ),
+                                                ),
+                                            ],
                                           ),
+                                        ),
+                                        IconButton(
+                                          tooltip: 'Hapus produk',
+                                          visualDensity: VisualDensity.compact,
+                                          onPressed: () => context
+                                              .read<CartCubit>()
+                                              .remove(item.selectionKey),
+                                          icon: const Icon(
+                                            Icons.delete_outline_rounded,
+                                            color: AppColors.danger,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Expanded(
                                           child: Text(
-                                            item.selectedVariants
-                                                .map(
-                                                  (variant) =>
-                                                      '${variant.groupName}: ${variant.optionName}',
-                                                )
-                                                .join(', '),
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodySmall,
+                                            '${formatRupiah(item.unitPrice)} × '
+                                            '${item.quantity}',
+                                            style: const TextStyle(
+                                              color: AppColors.textSecondary,
+                                              fontSize: 13,
+                                            ),
                                           ),
                                         ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${formatRupiah(item.unitPrice)} × ${item.quantity}',
-                                      ),
-                                      TextButton.icon(
+                                        IconButton.filledTonal(
+                                          tooltip: 'Kurangi jumlah',
+                                          visualDensity: VisualDensity.compact,
+                                          onPressed: () => context
+                                              .read<CartCubit>()
+                                              .decrement(item.selectionKey),
+                                          icon: const Icon(
+                                            Icons.remove_rounded,
+                                            size: 18,
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 40,
+                                          child: AnimatedSwitcher(
+                                            duration: const Duration(
+                                              milliseconds: 180,
+                                            ),
+                                            transitionBuilder:
+                                                (child, animation) =>
+                                                    ScaleTransition(
+                                                      scale: animation,
+                                                      child: child,
+                                                    ),
+                                            child: Text(
+                                              '${item.quantity}',
+                                              key: ValueKey(item.quantity),
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        IconButton.filledTonal(
+                                          tooltip: 'Tambah jumlah',
+                                          visualDensity: VisualDensity.compact,
+                                          onPressed: () => context
+                                              .read<CartCubit>()
+                                              .increment(item.selectionKey),
+                                          icon: const Icon(
+                                            Icons.add_rounded,
+                                            size: 18,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: TextButton.icon(
                                         onPressed: () => _editNotes(
                                           context,
                                           item.selectionKey,
                                           item.notes,
                                         ),
-                                        icon: const Icon(Icons.edit_note),
+                                        icon: const Icon(
+                                          Icons.edit_note_rounded,
+                                          size: 19,
+                                        ),
                                         label: Text(
                                           item.notes.isEmpty
                                               ? 'Tambah catatan'
@@ -113,35 +232,10 @@ class ProductCartSheet extends StatelessWidget {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                                IconButton(
-                                  tooltip: 'Kurangi jumlah',
-                                  onPressed: () => context
-                                      .read<CartCubit>()
-                                      .decrement(item.selectionKey),
-                                  icon: const Icon(Icons.remove_circle_outline),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 12),
-                                  child: Text('${item.quantity}'),
-                                ),
-                                IconButton(
-                                  tooltip: 'Tambah jumlah',
-                                  onPressed: () => context
-                                      .read<CartCubit>()
-                                      .increment(item.selectionKey),
-                                  icon: const Icon(Icons.add_circle_outline),
-                                ),
-                                IconButton(
-                                  tooltip: 'Hapus produk',
-                                  onPressed: () => context
-                                      .read<CartCubit>()
-                                      .remove(item.selectionKey),
-                                  icon: const Icon(Icons.delete_outline),
-                                ),
-                              ],
+                              ),
                             );
                           },
                         ),
@@ -156,11 +250,31 @@ class ProductCartSheet extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Estimasi subtotal'),
-                            Text(
-                              formatRupiah(cart.estimatedSubtotal),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                            const Text(
+                              'Estimasi subtotal',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              transitionBuilder: (child, animation) =>
+                                  FadeTransition(
+                                    opacity: animation,
+                                    child: SlideTransition(
+                                      position: Tween<Offset>(
+                                        begin: const Offset(0, .15),
+                                        end: Offset.zero,
+                                      ).animate(animation),
+                                      child: child,
+                                    ),
+                                  ),
+                              child: Text(
+                                formatRupiah(cart.estimatedSubtotal),
+                                key: ValueKey(cart.estimatedSubtotal),
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 18,
+                                ),
                               ),
                             ),
                           ],
@@ -173,6 +287,12 @@ class ProductCartSheet extends StatelessWidget {
                         const SizedBox(height: 12),
                         FilledButton(
                           onPressed: () => _openCheckout(context),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(52),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
                           child: const Text('Lanjut ke pembayaran'),
                         ),
                       ],
@@ -184,6 +304,29 @@ class ProductCartSheet extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _confirmClear(BuildContext context) async {
+    final clear = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Kosongkan keranjang?'),
+        content: const Text('Semua produk di keranjang akan dihapus.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Kosongkan'),
+          ),
+        ],
+      ),
+    );
+    if (clear == true && context.mounted) {
+      context.read<CartCubit>().clear();
+    }
   }
 
   Future<void> _editNotes(

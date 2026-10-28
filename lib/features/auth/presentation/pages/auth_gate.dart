@@ -13,7 +13,9 @@ import '../../../products/domain/repositories/catalog_repository.dart';
 import '../../../transactions/domain/repositories/checkout_repository.dart';
 import '../../../users/domain/repositories/user_management_repository.dart';
 import '../../../products/domain/repositories/product_management_repository.dart';
-import '../../../dashboard/presentation/pages/admin_dashboard_page.dart';
+import '../../../dashboard/presentation/pages/admin_navigation_page.dart';
+import '../../../variant_groups/domain/repositories/variant_groups_repository.dart';
+import '../../../store_settings/domain/repositories/store_settings_repository.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({
@@ -22,18 +24,24 @@ class AuthGate extends StatelessWidget {
     required this.catalogRepository,
     required this.checkoutRepository,
     required this.balancesRepository,
+    required this.storeSettingsRepository,
+    required this.apiBaseUrl,
     required this.userManagementRepository,
     required this.productManagementRepository,
     required this.categoriesRepository,
+    required this.variantGroupsRepository,
   });
 
   final ShiftsRepository shiftsRepository;
   final CatalogRepository catalogRepository;
   final CheckoutRepository checkoutRepository;
   final BalancesRepository balancesRepository;
+  final StoreSettingsRepository storeSettingsRepository;
+  final String apiBaseUrl;
   final UserManagementRepository userManagementRepository;
   final ProductManagementRepository productManagementRepository;
   final CategoriesRepository categoriesRepository;
+  final VariantGroupsRepository variantGroupsRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -44,14 +52,18 @@ class AuthGate extends StatelessWidget {
           AuthSubmitting() => LoginPage(),
           AuthUnauthenticated() => LoginPage(errorMessage: state.errorMessage),
           AuthAuthenticated() when state.user.role == 'Admin' =>
-            AdminDashboardPage(
+            AdminNavigationPage(
               admin: state.user,
+              shiftsRepository: shiftsRepository,
+              catalogRepository: catalogRepository,
+              checkoutRepository: checkoutRepository,
+              balancesRepository: balancesRepository,
+              storeSettingsRepository: storeSettingsRepository,
+              apiBaseUrl: apiBaseUrl,
               userManagementRepository: userManagementRepository,
               productManagementRepository: productManagementRepository,
               categoriesRepository: categoriesRepository,
-              balancesRepository: balancesRepository,
-              checkoutRepository: checkoutRepository,
-              shiftsRepository: shiftsRepository,
+              variantGroupsRepository: variantGroupsRepository,
             ),
           AuthAuthenticated() => BlocProvider(
             create: (_) => ShiftsCubit(shiftsRepository)..loadActive(),

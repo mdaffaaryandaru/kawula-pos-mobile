@@ -1,10 +1,7 @@
 import '../../domain/entities/checkout.dart';
 
 class CheckoutPaymentMethodModel extends CheckoutPaymentMethod {
-  const CheckoutPaymentMethodModel({
-    required super.name,
-    required super.code,
-  });
+  const CheckoutPaymentMethodModel({required super.name, required super.code});
 
   factory CheckoutPaymentMethodModel.fromJson(Map<String, dynamic> json) {
     final name = json['name'];
@@ -91,9 +88,7 @@ class CheckoutResultModel extends CheckoutResult {
           ? DateTime.tryParse(createdAtValue)
           : null,
       subtotal: json['subtotal'] is num ? json['subtotal'] as num : null,
-      taxAmount: json['tax_amount'] is num
-          ? json['tax_amount'] as num
-          : null,
+      taxAmount: json['tax_amount'] is num ? json['tax_amount'] as num : null,
       serviceCharge: json['service_charge'] is num
           ? json['service_charge'] as num
           : null,
@@ -175,6 +170,15 @@ class TransactionRecordModel extends TransactionRecord {
     required super.createdAt,
     required super.items,
     super.notes,
+    super.subtotal,
+    super.taxAmount,
+    super.serviceCharge,
+    super.discountAmount,
+    super.cogs,
+    super.refundAmount,
+    super.outletName,
+    super.cashierName,
+    super.memberName,
   });
 
   factory TransactionRecordModel.fromJson(Map<String, dynamic> json) {
@@ -206,6 +210,21 @@ class TransactionRecordModel extends TransactionRecord {
       createdAt: createdAtValue is String
           ? DateTime.tryParse(createdAtValue)
           : null,
+      subtotal: json['subtotal'] is num ? json['subtotal'] as num : 0,
+      taxAmount: json['tax_amount'] is num ? json['tax_amount'] as num : 0,
+      serviceCharge: json['service_charge'] is num
+          ? json['service_charge'] as num
+          : 0,
+      discountAmount: json['discount_amount'] is num
+          ? json['discount_amount'] as num
+          : 0,
+      cogs: json['cogs'] is num ? json['cogs'] as num : 0,
+      refundAmount: json['refund_amount'] is num
+          ? json['refund_amount'] as num
+          : 0,
+      outletName: _referenceField(json['outlet_id'], 'name'),
+      cashierName: _referenceField(json['created_by'], 'name'),
+      memberName: _referenceField(json['member_id'], 'name'),
       items: itemsJson
           .map((item) {
             if (item is! Map<String, dynamic>) {
@@ -217,6 +236,14 @@ class TransactionRecordModel extends TransactionRecord {
       notes: json['notes'] is String ? json['notes'] as String : '',
     );
   }
+}
+
+String _referenceField(Object? value, String field) {
+  if (value is Map<String, dynamic>) {
+    final result = value[field];
+    return result is String ? result : '';
+  }
+  return '';
 }
 
 class TransactionRecordItemModel extends TransactionRecordItem {

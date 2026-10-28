@@ -2,6 +2,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../categories/domain/entities/managed_category.dart';
 import '../../../products/domain/entities/catalog_product.dart';
+import '../../../inventories/domain/entities/inventory_item.dart';
 import '../entities/product_management.dart';
 
 abstract interface class ProductManagementRepository {
@@ -10,6 +11,10 @@ abstract interface class ProductManagementRepository {
   Future<List<ManagedCategory>> getCategories();
 
   Future<List<ManagedVariantGroup>> getVariantGroups();
+
+  Future<List<InventoryItem>> getInventories();
+
+  Future<List<ProductUnit>> getProductUnits();
 
   Future<List<String>> uploadProductImages(List<XFile> images);
 
@@ -25,4 +30,17 @@ abstract interface class ProductManagementRepository {
   });
 
   Future<void> deleteProduct(String productId);
+
+  Future<void> addRecipe({
+    required String productId,
+    required String inventoryId,
+    required num quantity,
+    required String unitId,
+    required num conversionFactor,
+  });
+
+  Future<void> removeRecipe({
+    required String productId,
+    required int recipeIndex,
+  });
 }

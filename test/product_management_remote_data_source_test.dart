@@ -11,7 +11,7 @@ import 'package:kawula_pos/features/products/domain/entities/catalog_product.dar
 void main() {
   const baseUrl = 'http://localhost:3001/api';
 
-  test('loads products and variant groups for admin', () async {
+  test('loads products and their variant group references', () async {
     final client = MockClient((request) async {
       expect(request.headers['Authorization'], 'Bearer jwt-token');
       if (request.url.path == '/api/products') {
@@ -38,22 +38,7 @@ void main() {
           200,
         );
       }
-      expect(request.url.path, '/api/variant-groups');
-      return http.Response(
-        jsonEncode([
-          {
-            '_id': 'group-id',
-            'name': 'Ukuran',
-            'is_required': true,
-            'min_selection': 1,
-            'max_selection': 1,
-            'options': [
-              {'_id': 'option-id', 'name': 'Besar', 'price_adjustment': 5000},
-            ],
-          },
-        ]),
-        200,
-      );
+      fail('Unexpected request: ${request.method} ${request.url}');
     });
     final dataSource = ProductManagementRemoteDataSource(
       client,
@@ -62,14 +47,11 @@ void main() {
     );
 
     final products = await dataSource.getProducts();
-    final groups = await dataSource.getVariantGroups();
-
     expect(products.single.product.name, 'Kopi');
     expect(products.single.product.isActive, isFalse);
     expect(products.single.product.stock, 12);
     expect(products.single.product.images.single.isMain, isTrue);
     expect(products.single.variantGroupIds, ['group-id']);
-    expect(groups.single.group.options.single.priceAdjustment, 5000);
   });
 
   test('creates a product with supported fields and selected images', () async {
@@ -239,5 +221,44 @@ void main() {
     );
 
     await dataSource.deleteProduct('product-id');
+  });
+
+  test('adds and removes recipes through the existing endpoints', () async {
+    var requestCount = 0;
+    final client = MockClient((request) async {
+      expect(request.headers['Authorization'], isNotEmpty);
+      if (request.method == 'POST') {
+        expect(request.url, Uri.parse('$baseUrl/products/product-id/recipes'));
+        expect(request.headers['content-type'], 'application/json');
+        expect(jsonDecode(request.body), {
+          'inventory_id': 'inventory-id',
+          'quantity': 15,
+          'unit_id': 'gram-id',
+          'conversion_factor': 1,
+        });
+        requestCount++;
+        return http.Response(jsonEncode({'message': 'Recipe added'}), 201);
+      }
+      expect(request.method, 'DELETE');
+      expect(request.url, Uri.parse('$baseUrl/products/product-id/recipes/0'));
+      requestCount++;
+      return http.Response(jsonEncode({'message': 'Recipe deleted'}), 200);
+    });
+    final dataSource = ProductManagementRemoteDataSource(
+      client,
+      baseUrl,
+      () async => 'jwt-token',
+    );
+
+    await dataSource.addRecipe(
+      productId: 'product-id',
+      inventoryId: 'inventory-id',
+      quantity: 15,
+      unitId: 'gram-id',
+      conversionFactor: 1,
+    );
+    await dataSource.removeRecipe(productId: 'product-id', recipeIndex: 0);
+
+    expect(requestCount, 2);
   });
 }
