@@ -4,18 +4,23 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_cubit.dart';
 import '../bloc/auth_state.dart';
 import 'login_page.dart';
+import '../widgets/auth_loading_view.dart';
+import '../widgets/auth_session_failure_view.dart';
 import '../../../balances/domain/repositories/balances_repository.dart';
 import '../../../categories/domain/repositories/categories_repository.dart';
+import '../../../discounts/domain/repositories/discounts_repository.dart';
 import '../../../shifts/domain/repositories/shifts_repository.dart';
-import '../../../shifts/presentation/bloc/shifts_cubit.dart';
-import '../../../shifts/presentation/pages/shift_page.dart';
 import '../../../products/domain/repositories/catalog_repository.dart';
 import '../../../transactions/domain/repositories/checkout_repository.dart';
 import '../../../users/domain/repositories/user_management_repository.dart';
 import '../../../products/domain/repositories/product_management_repository.dart';
 import '../../../dashboard/presentation/pages/admin_navigation_page.dart';
+import '../../../dashboard/presentation/pages/cashier_navigation_page.dart';
 import '../../../variant_groups/domain/repositories/variant_groups_repository.dart';
 import '../../../store_settings/domain/repositories/store_settings_repository.dart';
+import '../../../inventories/domain/repositories/inventory_repository.dart';
+import '../../../product_units/domain/repositories/product_units_repository.dart';
+import '../../../payment_method/domain/repositories/payment_methods_repository.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({
@@ -30,6 +35,10 @@ class AuthGate extends StatelessWidget {
     required this.productManagementRepository,
     required this.categoriesRepository,
     required this.variantGroupsRepository,
+    this.discountsRepository,
+    this.paymentMethodsRepository,
+    this.inventoryRepository,
+    this.productUnitsRepository,
   });
 
   final ShiftsRepository shiftsRepository;
@@ -42,14 +51,18 @@ class AuthGate extends StatelessWidget {
   final ProductManagementRepository productManagementRepository;
   final CategoriesRepository categoriesRepository;
   final VariantGroupsRepository variantGroupsRepository;
+  final DiscountsRepository? discountsRepository;
+  final PaymentMethodsRepository? paymentMethodsRepository;
+  final InventoryRepository? inventoryRepository;
+  final ProductUnitsRepository? productUnitsRepository;
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthCubit, AuthState>(
       builder: (context, state) {
         return switch (state) {
-          AuthChecking() => const _LoadingPage(),
-          AuthSubmitting() => LoginPage(),
+          AuthChecking() => const AuthLoadingView(),
+          AuthSubmitting() => const LoginPage(),
           AuthUnauthenticated() => LoginPage(errorMessage: state.errorMessage),
           AuthAuthenticated() when state.user.role == 'Admin' =>
             AdminNavigationPage(
@@ -63,67 +76,24 @@ class AuthGate extends StatelessWidget {
               userManagementRepository: userManagementRepository,
               productManagementRepository: productManagementRepository,
               categoriesRepository: categoriesRepository,
+              discountsRepository: discountsRepository,
+              paymentMethodsRepository: paymentMethodsRepository,
               variantGroupsRepository: variantGroupsRepository,
+              inventoryRepository: inventoryRepository,
+              productUnitsRepository: productUnitsRepository,
             ),
-          AuthAuthenticated() => BlocProvider(
-            create: (_) => ShiftsCubit(shiftsRepository)..loadActive(),
-            child: ShiftPage(
-              user: state.user,
-              catalogRepository: catalogRepository,
-              checkoutRepository: checkoutRepository,
-            ),
+          AuthAuthenticated() => CashierNavigationPage(
+            user: state.user,
+            shiftsRepository: shiftsRepository,
+            catalogRepository: catalogRepository,
+            checkoutRepository: checkoutRepository,
+            balancesRepository: balancesRepository,
           ),
-          AuthSessionFailure() => _SessionFailurePage(message: state.message),
+          AuthSessionFailure() => AuthSessionFailureView(
+            message: state.message,
+          ),
         };
       },
-    );
-  }
-}
-
-class _LoadingPage extends StatelessWidget {
-  const _LoadingPage();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
-  }
-}
-
-class _SessionFailurePage extends StatelessWidget {
-  const _SessionFailurePage({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.cloud_off_outlined, size: 48),
-              const SizedBox(height: 16),
-              const Text(
-                'Sesi belum dapat diperiksa',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              Text(message, textAlign: TextAlign.center),
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: context.read<AuthCubit>().restoreSession,
-                child: const Text('Coba lagi'),
-              ),
-              TextButton(
-                onPressed: context.read<AuthCubit>().logout,
-                child: const Text('Keluar dari sesi'),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

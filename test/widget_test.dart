@@ -14,6 +14,7 @@ import 'package:kawula_pos/features/members/domain/entities/member.dart';
 import 'package:kawula_pos/features/users/domain/repositories/user_management_repository.dart';
 import 'package:kawula_pos/features/products/domain/entities/product_management.dart';
 import 'package:kawula_pos/features/inventories/domain/entities/inventory_item.dart';
+import 'package:kawula_pos/features/product_units/domain/entities/product_unit.dart';
 import 'package:kawula_pos/features/products/presentation/pages/products_management_page.dart';
 import 'package:kawula_pos/features/variant_groups/domain/entities/variant_group_definition.dart';
 import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
@@ -152,6 +153,57 @@ void main() {
     },
   );
 
+  testWidgets('loads report transaction detail including table number', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final checkoutRepository = _FakeCheckoutRepository()
+      ..transactions[0] = TransactionRecord(
+        id: 'completed-id',
+        status: 'completed',
+        totalAmount: 25000,
+        paymentMethod: 'QRIS',
+        paidAmount: 25000,
+        changeAmount: 0,
+        createdAt: DateTime.now(),
+        items: const [
+          TransactionRecordItem(
+            productName: 'Kopi Susu',
+            quantity: 1,
+            price: 25000,
+          ),
+        ],
+        outletName: 'Kawula Cafe Main',
+        cashierName: 'Admin Kawula',
+        memberName: 'Siti Member',
+        tableNumber: 'A1',
+      );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AdminTransactionReportPage(
+          checkoutRepository: checkoutRepository,
+          balancesRepository: _FakeBalancesRepository(),
+          canRecordExpenses: false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Detail').first);
+    await tester.pumpAndSettle();
+
+    expect(checkoutRepository.requestedTransactionId, 'completed-id');
+    expect(find.text('Detail Transaksi'), findsOneWidget);
+    expect(find.text('No. Meja'), findsOneWidget);
+    expect(find.text('A1'), findsOneWidget);
+    expect(find.text('Siti Member'), findsOneWidget);
+    expect(find.text('Rp 25.000'), findsWidgets);
+    expect(find.text('Batalkan Transaksi'), findsOneWidget);
+    expect(find.text('Refund Transaksi'), findsOneWidget);
+  });
+
   testWidgets('records an operational expense from the report page', (
     tester,
   ) async {
@@ -234,9 +286,36 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(tester.getSize(find.byType(DataTable)).width, greaterThan(1500));
     final recipeButton = tester.getRect(find.text('Bahan (0)'));
     final deleteButton = tester.getRect(find.byTooltip('Hapus produk'));
     expect(recipeButton.right, lessThan(deleteButton.left));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('fills available width for transaction report table', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AdminTransactionReportPage(
+          checkoutRepository: _FakeCheckoutRepository(),
+          balancesRepository: _FakeBalancesRepository(),
+          canRecordExpenses: false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DataTable), findsOneWidget);
+    expect(tester.getSize(find.byType(DataTable)).width, greaterThan(1500));
     expect(tester.takeException(), isNull);
   });
 
@@ -367,9 +446,11 @@ void main() {
 
     expect(find.text('Min/Max: 0 - 1 pilihan'), findsOneWidget);
     expect(find.textContaining('Large (+Rp 5.000)'), findsOneWidget);
-    await tester.tap(find.text('Hapus').last);
+    await tester.drag(find.byType(ListView), const Offset(0, -250));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Hapus').last);
+    await tester.tap(find.widgetWithText(TextButton, 'Hapus'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Hapus'));
     await tester.pumpAndSettle();
 
     expect(repository.variantGroupDefinitions, isEmpty);
@@ -379,6 +460,12 @@ void main() {
   testWidgets('shows finance balances and signed history amounts', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
     final balancesRepository = _FakeBalancesRepository(
       balances: const [
         BalanceAccount(id: 'cash-id', paymentMethod: 'CASH', balance: 150000),
@@ -407,13 +494,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(tester.getSize(find.byType(Table)).width, greaterThan(1500));
     expect(find.text('Total Keseluruhan'), findsOneWidget);
-    expect(find.text('Rp 150.000'), findsNWidgets(2));
+    expect(find.text('Rp 150.000'), findsNWidgets(3));
     expect(find.text('Cash (CASH)'), findsOneWidget);
     expect(find.text('PENGELUARAN'), findsOneWidget);
     expect(find.text('- Rp 25.000'), findsOneWidget);
     expect(find.textContaining('Belanja operasional'), findsOneWidget);
-    expect(find.text('Saldo akhir Rp 150.000'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).last, 'tidak-ditemukan');
     await tester.pumpAndSettle();
@@ -578,44 +665,43 @@ void main() {
     await tester.ensureVisible(find.text('Pengaturan kasir'));
     await tester.tap(find.text('Pengaturan kasir'));
     await tester.pumpAndSettle();
-    expect(
-      find.text('kasirbaru@kawula.id\nKasir · PIN belum diatur'),
-      findsOneWidget,
-    );
+    expect(find.text('Users'), findsOneWidget);
+    expect(find.text('kasirbaru@kawula.id'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Atur PIN Kasir Baru'));
+    await tester.ensureVisible(find.byTooltip('Edit').at(1));
+    await tester.tap(find.byTooltip('Edit').at(1));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is TextField && widget.decoration?.labelText == 'PIN baru',
-      ),
-      '5678',
-    );
-    await tester.enterText(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is TextField && widget.decoration?.labelText == 'Ulangi PIN',
-      ),
-      '5678',
-    );
-    await tester.tap(find.text('Simpan PIN'));
+    await tester.drag(find.byType(ListView).last, const Offset(0, -350));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(3), '5678');
+    await tester.tap(find.text('Simpan User'));
     await tester.pumpAndSettle();
 
-    expect(userManagementRepository.updatedUserId, 'cashier-id');
-    expect(userManagementRepository.updatedPin, '5678');
-    expect(
-      find.text('kasirbaru@kawula.id\nKasir · PIN sudah diatur'),
-      findsOneWidget,
+    expect(userManagementRepository.savedUserId, 'cashier-id');
+    expect(userManagementRepository.savedPin, '5678');
+    expect(find.text('Telah Diatur'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Tambah User'));
+    await tester.tap(find.text('Tambah User'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), 'Kasir Tambahan');
+    await tester.enterText(
+      find.byType(TextFormField).at(1),
+      'tambahan@kawula.id',
     );
+    await tester.enterText(find.byType(TextFormField).at(2), 'password123');
+    await tester.tap(find.text('Simpan User'));
+    await tester.pumpAndSettle();
+    expect(userManagementRepository.savedUserId, isNull);
+    expect(find.text('tambahan@kawula.id'), findsOneWidget);
 
     await tester.pageBack();
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Kategori'));
     await tester.tap(find.text('Kategori'));
     await tester.pumpAndSettle();
-    expect(find.text('Kategori'), findsOneWidget);
-    await tester.tap(find.text('Tambah kategori'));
+    expect(find.text('Categories'), findsWidgets);
+    await tester.tap(find.text('Tambah Category').first);
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).at(0), 'Makanan');
     await tester.enterText(find.byType(TextFormField).at(1), 'Menu makanan');
@@ -628,7 +714,7 @@ void main() {
     await tester.ensureVisible(find.text('Keluar'));
     await tester.tap(find.text('Keluar'));
     await tester.pumpAndSettle();
-    expect(find.text('Masuk ke Kawula POS'), findsOneWidget);
+    expect(find.text('Kawula POS'), findsOneWidget);
   });
 
   testWidgets('logs in and logs out through the authentication gate', (
@@ -638,6 +724,7 @@ void main() {
     final shiftsRepository = _FakeShiftsRepository();
     final catalogRepository = _FakeCatalogRepository();
     final checkoutRepository = _FakeCheckoutRepository();
+    final balancesRepository = _FakeBalancesRepository();
 
     await tester.pumpWidget(
       KawulaPosApp(
@@ -646,7 +733,7 @@ void main() {
         shiftsRepository: shiftsRepository,
         catalogRepository: catalogRepository,
         checkoutRepository: checkoutRepository,
-        balancesRepository: _FakeBalancesRepository(),
+        balancesRepository: balancesRepository,
         storeSettingsRepository: _FakeStoreSettingsRepository(),
         userManagementRepository: _FakeUserManagementRepository(),
         productManagementRepository: _FakeProductManagementRepository(),
@@ -656,29 +743,58 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Masuk ke Kawula POS'), findsOneWidget);
+    expect(find.text('Kawula POS'), findsOneWidget);
 
     await tester.enterText(find.byType(TextFormField).at(0), 'kasir@kawula.id');
     await tester.enterText(find.byType(TextFormField).at(1), 'password123');
     await tester.tap(find.text('Masuk'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Dashboard'), findsWidgets);
     expect(find.text('Belum ada shift aktif'), findsOneWidget);
     expect(repository.lastEmail, 'kasir@kawula.id');
 
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.byIcon(Icons.receipt_long_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Laporan Transaksi'), findsOneWidget);
+    expect(find.text('Catat Biaya'), findsNothing);
+    expect(balancesRepository.historyCalls, 0);
+    await tester.scrollUntilVisible(
+      find.text('Detail'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Detail').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Detail Transaksi'), findsOneWidget);
+    expect(find.byTooltip('Cetak struk'), findsOneWidget);
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.byIcon(Icons.point_of_sale_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Belum ada shift aktif'), findsOneWidget);
+    await tester.ensureVisible(find.text('Buka shift'));
     await tester.enterText(find.byType(TextFormField).at(0), '50000');
     await tester.enterText(find.byType(TextFormField).at(1), '1234');
     await tester.tap(find.text('Buka shift'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Shift sedang berjalan'), findsOneWidget);
-    expect(shiftsRepository.openedWithCash, 50000);
-
-    await tester.tap(find.text('Ke kasir'));
-    await tester.pumpAndSettle();
     expect(find.text('Pilih produk'), findsOneWidget);
     expect(find.text('Shift Aktif'), findsOneWidget);
     expect(find.text('Tutup Shift'), findsOneWidget);
+    expect(shiftsRepository.openedWithCash, 50000);
+
     expect(find.textContaining('Kopi Susu'), findsOneWidget);
     await tester.tap(find.text('Tutup Shift'));
     await tester.pumpAndSettle();
@@ -716,6 +832,12 @@ void main() {
     await tester.tap(find.text('Siti Member'));
     await tester.pumpAndSettle();
     expect(find.text('Siti Member · 08123456789'), findsOneWidget);
+    final tableNumberField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField &&
+          widget.decoration?.labelText == 'No. Meja (opsional)',
+    );
+    await tester.enterText(tableNumberField, 'A1');
     final paymentMethodDropdown = find.byType(DropdownButtonFormField<String>);
     await tester.dragFrom(const Offset(400, 500), const Offset(0, -350));
     await tester.pumpAndSettle();
@@ -744,6 +866,9 @@ void main() {
 
     expect(checkoutRepository.submittedOutletId, 'outlet-id');
     expect(checkoutRepository.submittedMemberId, 'member-id');
+    expect(checkoutRepository.submittedTableNumber, 'A1');
+    expect(find.text('No. meja'), findsOneWidget);
+    expect(find.text('A1'), findsOneWidget);
     expect(find.text('Pembayaran berhasil'), findsOneWidget);
     expect(find.text('STRUK PEMBAYARAN'), findsOneWidget);
     expect(find.text('Member'), findsOneWidget);
@@ -828,7 +953,7 @@ void main() {
     await tester.tap(find.byTooltip('Keluar'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Masuk ke Kawula POS'), findsOneWidget);
+    expect(find.text('Kawula POS'), findsOneWidget);
   });
 }
 
@@ -946,6 +1071,7 @@ class _FakeBalancesRepository implements BalancesRepository {
 
   final List<BalanceAccount> balances;
   final List<BalanceHistoryEntry> history;
+  var historyCalls = 0;
   String? recordedExpenseNotes;
   String? recordedExpenseMethod;
   num? recordedExpenseAmount;
@@ -954,7 +1080,10 @@ class _FakeBalancesRepository implements BalancesRepository {
   Future<List<BalanceAccount>> getBalances() async => balances;
 
   @override
-  Future<List<BalanceHistoryEntry>> getHistory() async => history;
+  Future<List<BalanceHistoryEntry>> getHistory() async {
+    historyCalls++;
+    return history;
+  }
 
   @override
   Future<void> recordExpense({
@@ -978,6 +1107,8 @@ class _FakeBalancesRepository implements BalancesRepository {
 class _FakeCheckoutRepository implements CheckoutRepository {
   String? submittedOutletId;
   String? submittedMemberId;
+  String? submittedTableNumber;
+  String? requestedTransactionId;
   num? submittedTotal;
   num? submittedPaidAmount;
   String? submittedPin;
@@ -990,7 +1121,7 @@ class _FakeCheckoutRepository implements CheckoutRepository {
       paymentMethod: 'OPEN_BILL',
       paidAmount: 0,
       changeAmount: 0,
-      createdAt: DateTime(2026, 10, 27, 9),
+      createdAt: DateTime.now(),
       items: const [
         TransactionRecordItem(
           productName: 'Kopi Susu',
@@ -1012,9 +1143,11 @@ class _FakeCheckoutRepository implements CheckoutRepository {
     required String? pin,
     required bool openBill,
     String? memberId,
+    String? tableNumber,
   }) async {
     submittedOutletId = outletId;
     submittedMemberId = memberId;
+    submittedTableNumber = tableNumber;
     submittedTotal = estimatedTotal;
     submittedPaidAmount = paidAmount;
     submittedPin = pin;
@@ -1027,6 +1160,7 @@ class _FakeCheckoutRepository implements CheckoutRepository {
       paidAmount: openBill ? 0 : paidAmount,
       changeAmount: openBill ? 0 : paidAmount - estimatedTotal,
       createdAt: DateTime(2026, 10, 27, 9),
+      tableNumber: tableNumber ?? '',
       subtotal: estimatedTotal,
       taxAmount: 0,
       serviceCharge: 0,
@@ -1061,6 +1195,27 @@ class _FakeCheckoutRepository implements CheckoutRepository {
 
   @override
   Future<List<TransactionRecord>> getTransactions() async => transactions;
+
+  @override
+  Future<TransactionRecord> getTransaction(String transactionId) async {
+    requestedTransactionId = transactionId;
+    return transactions.firstWhere(
+      (transaction) => transaction.id == transactionId,
+    );
+  }
+
+  @override
+  Future<TransactionRecord> cancelTransaction({
+    required String transactionId,
+    required String reason,
+  }) async => transactions.firstWhere((item) => item.id == transactionId);
+
+  @override
+  Future<TransactionRecord> refundTransaction({
+    required String transactionId,
+    required String pin,
+    required String reason,
+  }) async => transactions.firstWhere((item) => item.id == transactionId);
 
   @override
   Future<List<Member>> searchMembers(String search) async => [
@@ -1194,8 +1349,8 @@ class _FakeAuthRepository implements AuthRepository {
 }
 
 class _FakeUserManagementRepository implements UserManagementRepository {
-  String? updatedUserId;
-  String? updatedPin;
+  String? savedUserId;
+  String? savedPin;
 
   @override
   Future<List<AuthUser>> getUsers() async => const [
@@ -1220,8 +1375,8 @@ class _FakeUserManagementRepository implements UserManagementRepository {
     required String userId,
     required String pin,
   }) async {
-    updatedUserId = userId;
-    updatedPin = pin;
+    savedUserId = userId;
+    savedPin = pin;
     return AuthUser(
       id: userId,
       name: userId == 'cashier-id' ? 'Kasir Baru' : 'Admin',
@@ -1230,6 +1385,29 @@ class _FakeUserManagementRepository implements UserManagementRepository {
       hasPin: true,
     );
   }
+
+  @override
+  Future<AuthUser> saveUser({
+    String? userId,
+    required String name,
+    required String email,
+    required String password,
+    required String pin,
+    required String role,
+  }) async {
+    savedUserId = userId;
+    savedPin = pin;
+    return AuthUser(
+      id: userId ?? 'new-user-id',
+      name: name,
+      email: email,
+      role: role,
+      hasPin: pin.isNotEmpty,
+    );
+  }
+
+  @override
+  Future<void> deleteUser(String userId) async {}
 }
 
 class _FakeProductManagementRepository implements ProductManagementRepository {
@@ -1262,6 +1440,7 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
     required List<String> variantGroupIds,
     required List<ProductImage> images,
     required bool isActive,
+    String? discountId,
   }) async => ManagedProduct(
     product: CatalogProduct(
       id: productId ?? 'product-id',
@@ -1276,6 +1455,7 @@ class _FakeProductManagementRepository implements ProductManagementRepository {
         isActive: true,
       ),
       variantGroups: const [],
+      discountId: discountId,
     ),
     variantGroupIds: variantGroupIds,
   );
@@ -1429,6 +1609,7 @@ class _ProductDialogTestRepository extends _FakeProductManagementRepository {
     required List<String> variantGroupIds,
     required List<ProductImage> images,
     required bool isActive,
+    String? discountId,
   }) async {
     savedProductId = productId;
     savedName = name;
@@ -1443,6 +1624,7 @@ class _ProductDialogTestRepository extends _FakeProductManagementRepository {
       variantGroupIds: variantGroupIds,
       images: images,
       isActive: isActive,
+      discountId: discountId,
     );
   }
 }

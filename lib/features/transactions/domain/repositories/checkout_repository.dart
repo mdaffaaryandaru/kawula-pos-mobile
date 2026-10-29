@@ -9,6 +9,19 @@ abstract interface class CheckoutRepository {
 
   Future<List<TransactionRecord>> getTransactions();
 
+  Future<TransactionRecord> getTransaction(String transactionId);
+
+  Future<TransactionRecord> cancelTransaction({
+    required String transactionId,
+    required String reason,
+  });
+
+  Future<TransactionRecord> refundTransaction({
+    required String transactionId,
+    required String pin,
+    required String reason,
+  });
+
   Future<List<Member>> searchMembers(String search);
 
   Future<CheckoutResult> payPendingTransaction({
@@ -27,5 +40,6 @@ abstract interface class CheckoutRepository {
     required String? pin,
     required bool openBill,
     String? memberId,
+    String? tableNumber,
   });
 }

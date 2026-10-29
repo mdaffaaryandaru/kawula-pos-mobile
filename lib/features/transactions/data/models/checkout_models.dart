@@ -55,6 +55,8 @@ class CheckoutResultModel extends CheckoutResult {
     super.discountAmount,
     super.items,
     super.notes,
+    super.tableNumber,
+    super.memberName,
   });
 
   factory CheckoutResultModel.fromJson(Map<String, dynamic> json) {
@@ -108,6 +110,10 @@ class CheckoutResultModel extends CheckoutResult {
                 .toList(growable: false)
           : const [],
       notes: json['notes'] is String ? json['notes'] as String : '',
+      tableNumber: json['table_number'] is String
+          ? json['table_number'] as String
+          : '',
+      memberName: _referenceField(json['member_id'], 'name'),
     );
   }
 }
@@ -179,6 +185,9 @@ class TransactionRecordModel extends TransactionRecord {
     super.outletName,
     super.cashierName,
     super.memberName,
+    super.tableNumber,
+    super.refundReason,
+    super.refundedAt,
   });
 
   factory TransactionRecordModel.fromJson(Map<String, dynamic> json) {
@@ -225,6 +234,17 @@ class TransactionRecordModel extends TransactionRecord {
       outletName: _referenceField(json['outlet_id'], 'name'),
       cashierName: _referenceField(json['created_by'], 'name'),
       memberName: _referenceField(json['member_id'], 'name'),
+      tableNumber: json['table_number'] is String
+          ? json['table_number'] as String
+          : '',
+      refundReason: json['refund_reason'] is String
+          ? json['refund_reason'] as String
+          : '',
+      refundedAt: (json['refunded_at'] ?? json['refundedAt']) is String
+          ? DateTime.tryParse(
+              (json['refunded_at'] ?? json['refundedAt']) as String,
+            )
+          : null,
       items: itemsJson
           .map((item) {
             if (item is! Map<String, dynamic>) {
@@ -252,6 +272,7 @@ class TransactionRecordItemModel extends TransactionRecordItem {
     required super.quantity,
     required super.price,
     super.notes,
+    super.selectedVariants,
   });
 
   factory TransactionRecordItemModel.fromJson(Map<String, dynamic> json) {
@@ -263,7 +284,11 @@ class TransactionRecordItemModel extends TransactionRecordItem {
         : null;
     final quantity = json['quantity'];
     final price = json['price'];
-    if (name is! String || quantity is! num || price is! num) {
+    final variantsJson = json['selected_variants'] ?? const [];
+    if (name is! String ||
+        quantity is! num ||
+        price is! num ||
+        variantsJson is! List) {
       throw const FormatException('Data item transaksi tidak lengkap.');
     }
     return TransactionRecordItemModel(
@@ -271,6 +296,19 @@ class TransactionRecordItemModel extends TransactionRecordItem {
       quantity: quantity.toInt(),
       price: price,
       notes: json['notes'] is String ? json['notes'] as String : '',
+      selectedVariants: variantsJson
+          .map((variant) {
+            if (variant is! Map<String, dynamic> ||
+                variant['group_name'] is! String ||
+                variant['option_name'] is! String) {
+              throw const FormatException('Data varian transaksi tidak valid.');
+            }
+            return CheckoutResultVariant(
+              groupName: variant['group_name'] as String,
+              optionName: variant['option_name'] as String,
+            );
+          })
+          .toList(growable: false),
     );
   }
 }

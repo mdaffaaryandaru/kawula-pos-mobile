@@ -5,6 +5,8 @@ import '../../../categories/domain/repositories/categories_repository.dart';
 import '../../../products/domain/entities/catalog_product.dart';
 import '../../../inventories/domain/entities/inventory_item.dart';
 import '../../../inventories/domain/repositories/inventory_repository.dart';
+import '../../../product_units/domain/entities/product_unit.dart';
+import '../../../product_units/domain/repositories/product_units_repository.dart';
 import '../../../variant_groups/domain/repositories/variant_groups_repository.dart';
 import '../../domain/entities/product_management.dart';
 import '../../domain/repositories/product_management_repository.dart';
@@ -16,12 +18,14 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
     this._categoriesRepository,
     this._variantGroupsRepository,
     this._inventoryRepository,
+    this._productUnitsRepository,
   );
 
   final ProductManagementRemoteDataSource _remoteDataSource;
   final CategoriesRepository _categoriesRepository;
   final VariantGroupsRepository _variantGroupsRepository;
   final InventoryRepository _inventoryRepository;
+  final ProductUnitsRepository _productUnitsRepository;
 
   @override
   Future<List<ManagedProduct>> getProducts() => _remoteDataSource.getProducts();
@@ -64,7 +68,7 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
 
   @override
   Future<List<ProductUnit>> getProductUnits() =>
-      _inventoryRepository.getProductUnits();
+      _productUnitsRepository.getProductUnits();
 
   @override
   Future<List<String>> uploadProductImages(List<XFile> images) =>
@@ -80,6 +84,7 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
     required List<String> variantGroupIds,
     required List<ProductImage> images,
     required bool isActive,
+    String? discountId,
   }) {
     return _remoteDataSource.saveProduct(
       productId: productId,
@@ -90,6 +95,7 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
       variantGroupIds: variantGroupIds,
       images: images,
       isActive: isActive,
+      discountId: discountId,
     );
   }
 

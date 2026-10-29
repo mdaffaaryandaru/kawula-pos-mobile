@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../framework/widgets/master_data_row_actions.dart';
+import '../../../discounts/domain/entities/discount_definition.dart';
+import '../../../discounts/domain/repositories/discounts_repository.dart';
 import '../../../products/domain/entities/catalog_product.dart';
 import '../../domain/entities/product_management.dart';
 import '../../domain/repositories/product_management_repository.dart';
@@ -17,10 +20,12 @@ class ProductsManagementPage extends StatelessWidget {
     super.key,
     required this.repository,
     required this.variantGroupsRepository,
+    this.discountsRepository,
   });
 
   final ProductManagementRepository repository;
   final VariantGroupsRepository variantGroupsRepository;
+  final DiscountsRepository? discountsRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +45,7 @@ class ProductsManagementPage extends StatelessWidget {
             state: state,
             repository: repository,
             variantGroupsRepository: variantGroupsRepository,
+            discountsRepository: discountsRepository,
           ),
         },
       ),
@@ -91,11 +97,13 @@ class _ProductManagementTabs extends StatelessWidget {
     required this.state,
     required this.repository,
     required this.variantGroupsRepository,
+    required this.discountsRepository,
   });
 
   final ProductManagementLoaded state;
   final ProductManagementRepository repository;
   final VariantGroupsRepository variantGroupsRepository;
+  final DiscountsRepository? discountsRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +137,12 @@ class _ProductManagementTabs extends StatelessWidget {
                 ),
               ],
             ),
-          Expanded(child: _ProductsTab(state: state)),
+          Expanded(
+            child: _ProductsTab(
+              state: state,
+              discountsRepository: discountsRepository,
+            ),
+          ),
         ],
       ),
     );
@@ -137,9 +150,13 @@ class _ProductManagementTabs extends StatelessWidget {
 }
 
 class _ProductsTab extends StatefulWidget {
-  const _ProductsTab({required this.state});
+  const _ProductsTab({
+    required this.state,
+    required this.discountsRepository,
+  });
 
   final ProductManagementLoaded state;
+  final DiscountsRepository? discountsRepository;
 
   @override
   State<_ProductsTab> createState() => _ProductsTabState();
@@ -191,7 +208,12 @@ class _ProductsTabState extends State<_ProductsTab> {
                 onRefresh: cubit.load,
                 onAdd: widget.state.categories.isEmpty
                     ? null
-                    : () => _editProduct(context, widget.state),
+                    : () => _editProduct(
+                        context,
+                        widget.state,
+                        item: null,
+                        discountsRepository: widget.discountsRepository,
+                      ),
               ),
               const SizedBox(height: 16),
               ProductFilterBar(
@@ -208,7 +230,12 @@ class _ProductsTabState extends State<_ProductsTab> {
               else if (isWide)
                 ProductsTable(
                   products: filteredProducts,
-                  onEdit: (item) => _editProduct(context, widget.state, item),
+                  onEdit: (item) => _editProduct(
+                    context,
+                    widget.state,
+                    item: item,
+                    discountsRepository: widget.discountsRepository,
+                  ),
                   onDelete: (item) => _deleteProduct(context, item),
                   onRecipes: (item) => _manageRecipes(context, item),
                 )
@@ -218,7 +245,12 @@ class _ProductsTabState extends State<_ProductsTab> {
                     padding: const EdgeInsets.only(bottom: 10),
                     child: ProductCard(
                       item: item,
-                      onEdit: () => _editProduct(context, widget.state, item),
+                      onEdit: () => _editProduct(
+                        context,
+                        widget.state,
+                        item: item,
+                        discountsRepository: widget.discountsRepository,
+                      ),
                       onDelete: () => _deleteProduct(context, item),
                       onRecipes: () => _manageRecipes(context, item),
                     ),
@@ -264,14 +296,29 @@ class _ProductsTabState extends State<_ProductsTab> {
 
 Future<void> _editProduct(
   BuildContext context,
-  ProductManagementLoaded state, [
+  ProductManagementLoaded state, {
   ManagedProduct? item,
-]) async {
+  required DiscountsRepository? discountsRepository,
+}) async {
+  List<DiscountDefinition> discounts = const [];
+  if (discountsRepository != null) {
+    try {
+      discounts = await discountsRepository.getDiscounts();
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Diskon tidak dapat dimuat: $error')),
+      );
+      return;
+    }
+  }
+  if (!context.mounted) return;
   final draft = await showDialog<ProductDraft>(
     context: context,
     builder: (_) => ProductDialog(
       categories: state.categories,
       variantGroups: state.variantGroups,
+      discounts: discounts,
       product: item,
     ),
   );
@@ -305,13 +352,14 @@ Future<void> _editProduct(
     variantGroupIds: draft.variantGroupIds,
     images: images,
     isActive: draft.isActive,
+    discountId: draft.discountId,
   );
   if (!context.mounted) return;
   _showResult(context, success, 'Produk berhasil disimpan.');
 }
 
 Future<void> _deleteProduct(BuildContext context, ManagedProduct item) async {
-  final confirmed = await _confirmDelete(
+  final confirmed = await MasterDataDeleteConfirmation.show(
     context,
     title: 'Hapus produk?',
     message: 'Produk "${item.product.name}" akan dihapus.',
@@ -322,31 +370,6 @@ Future<void> _deleteProduct(BuildContext context, ManagedProduct item) async {
   );
   if (!context.mounted) return;
   _showResult(context, success, 'Produk berhasil dihapus.');
-}
-
-Future<bool> _confirmDelete(
-  BuildContext context, {
-  required String title,
-  required String message,
-}) async {
-  return await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Hapus'),
-            ),
-          ],
-        ),
-      ) ??
-      false;
 }
 
 void _showResult(BuildContext context, bool success, String successMessage) {

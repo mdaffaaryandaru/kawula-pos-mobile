@@ -23,6 +23,30 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
   }
 
   @override
+  Future<TransactionRecord> getTransaction(String transactionId) =>
+      _remoteDataSource.getTransaction(transactionId);
+
+  @override
+  Future<TransactionRecord> cancelTransaction({
+    required String transactionId,
+    required String reason,
+  }) => _remoteDataSource.cancelTransaction(
+    transactionId: transactionId,
+    reason: reason,
+  );
+
+  @override
+  Future<TransactionRecord> refundTransaction({
+    required String transactionId,
+    required String pin,
+    required String reason,
+  }) => _remoteDataSource.refundTransaction(
+    transactionId: transactionId,
+    pin: pin,
+    reason: reason,
+  );
+
+  @override
   Future<List<Member>> searchMembers(String search) =>
       _remoteDataSource.searchMembers(search);
 
@@ -51,6 +75,7 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
     required String? pin,
     required bool openBill,
     String? memberId,
+    String? tableNumber,
   }) {
     return _remoteDataSource.createTransaction(
       outletId: outletId,
@@ -61,6 +86,7 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
       pin: pin,
       openBill: openBill,
       memberId: memberId,
+      tableNumber: tableNumber,
     );
   }
 }

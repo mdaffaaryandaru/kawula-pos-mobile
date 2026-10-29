@@ -33,6 +33,7 @@ class CatalogProductModel extends CatalogProduct {
     super.images,
     super.stock,
     super.discount,
+    super.discountId,
   });
 
   factory CatalogProductModel.fromJson(Map<String, dynamic> json) {
@@ -46,6 +47,11 @@ class CatalogProductModel extends CatalogProduct {
       price: _numberValue(json['price'], 'harga produk'),
       imageUrl: _optionalString(json['image_url']) ?? '',
       isActive: json['is_active'] != false,
+      discountId: discountJson is String
+          ? discountJson
+          : discountJson is Map<String, dynamic>
+          ? _optionalString(discountJson['_id'] ?? discountJson['id'])
+          : null,
       category: categoryJson is Map<String, dynamic>
           ? CatalogCategoryModel.fromJson(categoryJson)
           : null,

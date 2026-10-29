@@ -14,4 +14,25 @@ class UserManagementRepositoryImpl implements UserManagementRepository {
   Future<AuthUser> updatePin({required String userId, required String pin}) {
     return _remoteDataSource.updatePin(userId: userId, pin: pin);
   }
+
+  @override
+  Future<AuthUser> saveUser({
+    String? userId,
+    required String name,
+    required String email,
+    required String password,
+    required String pin,
+    required String role,
+  }) => _remoteDataSource.saveUser(
+    userId: userId,
+    name: name,
+    email: email,
+    password: password,
+    pin: pin,
+    role: role,
+  );
+
+  @override
+  Future<void> deleteUser(String userId) =>
+      _remoteDataSource.deleteUser(userId);
 }

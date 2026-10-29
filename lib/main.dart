@@ -17,8 +17,18 @@ import 'features/auth/presentation/pages/auth_gate.dart';
 import 'features/categories/data/datasources/categories_remote_data_source.dart';
 import 'features/categories/data/repositories/categories_repository_impl.dart';
 import 'features/categories/domain/repositories/categories_repository.dart';
+import 'features/discounts/data/datasources/discounts_remote_data_source.dart';
+import 'features/discounts/data/repositories/discounts_repository_impl.dart';
+import 'features/discounts/domain/repositories/discounts_repository.dart';
 import 'features/inventories/data/datasources/inventory_remote_data_source.dart';
 import 'features/inventories/data/repositories/inventory_repository_impl.dart';
+import 'features/inventories/domain/repositories/inventory_repository.dart';
+import 'features/product_units/data/datasources/product_units_remote_data_source.dart';
+import 'features/product_units/data/repositories/product_units_repository_impl.dart';
+import 'features/product_units/domain/repositories/product_units_repository.dart';
+import 'features/payment_method/data/datasources/payment_methods_remote_data_source.dart';
+import 'features/payment_method/data/repositories/payment_methods_repository_impl.dart';
+import 'features/payment_method/domain/repositories/payment_methods_repository.dart';
 import 'features/products/data/datasources/product_management_remote_data_source.dart';
 import 'features/products/data/repositories/product_management_repository_impl.dart';
 import 'features/products/domain/repositories/product_management_repository.dart';
@@ -101,8 +111,15 @@ Future<void> main() async {
       localDataSource.readToken,
     ),
   );
-  final variantGroupsRepository = VariantGroupsRepositoryImpl(
-    VariantGroupsRemoteDataSource(
+  final discountsRepository = DiscountsRepositoryImpl(
+    DiscountsRemoteDataSource(
+      client,
+      ApiConfig.baseUrl,
+      localDataSource.readToken,
+    ),
+  );
+  final paymentMethodsRepository = PaymentMethodsRepositoryImpl(
+    PaymentMethodsRemoteDataSource(
       client,
       ApiConfig.baseUrl,
       localDataSource.readToken,
@@ -115,6 +132,21 @@ Future<void> main() async {
       localDataSource.readToken,
     ),
   );
+  final productUnitsRepository = ProductUnitsRepositoryImpl(
+    ProductUnitsRemoteDataSource(
+      client,
+      ApiConfig.baseUrl,
+      localDataSource.readToken,
+    ),
+  );
+  final variantGroupsRepository = VariantGroupsRepositoryImpl(
+    VariantGroupsRemoteDataSource(
+      client,
+      ApiConfig.baseUrl,
+      localDataSource.readToken,
+    ),
+    productUnitsRepository,
+  );
   final productManagementRepository = ProductManagementRepositoryImpl(
     ProductManagementRemoteDataSource(
       client,
@@ -124,6 +156,7 @@ Future<void> main() async {
     categoriesRepository,
     variantGroupsRepository,
     inventoryRepository,
+    productUnitsRepository,
   );
 
   runApp(
@@ -138,7 +171,11 @@ Future<void> main() async {
       userManagementRepository: userManagementRepository,
       productManagementRepository: productManagementRepository,
       categoriesRepository: categoriesRepository,
+      discountsRepository: discountsRepository,
+      paymentMethodsRepository: paymentMethodsRepository,
       variantGroupsRepository: variantGroupsRepository,
+      inventoryRepository: inventoryRepository,
+      productUnitsRepository: productUnitsRepository,
     ),
   );
 }
@@ -157,6 +194,10 @@ class KawulaPosApp extends StatelessWidget {
     required this.productManagementRepository,
     required this.categoriesRepository,
     required this.variantGroupsRepository,
+    this.discountsRepository,
+    this.paymentMethodsRepository,
+    this.inventoryRepository,
+    this.productUnitsRepository,
   });
 
   final AuthRepository authRepository;
@@ -169,7 +210,11 @@ class KawulaPosApp extends StatelessWidget {
   final UserManagementRepository userManagementRepository;
   final ProductManagementRepository productManagementRepository;
   final CategoriesRepository categoriesRepository;
+  final DiscountsRepository? discountsRepository;
+  final PaymentMethodsRepository? paymentMethodsRepository;
   final VariantGroupsRepository variantGroupsRepository;
+  final InventoryRepository? inventoryRepository;
+  final ProductUnitsRepository? productUnitsRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -189,7 +234,11 @@ class KawulaPosApp extends StatelessWidget {
           userManagementRepository: userManagementRepository,
           productManagementRepository: productManagementRepository,
           categoriesRepository: categoriesRepository,
+          discountsRepository: discountsRepository,
+          paymentMethodsRepository: paymentMethodsRepository,
           variantGroupsRepository: variantGroupsRepository,
+          inventoryRepository: inventoryRepository,
+          productUnitsRepository: productUnitsRepository,
         ),
       ),
     );

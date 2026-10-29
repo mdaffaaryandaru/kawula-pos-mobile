@@ -6,6 +6,8 @@ import '../../../auth/presentation/bloc/auth_cubit.dart';
 import '../../../balances/domain/repositories/balances_repository.dart';
 import '../../../balances/presentation/pages/balances_admin_page.dart';
 import '../../../categories/domain/repositories/categories_repository.dart';
+import '../../../discounts/domain/repositories/discounts_repository.dart';
+import '../../../discounts/presentation/pages/discounts_management_page.dart';
 import '../../../categories/presentation/pages/categories_management_page.dart';
 import '../../../products/domain/repositories/product_management_repository.dart';
 import '../../../products/presentation/pages/products_management_page.dart';
@@ -19,6 +21,12 @@ import '../../../users/domain/repositories/user_management_repository.dart';
 import '../../../users/presentation/pages/admin_users_page.dart';
 import '../../../variant_groups/domain/repositories/variant_groups_repository.dart';
 import '../../../variant_groups/presentation/pages/variant_groups_management_page.dart';
+import '../../../inventories/domain/repositories/inventory_repository.dart';
+import '../../../inventories/presentation/pages/inventories_management_page.dart';
+import '../../../product_units/domain/repositories/product_units_repository.dart';
+import '../../../product_units/presentation/pages/product_units_management_page.dart';
+import '../../../payment_method/domain/repositories/payment_methods_repository.dart';
+import '../../../payment_method/presentation/pages/payment_methods_management_page.dart';
 
 class AdminManagementPage extends StatelessWidget {
   const AdminManagementPage({
@@ -33,6 +41,10 @@ class AdminManagementPage extends StatelessWidget {
     required this.checkoutRepository,
     required this.shiftsRepository,
     required this.variantGroupsRepository,
+    this.discountsRepository,
+    this.paymentMethodsRepository,
+    this.inventoryRepository,
+    this.productUnitsRepository,
   });
 
   final AuthUser admin;
@@ -45,6 +57,10 @@ class AdminManagementPage extends StatelessWidget {
   final CheckoutRepository checkoutRepository;
   final AdminShiftsRepository shiftsRepository;
   final VariantGroupsRepository variantGroupsRepository;
+  final DiscountsRepository? discountsRepository;
+  final PaymentMethodsRepository? paymentMethodsRepository;
+  final InventoryRepository? inventoryRepository;
+  final ProductUnitsRepository? productUnitsRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -100,6 +116,7 @@ class AdminManagementPage extends StatelessWidget {
                 ProductsManagementPage(
                   repository: productManagementRepository,
                   variantGroupsRepository: variantGroupsRepository,
+                  discountsRepository: discountsRepository,
                 ),
               ),
             ),
@@ -124,6 +141,53 @@ class AdminManagementPage extends StatelessWidget {
                 CategoriesManagementPage(repository: categoriesRepository),
               ),
             ),
+            if (discountsRepository != null)
+              _ManagementTile(
+                title: 'Discounts',
+                subtitle: 'Kelola diskon persentase dan nominal.',
+                icon: Icons.percent_outlined,
+                onTap: () => _open(
+                  context,
+                  DiscountsManagementPage(repository: discountsRepository!),
+                ),
+              ),
+            if (paymentMethodsRepository != null)
+              _ManagementTile(
+                title: 'Metode Pembayaran',
+                subtitle: 'Kelola nama, kode, dan status opsi pembayaran.',
+                icon: Icons.payments_outlined,
+                onTap: () => _open(
+                  context,
+                  PaymentMethodsManagementPage(
+                    repository: paymentMethodsRepository!,
+                  ),
+                ),
+              ),
+            if (inventoryRepository != null && productUnitsRepository != null)
+              _ManagementTile(
+                title: 'Inventory',
+                subtitle: 'Kelola bahan, satuan, stok, dan riwayat mutasi.',
+                icon: Icons.inventory_outlined,
+                onTap: () => _open(
+                  context,
+                  InventoriesManagementPage(
+                    repository: inventoryRepository!,
+                    productUnitsRepository: productUnitsRepository!,
+                  ),
+                ),
+              ),
+            if (productUnitsRepository != null)
+              _ManagementTile(
+                title: 'Product Units',
+                subtitle: 'Kelola nama, singkatan, dan status satuan produk.',
+                icon: Icons.straighten_outlined,
+                onTap: () => _open(
+                  context,
+                  ProductUnitsManagementPage(
+                    repository: productUnitsRepository!,
+                  ),
+                ),
+              ),
             const SizedBox(height: 20),
             Text('Pengaturan', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
@@ -140,7 +204,7 @@ class AdminManagementPage extends StatelessWidget {
               ),
             ),
             _ManagementTile(
-              title: 'Pengaturan kasir',
+              title: 'Users',
               subtitle: 'Kelola pengguna kasir dan PIN.',
               icon: Icons.manage_accounts_outlined,
               onTap: () => _open(

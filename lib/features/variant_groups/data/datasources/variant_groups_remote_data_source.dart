@@ -34,38 +34,29 @@ class VariantGroupsRemoteDataSource {
         .toList(growable: false);
   }
 
-  Future<VariantRecipeReferences> getVariantRecipeReferences() async {
-    final headers = await _authorizedHeaders();
-    final responses = await Future.wait([
-      _client.get(_uri('inventories'), headers: headers),
-      _client.get(_uri('product-units'), headers: headers),
-    ]);
-    final inventoriesBody = _decodeResponse(
-      responses[0],
+  Future<List<VariantRecipeReferenceModel>>
+  getVariantRecipeInventoryReferences() async {
+    final response = await _client.get(
+      _uri('inventories'),
+      headers: await _authorizedHeaders(),
+    );
+    final body = _decodeResponse(
+      response,
       endpoint: 'GET /api/inventories',
     );
-    final unitsBody = _decodeResponse(
-      responses[1],
-      endpoint: 'GET /api/product-units',
-    );
-    if (inventoriesBody is! List || unitsBody is! List) {
-      throw const ApiException('Respons referensi resep varian tidak valid.');
+    if (body is! List) {
+      throw const ApiException('Respons referensi bahan varian tidak valid.');
     }
-    final inventories = inventoriesBody
+    final inventories = body
         .whereType<Map<String, dynamic>>()
         .map(VariantRecipeReferenceModel.fromJson)
         .toList(growable: false);
-    final units = unitsBody
-        .whereType<Map<String, dynamic>>()
-        .map(VariantRecipeReferenceModel.fromJson)
-        .toList(growable: false);
-    if (inventories.length != inventoriesBody.length ||
-        units.length != unitsBody.length) {
+    if (inventories.length != body.length) {
       throw const ApiException(
-        'Data referensi bahan atau satuan dari server tidak valid.',
+        'Data referensi bahan dari server tidak valid.',
       );
     }
-    return VariantRecipeReferences(inventories: inventories, units: units);
+    return inventories;
   }
 
   Future<VariantGroupDefinitionModel> saveVariantGroup({

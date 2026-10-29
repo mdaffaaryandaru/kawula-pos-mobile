@@ -90,11 +90,12 @@ class ProductManagementRemoteDataSource {
     required List<String> variantGroupIds,
     required List<ProductImage> images,
     required bool isActive,
+    String? discountId,
   }) async {
     final imagePayload = images
         .map((image) => {'url': image.url, 'is_main': image.isMain})
         .toList(growable: false);
-    final payload = <String, Object>{
+    final payload = <String, Object?>{
       'name': name.trim(),
       'price': price,
       'stock': stock,
@@ -103,6 +104,7 @@ class ProductManagementRemoteDataSource {
       'category_id': categoryId,
       'variant_groups': variantGroupIds,
       'is_active': isActive,
+      'discount_id': discountId,
     };
     final uri = _uri(productId == null ? 'products' : 'products/$productId');
     final headers = await _authorizedJsonHeaders();

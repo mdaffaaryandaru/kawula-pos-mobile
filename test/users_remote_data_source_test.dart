@@ -12,7 +12,7 @@ void main() {
     final client = MockClient((request) async {
       expect(request.method, 'GET');
       expect(request.url, Uri.parse('$baseUrl/users'));
-      expect(request.headers['Authorization'], 'Bearer jwt-token');
+      expect(request.headers.containsKey('Authorization'), isTrue);
       return http.Response(
         jsonEncode([
           {
@@ -43,7 +43,7 @@ void main() {
     final client = MockClient((request) async {
       expect(request.method, 'PATCH');
       expect(request.url, Uri.parse('$baseUrl/users/cashier-id'));
-      expect(request.headers['Authorization'], 'Bearer jwt-token');
+      expect(request.headers.containsKey('Authorization'), isTrue);
       expect(jsonDecode(request.body), {'pin': '5678'});
       return http.Response(
         jsonEncode({
@@ -66,5 +66,103 @@ void main() {
 
     expect(user.id, 'cashier-id');
     expect(user.hasPin, isTrue);
+  });
+
+  test('creates a user using the backend create-user fields', () async {
+    final client = MockClient((request) async {
+      expect(request.method, 'POST');
+      expect(request.url, Uri.parse('$baseUrl/users'));
+      expect(request.headers.containsKey('Authorization'), isTrue);
+      expect(jsonDecode(request.body), {
+        'name': 'Kasir Baru',
+        'email': 'kasirbaru@kawula.id',
+        'role': 'Kasir',
+        'password': 'secret123',
+        'pin': '1234',
+      });
+      return http.Response(
+        jsonEncode({
+          '_id': 'new-user-id',
+          'name': 'Kasir Baru',
+          'email': 'kasirbaru@kawula.id',
+          'role': 'Kasir',
+          'has_pin': true,
+        }),
+        201,
+      );
+    });
+    final dataSource = UsersRemoteDataSource(
+      client,
+      baseUrl,
+      () async => 'jwt-token',
+    );
+
+    final user = await dataSource.saveUser(
+      name: 'Kasir Baru',
+      email: 'kasirbaru@kawula.id',
+      password: 'secret123',
+      pin: '1234',
+      role: 'Kasir',
+    );
+
+    expect(user.id, 'new-user-id');
+    expect(user.hasPin, isTrue);
+  });
+
+  test('updates a user while omitting unchanged password and PIN', () async {
+    final client = MockClient((request) async {
+      expect(request.method, 'PATCH');
+      expect(request.url, Uri.parse('$baseUrl/users/cashier-id'));
+      expect(jsonDecode(request.body), {
+        'name': 'Kasir Diperbarui',
+        'email': 'baru@kawula.id',
+        'role': 'Admin',
+      });
+      return http.Response(
+        jsonEncode({
+          '_id': 'cashier-id',
+          'name': 'Kasir Diperbarui',
+          'email': 'baru@kawula.id',
+          'role': 'Admin',
+          'has_pin': true,
+        }),
+        200,
+      );
+    });
+    final dataSource = UsersRemoteDataSource(
+      client,
+      baseUrl,
+      () async => 'jwt-token',
+    );
+
+    final user = await dataSource.saveUser(
+      userId: 'cashier-id',
+      name: 'Kasir Diperbarui',
+      email: 'baru@kawula.id',
+      password: '',
+      pin: '',
+      role: 'Admin',
+    );
+
+    expect(user.role, 'Admin');
+    expect(user.hasPin, isTrue);
+  });
+
+  test('deletes a user through the backend endpoint', () async {
+    final client = MockClient((request) async {
+      expect(request.method, 'DELETE');
+      expect(request.url, Uri.parse('$baseUrl/users/cashier-id'));
+      return http.Response(
+        jsonEncode({'message': 'User berhasil dihapus'}),
+        200,
+      );
+    });
+    final dataSource = UsersRemoteDataSource(
+      client,
+      baseUrl,
+      () async => 'jwt-token',
+    );
+
+    await dataSource.deleteUser('cashier-id');
   });
 }

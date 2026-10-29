@@ -47,6 +47,47 @@ class UsersRemoteDataSource {
     return AuthUserModel.fromJson(decoded);
   }
 
+  Future<AuthUserModel> saveUser({
+    String? userId,
+    required String name,
+    required String email,
+    required String password,
+    required String pin,
+    required String role,
+  }) async {
+    final payload = <String, String>{
+      'name': name,
+      'email': email,
+      'role': role,
+      if (password.isNotEmpty) 'password': password,
+      if (pin.isNotEmpty) 'pin': pin,
+    };
+    final response = userId == null
+        ? await _client.post(
+            _uri('users'),
+            headers: await _authorizedHeaders(),
+            body: jsonEncode(payload),
+          )
+        : await _client.patch(
+            _uri('users/$userId'),
+            headers: await _authorizedHeaders(),
+            body: jsonEncode(payload),
+          );
+    final decoded = _decodeResponse(response);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ApiException('Respons pengguna tidak valid.');
+    }
+    return AuthUserModel.fromJson(decoded);
+  }
+
+  Future<void> deleteUser(String userId) async {
+    final response = await _client.delete(
+      _uri('users/$userId'),
+      headers: await _authorizedHeaders(),
+    );
+    _decodeResponse(response);
+  }
+
   Uri _uri(String path) {
     final baseUrl = _baseUrl.endsWith('/')
         ? _baseUrl.substring(0, _baseUrl.length - 1)

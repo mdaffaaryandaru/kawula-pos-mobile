@@ -33,6 +33,7 @@ class CheckoutCubit extends Cubit<CheckoutState> {
     required String? pin,
     required bool openBill,
     String? memberId,
+    String? tableNumber,
   }) async {
     final currentState = state;
     if (currentState is! CheckoutReady) return;
@@ -63,6 +64,7 @@ class CheckoutCubit extends Cubit<CheckoutState> {
         pin: pin,
         openBill: openBill,
         memberId: memberId,
+        tableNumber: tableNumber,
       );
       emit(CheckoutCompleted(result, currentState.settings));
     } catch (error) {

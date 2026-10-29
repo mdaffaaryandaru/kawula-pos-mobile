@@ -64,6 +64,7 @@ class CatalogProduct {
     this.images = const [],
     this.stock,
     this.discount,
+    this.discountId,
   });
 
   final String id;
@@ -76,6 +77,7 @@ class CatalogProduct {
   final List<ProductImage> images;
   final num? stock;
   final ProductDiscount? discount;
+  final String? discountId;
 
   num get discountedPrice {
     final activeDiscount = discount;

@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../framework/widgets/master_data_header.dart';
+import '../../../../framework/widgets/master_data_search_panel.dart';
+import '../../../../framework/widgets/master_data_status_badge.dart';
+import '../../../../framework/widgets/master_data_feedback.dart';
+import '../../../../framework/widgets/master_data_row_actions.dart';
+import '../../../../framework/widgets/responsive_data_table.dart';
 import '../../domain/entities/managed_category.dart';
 import '../../domain/repositories/categories_repository.dart';
 import '../bloc/categories_cubit.dart';
+import '../widgets/category_dialog.dart';
 
 class CategoriesManagementPage extends StatelessWidget {
   const CategoriesManagementPage({super.key, required this.repository});
@@ -14,314 +21,221 @@ class CategoriesManagementPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => CategoriesCubit(repository)..load(),
-      child: BlocBuilder<CategoriesCubit, CategoriesState>(
-        builder: (context, state) => switch (state) {
-          CategoriesLoading() => const Scaffold(
-            appBar: _CategoriesAppBar(),
-            body: Center(child: CircularProgressIndicator()),
-          ),
-          CategoriesFailure() => Scaffold(
-            appBar: const _CategoriesAppBar(),
-            body: _loadFailure(context, state.message),
-          ),
-          CategoriesLoaded() => _CategoriesView(state: state),
-        },
-      ),
-    );
-  }
-
-  Widget _loadFailure(BuildContext context, String message) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off_outlined, size: 48),
-            const SizedBox(height: 16),
-            const Text(
-              'Kategori belum dapat dimuat',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: context.read<CategoriesCubit>().load,
-              child: const Text('Coba lagi'),
-            ),
-          ],
-        ),
-      ),
+      child: const _CategoriesView(),
     );
   }
 }
 
-class _CategoriesAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _CategoriesAppBar();
+class _CategoriesView extends StatefulWidget {
+  const _CategoriesView();
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
-
-  @override
-  Widget build(BuildContext context) => AppBar(title: const Text('Kategori'));
+  State<_CategoriesView> createState() => _CategoriesViewState();
 }
 
-class _CategoriesView extends StatelessWidget {
-  const _CategoriesView({required this.state});
-
-  final CategoriesLoaded state;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const _CategoriesAppBar(),
-      body: Column(
-        children: [
-          if (state.errorMessage != null)
-            MaterialBanner(
-              content: Text(state.errorMessage!),
-              actions: [
-                TextButton(
-                  onPressed: context.read<CategoriesCubit>().load,
-                  child: const Text('Muat ulang'),
-                ),
-              ],
-            ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: context.read<CategoriesCubit>().load,
-              child: state.categories.isEmpty
-                  ? ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: const [
-                        SizedBox(height: 100),
-                        Center(child: Text('Belum ada kategori.')),
-                      ],
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-                      itemCount: state.categories.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final category = state.categories[index];
-                        return _CategoryCard(
-                          category: category,
-                          onEdit: () => _editCategory(context, category),
-                          onDelete: () => _deleteCategory(context, category),
-                        );
-                      },
-                    ),
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _editCategory(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah kategori'),
-      ),
-    );
-  }
-}
-
-Future<void> _editCategory(
-  BuildContext context, [
-  ManagedCategory? category,
-]) async {
-  final draft = await showDialog<_CategoryDraft>(
-    context: context,
-    builder: (_) => _CategoryDialog(category: category),
-  );
-  if (draft == null || !context.mounted) return;
-  final success = await context.read<CategoriesCubit>().saveCategory(
-    categoryId: category?.id,
-    name: draft.name,
-    description: draft.description,
-    isActive: draft.isActive,
-  );
-  if (!context.mounted) return;
-  _showResult(context, success, 'Kategori berhasil disimpan.');
-}
-
-Future<void> _deleteCategory(
-  BuildContext context,
-  ManagedCategory category,
-) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Hapus kategori?'),
-      content: Text(
-        'Jika kategori "${category.name}" masih digunakan produk, produk tersebut dapat kehilangan kategori.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Batal'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('Hapus'),
-        ),
-      ],
-    ),
-  );
-  if (confirmed != true || !context.mounted) return;
-  final success = await context.read<CategoriesCubit>().deleteCategory(
-    category.id,
-  );
-  if (!context.mounted) return;
-  _showResult(context, success, 'Kategori berhasil dihapus.');
-}
-
-class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({
-    required this.category,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  final ManagedCategory category;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        title: Text(category.name),
-        subtitle: Text(
-          '${category.description.isEmpty ? 'Tanpa deskripsi' : category.description}'
-          ' · ${category.isActive ? 'Aktif' : 'Nonaktif'}',
-        ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            if (value == 'edit') onEdit();
-            if (value == 'delete') onDelete();
-          },
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'edit', child: Text('Ubah')),
-            PopupMenuItem(value: 'delete', child: Text('Hapus')),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryDialog extends StatefulWidget {
-  const _CategoryDialog({this.category});
-
-  final ManagedCategory? category;
-
-  @override
-  State<_CategoryDialog> createState() => _CategoryDialogState();
-}
-
-class _CategoryDialogState extends State<_CategoryDialog> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _nameController;
-  late final TextEditingController _descriptionController;
-  late bool _isActive;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.category?.name ?? '');
-    _descriptionController = TextEditingController(
-      text: widget.category?.description ?? '',
-    );
-    _isActive = widget.category?.isActive ?? true;
-  }
+class _CategoriesViewState extends State<_CategoriesView> {
+  final _searchController = TextEditingController();
+  String _query = '';
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _descriptionController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(
-        widget.category == null ? 'Tambah kategori' : 'Ubah kategori',
-      ),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Nama kategori'),
-              validator: (value) => (value?.trim().length ?? 0) < 2
-                  ? 'Nama minimal 2 karakter.'
-                  : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(labelText: 'Deskripsi'),
-              maxLines: 2,
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Kategori aktif'),
-              value: _isActive,
-              onChanged: (value) => setState(() => _isActive = value),
+    return BlocListener<CategoriesCubit, CategoriesState>(
+      listener: (context, state) {
+        final message = switch (state) {
+          CategoriesLoaded(errorMessage: final error?) => error,
+          CategoriesFailure(:final message) => message,
+          _ => null,
+        };
+        if (message != null) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(message)));
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Categories'),
+          actions: [
+            IconButton(
+              tooltip: 'Refresh',
+              onPressed: () => context.read<CategoriesCubit>().load(),
+              icon: const Icon(Icons.refresh),
             ),
           ],
         ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Batal'),
-        ),
-        FilledButton(
-          onPressed: () {
-            if (!_formKey.currentState!.validate()) return;
-            Navigator.pop(
-              context,
-              _CategoryDraft(
-                name: _nameController.text.trim(),
-                description: _descriptionController.text.trim(),
-                isActive: _isActive,
+        body: SafeArea(
+          child: BlocBuilder<CategoriesCubit, CategoriesState>(
+            builder: (context, state) => switch (state) {
+              CategoriesLoading() => const MasterDataLoadingState(),
+              CategoriesFailure(:final message) => MasterDataErrorState(
+                title: 'Daftar kategori belum dapat dimuat.',
+                message: message,
+                onRetry: context.read<CategoriesCubit>().load,
               ),
-            );
-          },
-          child: const Text('Simpan'),
+              CategoriesLoaded(:final categories) => _buildLoaded(
+                context,
+                categories,
+              ),
+            },
+          ),
         ),
-      ],
+      ),
     );
   }
-}
 
-class _CategoryDraft {
-  const _CategoryDraft({
-    required this.name,
-    required this.description,
-    required this.isActive,
-  });
-
-  final String name;
-  final String description;
-  final bool isActive;
-}
-
-void _showResult(BuildContext context, bool success, String successMessage) {
-  var message = successMessage;
-  if (!success) {
-    final state = context.read<CategoriesCubit>().state;
-    message = switch (state) {
-      CategoriesLoaded(errorMessage: final errorMessage) =>
-        errorMessage ?? 'Operasi tidak berhasil.',
-      CategoriesFailure(message: final errorMessage) => errorMessage,
-      _ => 'Operasi tidak berhasil.',
-    };
+  Widget _buildLoaded(BuildContext context, List<ManagedCategory> categories) {
+    final visible = categories
+        .where(
+          (category) => '${category.name} ${category.description}'
+              .toLowerCase()
+              .contains(_query),
+        )
+        .toList(growable: false);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return RefreshIndicator(
+          onRefresh: context.read<CategoriesCubit>().load,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(20),
+            children: [
+              _header(context),
+              const SizedBox(height: 20),
+              _searchPanel(),
+              const SizedBox(height: 20),
+              if (categories.isEmpty)
+                MasterDataEmptyState(
+                  icon: Icons.category_outlined,
+                  title: 'Belum ada kategori.',
+                  message: 'Tambahkan kategori untuk mengelompokkan produk.',
+                  onAction: () => _editCategory(context),
+                  actionLabel: 'Tambah Category',
+                )
+              else if (visible.isEmpty)
+                const MasterDataEmptyState(
+                  icon: Icons.search_off,
+                  title: 'Kategori tidak ditemukan.',
+                  message: 'Coba kata pencarian lainnya.',
+                )
+              else
+                _categoriesTable(context, visible, constraints.maxWidth),
+            ],
+          ),
+        );
+      },
+    );
   }
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+
+  Widget _header(BuildContext context) {
+    return MasterDataHeader(
+      title: 'Categories',
+      description: 'Kelola kategori produk untuk kebutuhan menu & inventaris.',
+      addLabel: 'Tambah Category',
+      onRefresh: () => context.read<CategoriesCubit>().load(),
+      onAdd: () => _editCategory(context),
+    );
+  }
+
+  Widget _searchPanel() => MasterDataSearchPanel(
+    controller: _searchController,
+    onChanged: (value) => setState(() => _query = value.trim().toLowerCase()),
+    query: _query,
+    hintText: 'Cari nama atau deskripsi category...',
+  );
+
+  Widget _categoriesTable(
+    BuildContext context,
+    List<ManagedCategory> categories,
+    double availableWidth,
+  ) {
+    return ResponsiveDataTable(
+      minWidth: availableWidth - 40,
+      columns: const [
+        DataColumn(label: Text('NAMA')),
+        DataColumn(label: Text('DESKRIPSI')),
+        DataColumn(label: Text('STATUS')),
+        DataColumn(label: Text('AKSI')),
+      ],
+      rows: categories.map(_categoryRow).toList(growable: false),
+    );
+  }
+
+  DataRow _categoryRow(ManagedCategory category) => DataRow(
+    cells: [
+      DataCell(SizedBox(width: 230, child: Text(category.name))),
+      DataCell(
+        SizedBox(
+          width: 420,
+          child: Text(
+            category.description.isEmpty ? '-' : category.description,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+      DataCell(MasterDataStatusBadge(isActive: category.isActive)),
+      DataCell(
+        MasterDataRowActions(
+          onEdit: () => _editCategory(context, category),
+          onDelete: () => _deleteCategory(context, category),
+        ),
+      ),
+    ],
+  );
+
+  Future<void> _editCategory(
+    BuildContext context, [
+    ManagedCategory? category,
+  ]) async {
+    final draft = await showDialog<CategoryDraft>(
+      context: context,
+      builder: (_) => CategoryDialog(category: category),
+    );
+    if (draft == null || !context.mounted) return;
+    final success = await context.read<CategoriesCubit>().saveCategory(
+      categoryId: category?.id,
+      name: draft.name,
+      description: draft.description,
+      isActive: draft.isActive,
+    );
+    if (success && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            category == null
+                ? 'Kategori berhasil ditambahkan.'
+                : 'Kategori berhasil diperbarui.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteCategory(
+    BuildContext context,
+    ManagedCategory category,
+  ) async {
+    final confirmed = await MasterDataDeleteConfirmation.show(
+      context,
+      title: 'Hapus kategori?',
+      message:
+          'Jika kategori "${category.name}" masih digunakan produk, produk tersebut dapat kehilangan kategori.',
+    );
+    if (confirmed != true || !context.mounted) return;
+    final success = await context.read<CategoriesCubit>().deleteCategory(
+      category.id,
+    );
+    if (success && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kategori berhasil dihapus.')),
+      );
+    }
+  }
+
 }

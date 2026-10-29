@@ -4,8 +4,10 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../theme/app_colors.dart';
 import '../../../categories/domain/entities/managed_category.dart';
+import '../../../discounts/domain/entities/discount_definition.dart';
 import '../../../products/domain/entities/catalog_product.dart';
 import '../../../products/domain/entities/product_management.dart';
+import '../pages/product_formatters.dart';
 import '../widgets/product_management_helpers.dart';
 
 class ProductDialog extends StatefulWidget {
@@ -13,11 +15,13 @@ class ProductDialog extends StatefulWidget {
     super.key,
     required this.categories,
     required this.variantGroups,
+    this.discounts = const [],
     this.product,
   });
 
   final List<ManagedCategory> categories;
   final List<ManagedVariantGroup> variantGroups;
+  final List<DiscountDefinition> discounts;
   final ManagedProduct? product;
 
   @override
@@ -30,6 +34,7 @@ class _ProductDialogState extends State<ProductDialog> {
   late final TextEditingController _priceController;
   late final TextEditingController _stockController;
   late String? _categoryId;
+  late String? _discountId;
   late bool _isActive;
   late final Set<String> _selectedVariantGroupIds;
   late final List<ProductImageDraft> _images;
@@ -52,6 +57,7 @@ class _ProductDialogState extends State<ProductDialog> {
         ? product!.category!.id
         : widget.categories.firstOrNull?.id;
     _isActive = product?.isActive ?? true;
+    _discountId = product?.discountId;
     _selectedVariantGroupIds = {...?widget.product?.variantGroupIds};
     final productImages = product?.images.isNotEmpty == true
         ? product!.images
@@ -217,14 +223,13 @@ class _ProductDialogState extends State<ProductDialog> {
                               const SizedBox(height: 12),
                               if (constraints.maxWidth >= 460)
                                 Row(children: priceAndStock)
-                              else
-                                Column(
-                                  children: [
-                                    _priceField(),
-                                    const SizedBox(height: 12),
-                                    _stockField(),
-                                  ],
-                                ),
+                              else ...[
+                                _priceField(),
+                                const SizedBox(height: 12),
+                                _stockField(),
+                              ],
+                              const SizedBox(height: 12),
+                              _discountField(),
                             ],
                           );
                         },
@@ -492,6 +497,46 @@ class _ProductDialogState extends State<ProductDialog> {
         : null,
   );
 
+  Widget _discountField() {
+    final availableDiscounts = widget.discounts
+        .where((discount) => discount.isActive || discount.id == _discountId)
+        .toList(growable: false);
+    final selectedDiscountId =
+        availableDiscounts.any((discount) => discount.id == _discountId)
+        ? _discountId
+        : null;
+
+    return DropdownButtonFormField<String>(
+      initialValue: selectedDiscountId ?? '',
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: 'Diskon',
+        prefixIcon: Icon(Icons.percent_outlined, size: 19),
+      ),
+      items: [
+        const DropdownMenuItem<String>(
+          value: '',
+          child: Text('Tanpa Discounts'),
+        ),
+        ...availableDiscounts.map((discount) {
+          final valueLabel = discount.type == DiscountType.percentage
+              ? '${discount.value}%'
+              : formatRupiah(discount.value);
+          return DropdownMenuItem<String>(
+            value: discount.id,
+            child: Text(
+              '${discount.name} ($valueLabel)',
+              overflow: TextOverflow.ellipsis,
+            ),
+          );
+        }),
+      ],
+      onChanged: (value) => setState(
+        () => _discountId = value == null || value.isEmpty ? null : value,
+      ),
+    );
+  }
+
   Widget productImageUrlsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -607,6 +652,7 @@ class _ProductDialogState extends State<ProductDialog> {
         price: parseNonNegativeNumber(_priceController.text)!,
         stock: parseNonNegativeNumber(_stockController.text)!,
         categoryId: categoryId,
+        discountId: _discountId,
         variantGroupIds: _selectedVariantGroupIds.toList(growable: false),
         images: List.unmodifiable(_images),
         isActive: _isActive,
@@ -621,6 +667,7 @@ class ProductDraft {
     required this.price,
     required this.stock,
     required this.categoryId,
+    required this.discountId,
     required this.variantGroupIds,
     required this.images,
     required this.isActive,
@@ -630,6 +677,7 @@ class ProductDraft {
   final num price;
   final num stock;
   final String categoryId;
+  final String? discountId;
   final List<String> variantGroupIds;
   final List<ProductImageDraft> images;
   final bool isActive;

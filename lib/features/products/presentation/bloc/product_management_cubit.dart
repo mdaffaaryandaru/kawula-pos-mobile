@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../categories/domain/entities/managed_category.dart';
 import '../../../inventories/domain/entities/inventory_item.dart';
+import '../../../product_units/domain/entities/product_unit.dart';
 import '../../../products/domain/entities/catalog_product.dart';
 import '../../domain/entities/product_management.dart';
 import '../../domain/repositories/product_management_repository.dart';
@@ -73,6 +74,7 @@ class ProductManagementCubit extends Cubit<ProductManagementState> {
     required List<String> variantGroupIds,
     required List<ProductImage> images,
     required bool isActive,
+    String? discountId,
   }) async {
     try {
       await _repository.saveProduct(
@@ -84,6 +86,7 @@ class ProductManagementCubit extends Cubit<ProductManagementState> {
         variantGroupIds: variantGroupIds,
         images: images,
         isActive: isActive,
+        discountId: discountId,
       );
       emit(await _loadData());
       return true;

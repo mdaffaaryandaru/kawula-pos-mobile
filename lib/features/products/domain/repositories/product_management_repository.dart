@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../categories/domain/entities/managed_category.dart';
 import '../../../products/domain/entities/catalog_product.dart';
 import '../../../inventories/domain/entities/inventory_item.dart';
+import '../../../product_units/domain/entities/product_unit.dart';
 import '../entities/product_management.dart';
 
 abstract interface class ProductManagementRepository {
@@ -27,6 +28,7 @@ abstract interface class ProductManagementRepository {
     required List<String> variantGroupIds,
     required List<ProductImage> images,
     required bool isActive,
+    String? discountId,
   });
 
   Future<void> deleteProduct(String productId);
