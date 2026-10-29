@@ -32,6 +32,11 @@ void main() {
                 'name': 'Minuman',
                 'is_active': true,
               },
+              'discount_id': {
+                '_id': 'discount-id',
+                'type': 'percentage',
+                'value': 10,
+              },
               'variant_groups': ['group-id'],
             },
           ]),
@@ -51,6 +56,7 @@ void main() {
     expect(products.single.product.isActive, isFalse);
     expect(products.single.product.stock, 12);
     expect(products.single.product.images.single.isMain, isTrue);
+    expect(products.single.product.discountId, 'discount-id');
     expect(products.single.variantGroupIds, ['group-id']);
   });
 
@@ -70,6 +76,7 @@ void main() {
         'category_id': 'category-id',
         'variant_groups': ['group-id'],
         'is_active': true,
+        'discount_id': null,
       });
       return http.Response(
         jsonEncode({
@@ -120,6 +127,7 @@ void main() {
       final body = jsonDecode(request.body) as Map<String, dynamic>;
       expect(body['stock'], 3);
       expect(body['is_active'], false);
+      expect(body['discount_id'], 'discount-id');
       expect(body['image_url'], '/uploads/products/kopi.jpg');
       expect(body['images'], [
         {'url': '/uploads/products/kopi.jpg', 'is_main': true},
@@ -139,6 +147,11 @@ void main() {
             '_id': 'category-id',
             'name': 'Minuman',
             'is_active': true,
+          },
+          'discount_id': {
+            '_id': 'discount-id',
+            'type': 'percentage',
+            'value': 10,
           },
           'variant_groups': [],
         }),
@@ -162,10 +175,12 @@ void main() {
         ProductImage(url: '/uploads/products/kopi.jpg', isMain: true),
       ],
       isActive: false,
+      discountId: 'discount-id',
     );
 
     expect(product.product.stock, 3);
     expect(product.product.isActive, isFalse);
+    expect(product.product.discountId, 'discount-id');
   });
 
   test('uploads pictures as multipart images with the bearer token', () async {

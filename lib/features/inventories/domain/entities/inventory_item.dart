@@ -1,18 +1,4 @@
-class ProductUnit {
-  const ProductUnit({
-    required this.id,
-    required this.name,
-    required this.abbreviation,
-    this.isActive = true,
-  });
-
-  final String id;
-  final String name;
-  final String abbreviation;
-  final bool isActive;
-
-  String get label => '$name (${abbreviation.toLowerCase()})';
-}
+import '../../../product_units/domain/entities/product_unit.dart';
 
 class InventoryItem {
   const InventoryItem({
@@ -25,6 +11,7 @@ class InventoryItem {
     this.description = '',
     this.buyPrice = 0,
     this.minStock = 0,
+    this.maxStock,
   });
 
   final String id;
@@ -36,6 +23,29 @@ class InventoryItem {
   final String description;
   final num buyPrice;
   final num minStock;
+  final num? maxStock;
+}
+
+class InventoryMutation {
+  const InventoryMutation({
+    required this.id,
+    required this.type,
+    required this.quantity,
+    required this.currentStock,
+    required this.notes,
+    required this.createdAt,
+    this.createdBy,
+    this.relatedProductName,
+  });
+
+  final String id;
+  final String type;
+  final num quantity;
+  final num currentStock;
+  final String notes;
+  final DateTime? createdAt;
+  final String? createdBy;
+  final String? relatedProductName;
 }
 
 class ProductRecipe {

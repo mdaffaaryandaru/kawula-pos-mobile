@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../auth/domain/entities/auth_user.dart';
-import '../bloc/shifts_cubit.dart';
 import '../../domain/entities/active_shift.dart';
+import '../bloc/shifts_cubit.dart';
+import '../widgets/active_shift_view.dart';
+import '../widgets/closed_shift_view.dart';
+import '../widgets/opening_shift_view.dart';
+import '../widgets/shift_formatters.dart';
+import '../widgets/shift_status_widgets.dart';
 
 class ShiftStatusView extends StatefulWidget {
   const ShiftStatusView({
@@ -67,234 +72,7 @@ class _ShiftStatusViewState extends State<ShiftStatusView> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final shift = widget.shift;
-    if (shift != null) {
-      if (widget.isClosed) return _closedShift(context, shift);
-      return _activeShift(context, shift);
-    }
-    return _openingShift(context);
-  }
-
-  Widget _activeShift(BuildContext context, ActiveShift shift) {
-    final theme = Theme.of(context);
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: Card(
-            clipBehavior: Clip.antiAlias,
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEAF0FF),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.check_circle,
-                              color: Color(0xFF059669),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Shift sedang berjalan',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                            const Chip(
-                              label: Text('AKTIF'),
-                              visualDensity: VisualDensity.compact,
-                              backgroundColor: Color(0xFFC9F5E2),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${shift.outletName ?? 'Outlet'} · '
-                          'Mulai ${_formatTime(shift.startTime)}',
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _ShiftMetric(
-                                label: 'Modal awal',
-                                value: _formatRupiah(shift.startingCash),
-                              ),
-                            ),
-                            Expanded(
-                              child: _ShiftMetric(
-                                label: 'Transaksi',
-                                value: '${shift.totalTransactions}',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text('Halo, ${widget.user.name}'),
-                  const Divider(height: 32),
-                  _InfoRow(
-                    label: 'Waktu mulai',
-                    value: _formatDateTime(shift.startTime),
-                  ),
-                  _InfoRow(
-                    label: 'Kas yang diharapkan',
-                    value: _formatRupiah(shift.expectedCash),
-                  ),
-                  _InfoRow(
-                    label: 'Total penjualan',
-                    value: _formatRupiah(shift.totalSales),
-                  ),
-                  _InfoRow(
-                    label: 'Jumlah transaksi',
-                    value: '${shift.totalTransactions}',
-                  ),
-                  if (widget.errorMessage != null) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        widget.errorMessage!,
-                        style: TextStyle(
-                          color: theme.colorScheme.onErrorContainer,
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (_isCloseFormVisible) ...[
-                    const Divider(height: 32),
-                    _closeShiftForm(context, shift),
-                  ],
-                  const SizedBox(height: 20),
-                  if (!_isCloseFormVisible)
-                    FilledButton.icon(
-                      onPressed: widget.isClosing
-                          ? null
-                          : () => setState(() => _isCloseFormVisible = true),
-                      icon: const Icon(Icons.lock_clock_outlined),
-                      label: const Text('Tutup shift'),
-                    ),
-                  if (!_isCloseFormVisible) const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: widget.isClosing
-                        ? null
-                        : context.read<ShiftsCubit>().loadActive,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Perbarui status'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _closeShiftForm(BuildContext context, ActiveShift shift) {
-    final requiresPin = widget.user.role != 'Admin';
-    return Form(
-      key: _closeFormKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('Tutup shift', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text(
-            'Hitung uang fisik di laci kasir sebelum mengisi kas aktual.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _actualCashController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: false),
-            decoration: const InputDecoration(
-              labelText: 'Kas aktual',
-              prefixText: 'Rp ',
-            ),
-            validator: (value) {
-              final amount = num.tryParse(value?.trim() ?? '');
-              if (amount == null || amount < 0) {
-                return 'Masukkan kas aktual yang valid.';
-              }
-              return null;
-            },
-          ),
-          if (requiresPin) ...[
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _closePinController,
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 4,
-              decoration: const InputDecoration(
-                labelText: 'PIN kasir',
-                prefixIcon: Icon(Icons.pin_outlined),
-                counterText: '',
-              ),
-              validator: (value) {
-                if (value == null || !RegExp(r'^\d{4}$').hasMatch(value)) {
-                  return 'PIN harus terdiri dari 4 angka.';
-                }
-                return null;
-              },
-            ),
-          ],
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _notesController,
-            minLines: 2,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              labelText: 'Catatan (opsional)',
-              alignLabelWithHint: true,
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (widget.isClosing)
-            const Center(child: CircularProgressIndicator())
-          else
-            FilledButton(
-              onPressed: () => _confirmCloseShift(context, shift, requiresPin),
-              child: const Text('Lanjutkan tutup shift'),
-            ),
-          TextButton(
-            onPressed: widget.isClosing
-                ? null
-                : () => setState(() => _isCloseFormVisible = false),
-            child: const Text('Batal'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _confirmCloseShift(
-    BuildContext context,
-    ActiveShift shift,
-    bool requiresPin,
-  ) async {
+  Future<void> _confirmCloseShift(ActiveShift shift, bool requiresPin) async {
     if (!_closeFormKey.currentState!.validate()) return;
 
     final actualCash = num.parse(_actualCashController.text.trim());
@@ -309,14 +87,17 @@ class _ShiftStatusViewState extends State<ShiftStatusView> {
           children: [
             const Text('Shift akan ditutup dan tidak dapat dibuka kembali.'),
             const SizedBox(height: 16),
-            _InfoRow(
+            ShiftInfoRow(
               label: 'Kas yang diharapkan',
-              value: _formatRupiah(shift.expectedCash),
+              value: formatShiftRupiah(shift.expectedCash),
             ),
-            _InfoRow(label: 'Kas aktual', value: _formatRupiah(actualCash)),
-            _InfoRow(
+            ShiftInfoRow(
+              label: 'Kas aktual',
+              value: formatShiftRupiah(actualCash),
+            ),
+            ShiftInfoRow(
               label: 'Perkiraan selisih',
-              value: _formatRupiah(difference),
+              value: formatShiftRupiah(difference),
             ),
           ],
         ),
@@ -332,7 +113,7 @@ class _ShiftStatusViewState extends State<ShiftStatusView> {
         ],
       ),
     );
-    if (confirmed != true || !context.mounted) return;
+    if (confirmed != true || !mounted) return;
 
     await context.read<ShiftsCubit>().closeShift(
       actualCash: actualCash,
@@ -341,299 +122,42 @@ class _ShiftStatusViewState extends State<ShiftStatusView> {
     );
   }
 
-  Widget _closedShift(BuildContext context, ActiveShift shift) {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Icon(Icons.task_alt, size: 52, color: Colors.green),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Shift berhasil ditutup',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const Divider(height: 32),
-                  if (shift.endTime case final endTime?)
-                    _InfoRow(label: 'Selesai', value: _formatDateTime(endTime)),
-                  _InfoRow(
-                    label: 'Kas yang diharapkan',
-                    value: _formatRupiah(shift.expectedCash),
-                  ),
-                  if (shift.actualCash case final actualCash?)
-                    _InfoRow(
-                      label: 'Kas aktual',
-                      value: _formatRupiah(actualCash),
-                    ),
-                  if (shift.cashDifference case final difference?)
-                    _InfoRow(
-                      label: 'Selisih kas',
-                      value: _formatRupiah(difference),
-                    ),
-                  _InfoRow(
-                    label: 'Total penjualan',
-                    value: _formatRupiah(shift.totalSales),
-                  ),
-                  _InfoRow(
-                    label: 'Jumlah transaksi',
-                    value: '${shift.totalTransactions}',
-                  ),
-                  const SizedBox(height: 20),
-                  FilledButton(
-                    onPressed: context.read<ShiftsCubit>().loadActive,
-                    child: const Text('Selesai'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _openingShift(BuildContext context) {
-    final availability = widget.cashAvailability;
-    final canOpen =
-        widget.user.hasPin &&
-        availability != null &&
-        availability.availableCash >= 0;
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: Theme.of(context)
-                          .colorScheme
-                          .primaryContainer,
-                      child: Icon(
-                        Icons.lock_clock_outlined,
-                        size: 30,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Belum ada shift aktif',
-                      style: Theme.of(context).textTheme.titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Halo, ${widget.user.name}. Buka shift untuk mulai menggunakan kasir.',
-                    ),
-                    const SizedBox(height: 20),
-                    if (availability != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Kas tersedia',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _formatRupiah(availability.availableCash),
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .primary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    if (!widget.user.hasPin)
-                      const Text(
-                        'PIN belum diatur. Hubungi admin untuk mengatur PIN sebelum membuka shift.',
-                        textAlign: TextAlign.center,
-                      )
-                    else ...[
-                      TextFormField(
-                        controller: _cashController,
-                        enabled: !widget.isOpening,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: false,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText: 'Modal awal',
-                          prefixText: 'Rp ',
-                        ),
-                        validator: (value) {
-                          final input = value?.trim() ?? '';
-                          final amount = num.tryParse(input);
-                          if (amount == null || amount < 0) {
-                            return 'Masukkan nominal yang valid.';
-                          }
-                          if (availability != null &&
-                              amount > availability.availableCash) {
-                            return 'Modal melebihi kas yang tersedia.';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _pinController,
-                        enabled: !widget.isOpening,
-                        keyboardType: TextInputType.number,
-                        obscureText: true,
-                        maxLength: 4,
-                        decoration: const InputDecoration(
-                          labelText: 'PIN kasir',
-                          prefixIcon: Icon(Icons.pin_outlined),
-                          counterText: '',
-                        ),
-                        validator: (value) {
-                          if (value == null ||
-                              !RegExp(r'^\d{4}$').hasMatch(value)) {
-                            return 'PIN harus terdiri dari 4 angka.';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                    if (widget.errorMessage != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        widget.errorMessage!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    if (widget.user.hasPin)
-                      FilledButton(
-                        onPressed: !canOpen || widget.isOpening
-                            ? null
-                            : _openShift,
-                        child: widget.isOpening
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('Buka shift'),
-                      ),
-                    TextButton.icon(
-                      onPressed: widget.isOpening
-                          ? null
-                          : context.read<ShiftsCubit>().loadActive,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Perbarui status'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: Text(label)),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
+    final shift = widget.shift;
+    if (shift != null) {
+      if (widget.isClosed) {
+        return ClosedShiftView(
+          shift: shift,
+          onDone: context.read<ShiftsCubit>().loadActive,
+        );
+      }
+      return ActiveShiftView(
+        user: widget.user,
+        shift: shift,
+        errorMessage: widget.errorMessage,
+        isClosing: widget.isClosing,
+        isCloseFormVisible: _isCloseFormVisible,
+        closeFormKey: _closeFormKey,
+        actualCashController: _actualCashController,
+        closePinController: _closePinController,
+        notesController: _notesController,
+        onShowCloseForm: () => setState(() => _isCloseFormVisible = true),
+        onHideCloseForm: () => setState(() => _isCloseFormVisible = false),
+        onConfirmClose: (requiresPin) => _confirmCloseShift(shift, requiresPin),
+        onRefresh: context.read<ShiftsCubit>().loadActive,
+      );
+    }
+    return OpeningShiftView(
+      user: widget.user,
+      cashAvailability: widget.cashAvailability,
+      errorMessage: widget.errorMessage,
+      isOpening: widget.isOpening,
+      formKey: _formKey,
+      cashController: _cashController,
+      pinController: _pinController,
+      onOpen: _openShift,
+      onRefresh: context.read<ShiftsCubit>().loadActive,
     );
   }
-}
-
-class _ShiftMetric extends StatelessWidget {
-  const _ShiftMetric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
-        const SizedBox(height: 3),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleSmall
-              ?.copyWith(fontWeight: FontWeight.w700),
-        ),
-      ],
-    );
-  }
-}
-
-String _formatRupiah(num amount) {
-  final digits = amount.round().abs().toString();
-  final grouped = digits.replaceAllMapped(
-    RegExp(r'\B(?=(\d{3})+(?!\d))'),
-    (_) => '.',
-  );
-  return '${amount < 0 ? '- ' : ''}Rp $grouped';
-}
-
-String _formatTime(DateTime dateTime) {
-  final local = dateTime.toLocal();
-  return '${local.hour.toString().padLeft(2, '0')}:'
-      '${local.minute.toString().padLeft(2, '0')}';
-}
-
-String _formatDateTime(DateTime dateTime) {
-  final local = dateTime.toLocal();
-  final date = local.toIso8601String();
-  return '${date.substring(0, 10)} ${date.substring(11, 16)}';
 }

@@ -58,6 +58,67 @@ class UserManagementCubit extends Cubit<UserManagementState> {
     }
   }
 
+  Future<bool> saveUser({
+    String? userId,
+    required String name,
+    required String email,
+    required String password,
+    required String pin,
+    required String role,
+  }) async {
+    final currentState = state;
+    if (currentState is! UserManagementLoaded) return false;
+    try {
+      final saved = await _repository.saveUser(
+        userId: userId,
+        name: name,
+        email: email,
+        password: password,
+        pin: pin,
+        role: role,
+      );
+      final users = userId == null
+          ? [saved, ...currentState.users]
+          : currentState.users
+                .map((user) => user.id == userId ? saved : user)
+                .toList(growable: false);
+      emit(UserManagementLoaded(users));
+      return true;
+    } catch (error) {
+      emit(
+        UserManagementLoaded(
+          currentState.users,
+          errorMessage: _messageFor(error),
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> deleteUser(String userId) async {
+    final currentState = state;
+    if (currentState is! UserManagementLoaded) return false;
+    try {
+      await _repository.deleteUser(userId);
+      emit(
+        UserManagementLoaded(
+          currentState.users
+              .where((user) => user.id != userId)
+              .toList(growable: false),
+        ),
+      );
+      return true;
+    } catch (error) {
+      emit(
+        UserManagementLoaded(
+          currentState.users,
+          errorMessage: _messageFor(error),
+        ),
+      );
+      return false;
+    }
+  }
+
   String _messageFor(Object error) {
     if (error is FormatException) return error.message;
     return error.toString();

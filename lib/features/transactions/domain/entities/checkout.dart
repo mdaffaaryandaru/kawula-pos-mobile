@@ -39,6 +39,8 @@ class CheckoutResult {
     this.discountAmount,
     this.items = const [],
     this.notes = '',
+    this.tableNumber = '',
+    this.memberName = '',
   });
 
   final String id;
@@ -54,6 +56,8 @@ class CheckoutResult {
   final num? discountAmount;
   final List<CheckoutResultItem> items;
   final String notes;
+  final String tableNumber;
+  final String memberName;
 }
 
 class CheckoutResultItem {
@@ -102,6 +106,9 @@ class TransactionRecord {
     this.outletName = '',
     this.cashierName = '',
     this.memberName = '',
+    this.tableNumber = '',
+    this.refundReason = '',
+    this.refundedAt,
   });
 
   final String id;
@@ -122,8 +129,38 @@ class TransactionRecord {
   final String outletName;
   final String cashierName;
   final String memberName;
+  final String tableNumber;
+  final String refundReason;
+  final DateTime? refundedAt;
 
   bool get isPending => status.toLowerCase() == 'pending';
+
+  TransactionRecord withFallbackDetails(TransactionRecord fallback) =>
+      TransactionRecord(
+        id: id,
+        status: status,
+        totalAmount: totalAmount,
+        paymentMethod: paymentMethod,
+        paidAmount: paidAmount,
+        changeAmount: changeAmount,
+        createdAt: createdAt,
+        items: items,
+        notes: notes,
+        subtotal: subtotal,
+        taxAmount: taxAmount,
+        serviceCharge: serviceCharge,
+        discountAmount: discountAmount,
+        cogs: cogs,
+        refundAmount: refundAmount,
+        outletName: outletName.isEmpty ? fallback.outletName : outletName,
+        cashierName: cashierName.isEmpty ? fallback.cashierName : cashierName,
+        memberName: memberName.isEmpty ? fallback.memberName : memberName,
+        tableNumber: tableNumber.isEmpty ? fallback.tableNumber : tableNumber,
+        refundReason: refundReason.isEmpty
+            ? fallback.refundReason
+            : refundReason,
+        refundedAt: refundedAt ?? fallback.refundedAt,
+      );
 }
 
 class TransactionRecordItem {
@@ -132,10 +169,12 @@ class TransactionRecordItem {
     required this.quantity,
     required this.price,
     this.notes = '',
+    this.selectedVariants = const [],
   });
 
   final String productName;
   final int quantity;
   final num price;
   final String notes;
+  final List<CheckoutResultVariant> selectedVariants;
 }

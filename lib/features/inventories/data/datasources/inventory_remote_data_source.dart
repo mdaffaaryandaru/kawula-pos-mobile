@@ -29,20 +29,99 @@ class InventoryRemoteDataSource {
         .toList(growable: false);
   }
 
-  Future<List<ProductUnitModel>> getProductUnits() async {
-    final response = await _get('product-units');
+  Future<void> saveInventory({
+    String? inventoryId,
+    required String name,
+    required num? stock,
+    required String unitId,
+    required String category,
+    required String description,
+    required num buyPrice,
+    required num minStock,
+    required num? maxStock,
+    required bool isActive,
+  }) async {
+    final payload = <String, Object?>{
+      'name': name,
+      'unit_id': unitId,
+      'category': category,
+      'description': description,
+      'buy_price': buyPrice,
+      'min_stock': minStock,
+      'max_stock': maxStock,
+      'is_active': isActive,
+    };
+    if (inventoryId == null && stock != null) payload['stock'] = stock;
+    final response = await _send(
+      inventoryId == null ? 'POST' : 'PATCH',
+      inventoryId == null ? 'inventories' : 'inventories/$inventoryId',
+      body: jsonEncode(payload),
+    );
+    _decodeResponse(response);
+  }
+
+  Future<void> deleteInventory(String inventoryId) async {
+    final response = await _send('DELETE', 'inventories/$inventoryId');
+    _decodeResponse(response);
+  }
+
+  Future<void> adjustStock({
+    required String inventoryId,
+    required String type,
+    required num quantity,
+    required String notes,
+  }) async {
+    final response = await _send(
+      'POST',
+      'inventories/$inventoryId/adjust',
+      body: jsonEncode({'type': type, 'quantity': quantity, 'notes': notes}),
+    );
+    _decodeResponse(response);
+  }
+
+  Future<List<InventoryMutationModel>> getMutations(String inventoryId) async {
+    final response = await _get('inventories/$inventoryId/mutations');
     final decoded = _decodeResponse(response);
     if (decoded is! List) {
-      throw const ApiException('Respons daftar satuan tidak valid.');
+      throw const ApiException('Respons riwayat stok tidak valid.');
     }
     return decoded
         .map((item) {
           if (item is! Map<String, dynamic>) {
-            throw const ApiException('Data satuan inventori tidak valid.');
+            throw const ApiException('Data mutasi stok tidak valid.');
           }
-          return ProductUnitModel.fromJson(item);
+          return InventoryMutationModel.fromJson(item);
         })
         .toList(growable: false);
+  }
+
+  Future<http.Response> _send(
+    String method,
+    String path, {
+    String? body,
+  }) async {
+    final uri = _uri(path);
+    try {
+      final headers = await _authorizedHeaders();
+      headers['Content-Type'] = 'application/json';
+      final request = http.Request(method, uri)..headers.addAll(headers);
+      if (body != null) request.body = body;
+      final response = await http.Response.fromStream(
+        await _client.send(request),
+      );
+      if (kDebugMode) {
+        debugPrint(
+          '[Inventory API] $method $uri -> ${response.statusCode}'
+          '${_responseMessage(response)}',
+        );
+      }
+      return response;
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[Inventory API] $method $uri failed: $error');
+      }
+      rethrow;
+    }
   }
 
   Future<http.Response> _get(String path) async {
@@ -97,6 +176,11 @@ class InventoryRemoteDataSource {
   }
 
   Object? _decodeResponse(http.Response response) {
+    if (response.body.isEmpty &&
+        response.statusCode >= 200 &&
+        response.statusCode < 300) {
+      return null;
+    }
     Object? decoded;
     try {
       decoded = jsonDecode(response.body);

@@ -1,27 +1,42 @@
 import '../../domain/entities/inventory_item.dart';
+import '../../../product_units/data/models/product_unit_model.dart';
 
-class ProductUnitModel extends ProductUnit {
-  const ProductUnitModel({
+class InventoryMutationModel extends InventoryMutation {
+  const InventoryMutationModel({
     required super.id,
-    required super.name,
-    required super.abbreviation,
-    super.isActive,
+    required super.type,
+    required super.quantity,
+    required super.currentStock,
+    required super.notes,
+    required super.createdAt,
+    super.createdBy,
+    super.relatedProductName,
   });
 
-  factory ProductUnitModel.fromJson(Map<String, dynamic> json) {
+  factory InventoryMutationModel.fromJson(Map<String, dynamic> json) {
     final id = json['_id'] ?? json['id'];
-    if (id is! String || json['name'] is! String) {
-      throw const FormatException('Data satuan inventori tidak valid.');
+    final type = json['type'];
+    final quantity = json['quantity'];
+    final currentStock = json['current_stock'];
+    if (id is! String ||
+        type is! String ||
+        quantity is! num ||
+        currentStock is! num) {
+      throw const FormatException('Data riwayat stok tidak valid.');
     }
-    final abbreviation = json['abbreviation'];
-    if (abbreviation is! String || abbreviation.isEmpty) {
-      throw const FormatException('Singkatan satuan inventori tidak valid.');
-    }
-    return ProductUnitModel(
+    return InventoryMutationModel(
       id: id,
-      name: json['name'] as String,
-      abbreviation: abbreviation,
-      isActive: json['is_active'] != false,
+      type: type,
+      quantity: quantity,
+      currentStock: currentStock,
+      notes: json['notes'] is String ? json['notes'] as String : '',
+      createdAt: json['createdAt'] is String
+          ? DateTime.tryParse(json['createdAt'] as String)
+          : json['created_at'] is String
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      createdBy: _inventoryReferenceName(json['created_by']),
+      relatedProductName: _inventoryReferenceName(json['related_product_id']),
     );
   }
 }
@@ -37,6 +52,7 @@ class InventoryItemModel extends InventoryItem {
     super.description,
     super.buyPrice,
     super.minStock,
+    super.maxStock,
   });
 
   factory InventoryItemModel.fromJson(Map<String, dynamic> json) {
@@ -62,8 +78,17 @@ class InventoryItemModel extends InventoryItem {
           : '',
       buyPrice: json['buy_price'] is num ? json['buy_price'] as num : 0,
       minStock: json['min_stock'] is num ? json['min_stock'] as num : 0,
+      maxStock: json['max_stock'] is num ? json['max_stock'] as num : null,
     );
   }
+}
+
+String? _inventoryReferenceName(Object? value) {
+  if (value is Map<String, dynamic>) {
+    final name = value['name'];
+    return name is String ? name : null;
+  }
+  return null;
 }
 
 class ProductRecipeModel extends ProductRecipe {

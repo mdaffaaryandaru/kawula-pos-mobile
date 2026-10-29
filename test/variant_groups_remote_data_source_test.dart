@@ -45,14 +45,6 @@ void main() {
             200,
           );
         }
-        if (request.url.path == '/api/product-units') {
-          return http.Response(
-            jsonEncode([
-              {'_id': 'unit-id', 'name': 'Mililiter', 'is_active': true},
-            ]),
-            200,
-          );
-        }
         if (request.method == 'GET') {
           return http.Response(jsonEncode([variantGroupResponse]), 200);
         }
@@ -107,7 +99,8 @@ void main() {
       ];
 
       final groups = await dataSource.getVariantGroupDefinitions();
-      final references = await dataSource.getVariantRecipeReferences();
+      final inventories = await dataSource
+          .getVariantRecipeInventoryReferences();
       final saved = await dataSource.saveVariantGroup(
         name: 'Ukuran',
         isRequired: true,
@@ -124,16 +117,14 @@ void main() {
         options: options,
       );
       await dataSource.deleteVariantGroup('group-id');
-
       expect(groups.single.options.single.recipes.single.inventoryName, 'Susu');
-      expect(references.inventories.single.name, 'Susu');
-      expect(references.units.single.name, 'Mililiter');
+      expect(groups.single.options.single.recipes.single.inventoryName, 'Susu');
+      expect(inventories.single.name, 'Susu');
       expect(saved.name, 'Ukuran');
       expect(updated.name, 'Ukuran');
       expect(requests, [
         'GET /api/variant-groups',
         'GET /api/inventories',
-        'GET /api/product-units',
         'POST /api/variant-groups',
         'PATCH /api/variant-groups/group-id',
         'DELETE /api/variant-groups/group-id',

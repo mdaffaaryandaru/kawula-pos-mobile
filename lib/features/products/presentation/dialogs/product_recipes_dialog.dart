@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../../theme/app_colors.dart';
 import '../../../inventories/domain/entities/inventory_item.dart';
+import '../../../product_units/domain/entities/product_unit.dart';
 import '../../../products/domain/entities/product_management.dart';
 import '../widgets/product_management_helpers.dart';
 

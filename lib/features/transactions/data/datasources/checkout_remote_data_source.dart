@@ -77,6 +77,51 @@ class CheckoutRemoteDataSource {
         .toList(growable: false);
   }
 
+  Future<TransactionRecordModel> getTransaction(String transactionId) async {
+    final response = await _client.get(
+      _uri('transactions/$transactionId'),
+      headers: await _authorizedHeaders(),
+    );
+    final decoded = _decodeResponse(response);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ApiException('Respons detail transaksi tidak valid.');
+    }
+    return TransactionRecordModel.fromJson(decoded);
+  }
+
+  Future<TransactionRecordModel> cancelTransaction({
+    required String transactionId,
+    required String reason,
+  }) async {
+    final response = await _client.patch(
+      _uri('transactions/$transactionId/cancel'),
+      headers: await _authorizedHeaders(),
+      body: jsonEncode({'reason': reason}),
+    );
+    final decoded = _decodeResponse(response);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ApiException('Respons pembatalan transaksi tidak valid.');
+    }
+    return TransactionRecordModel.fromJson(decoded);
+  }
+
+  Future<TransactionRecordModel> refundTransaction({
+    required String transactionId,
+    required String pin,
+    required String reason,
+  }) async {
+    final response = await _client.post(
+      _uri('transactions/$transactionId/refund'),
+      headers: await _authorizedHeaders(),
+      body: jsonEncode({'pin': pin, 'reason': reason}),
+    );
+    final decoded = _decodeResponse(response);
+    if (decoded is! Map<String, dynamic>) {
+      throw const ApiException('Respons refund transaksi tidak valid.');
+    }
+    return TransactionRecordModel.fromJson(decoded);
+  }
+
   Future<CheckoutResultModel> payPendingTransaction({
     required String transactionId,
     required String paymentMethod,
@@ -108,6 +153,7 @@ class CheckoutRemoteDataSource {
     required String? pin,
     required bool openBill,
     String? memberId,
+    String? tableNumber,
   }) async {
     final body = <String, Object>{
       'outlet_id': outletId,
@@ -133,6 +179,8 @@ class CheckoutRemoteDataSource {
       'total_amount': estimatedTotal.round(),
       'payment_method': openBill ? 'OPEN_BILL' : paymentMethod,
       if (memberId != null && memberId.isNotEmpty) 'member_id': memberId,
+      if (tableNumber != null && tableNumber.trim().isNotEmpty)
+        'table_number': tableNumber.trim(),
       if (openBill) 'status': 'pending',
       if (!openBill) 'paid_amount': paidAmount,
       if (!openBill && pin != null) 'pin': pin,

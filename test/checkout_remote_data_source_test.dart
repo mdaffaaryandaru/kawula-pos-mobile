@@ -78,6 +78,7 @@ void main() {
         expect(body['paid_amount'], 20000);
         expect(body['pin'], '1234');
         expect(body['member_id'], 'member-id');
+        expect(body['table_number'], 'A1');
         expect(body.containsKey('status'), isFalse);
         final item = (body['items'] as List).single as Map<String, dynamic>;
         expect(item['product_id'], 'product-id');
@@ -155,6 +156,7 @@ void main() {
         pin: '1234',
         openBill: false,
         memberId: 'member-id',
+        tableNumber: ' A1 ',
       );
 
       expect(result.id, 'transaction-id');
@@ -179,6 +181,7 @@ void main() {
         expect(body.containsKey('paid_amount'), isFalse);
         expect(body.containsKey('pin'), isFalse);
         expect(body.containsKey('member_id'), isFalse);
+        expect(body['table_number'], '12');
         return http.Response(
           jsonEncode({
             '_id': 'pending-transaction',
@@ -215,6 +218,7 @@ void main() {
         paidAmount: 0,
         pin: null,
         openBill: true,
+        tableNumber: ' 12 ',
       );
 
       expect(result.status, 'pending');
@@ -354,4 +358,107 @@ void main() {
       expect(result.changeAmount, 5000);
     },
   );
+
+  test('loads transaction details and uses the existing cancel and refund endpoints', () async {
+    final requests = <String>[];
+    final client = MockClient((request) async {
+      requests.add('${request.method} ${request.url.path}');
+      if (request.method == 'GET') {
+        expect(request.url, Uri.parse('$baseUrl/transactions/transaction-id'));
+        return http.Response(jsonEncode(_transactionDetailJson()), 200);
+      }
+      if (request.method == 'PATCH') {
+        expect(
+          request.url,
+          Uri.parse('$baseUrl/transactions/transaction-id/cancel'),
+        );
+        expect(jsonDecode(request.body), {'reason': 'Salah input'});
+        return http.Response(
+          jsonEncode(
+            _transactionDetailJson(
+              status: 'cancelled',
+              refundReason: 'Salah input',
+            ),
+          ),
+          200,
+        );
+      }
+      expect(request.method, 'POST');
+      expect(
+        request.url,
+        Uri.parse('$baseUrl/transactions/transaction-id/refund'),
+      );
+      expect(jsonDecode(request.body), {
+        'pin': '1234',
+        'reason': 'Pesanan salah',
+      });
+      return http.Response(
+        jsonEncode(
+          _transactionDetailJson(
+            status: 'refunded',
+            refundReason: 'Pesanan salah',
+            refundAmount: 25000,
+          ),
+        ),
+        201,
+      );
+    });
+    final dataSource = _checkoutDataSource(client, baseUrl);
+
+    final detail = await dataSource.getTransaction('transaction-id');
+    final cancelled = await dataSource.cancelTransaction(
+      transactionId: 'transaction-id',
+      reason: 'Salah input',
+    );
+    final refunded = await dataSource.refundTransaction(
+      transactionId: 'transaction-id',
+      pin: '1234',
+      reason: 'Pesanan salah',
+    );
+
+    expect(detail.tableNumber, 'A1');
+    expect(detail.memberName, 'Siti Member');
+    expect(detail.items.single.selectedVariants.single.optionName, 'Besar');
+    expect(cancelled.status, 'cancelled');
+    expect(cancelled.refundReason, 'Salah input');
+    expect(refunded.status, 'refunded');
+    expect(refunded.refundAmount, 25000);
+    expect(requests, [
+      'GET /api/transactions/transaction-id',
+      'PATCH /api/transactions/transaction-id/cancel',
+      'POST /api/transactions/transaction-id/refund',
+    ]);
+  });
 }
+
+Map<String, Object?> _transactionDetailJson({
+  String status = 'completed',
+  String refundReason = '',
+  num refundAmount = 0,
+}) => {
+  '_id': 'transaction-id',
+  'status': status,
+  'total_amount': 25000,
+  'subtotal': 23000,
+  'tax_amount': 2000,
+  'service_charge': 500,
+  'discount_amount': 500,
+  'payment_method': 'QRIS',
+  'paid_amount': 25000,
+  'change_amount': 0,
+  'table_number': 'A1',
+  'refund_amount': refundAmount,
+  'refund_reason': refundReason,
+  'member_id': {'_id': 'member-id', 'name': 'Siti Member'},
+  'items': [
+    {
+      'product_id': {'_id': 'product-id', 'name': 'Kopi Susu'},
+      'quantity': 1,
+      'price': 25000,
+      'selected_variants': [
+        {'group_name': 'Ukuran', 'option_name': 'Besar'},
+      ],
+      'notes': 'panas',
+    },
+  ],
+};

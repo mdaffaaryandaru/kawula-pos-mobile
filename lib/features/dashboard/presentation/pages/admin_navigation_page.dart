@@ -4,20 +4,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../auth/domain/entities/auth_user.dart';
 import '../../../balances/domain/repositories/balances_repository.dart';
 import '../../../categories/domain/repositories/categories_repository.dart';
+import '../../../discounts/domain/repositories/discounts_repository.dart';
 import '../../../products/domain/repositories/catalog_repository.dart';
 import '../../../products/domain/repositories/product_management_repository.dart';
-import '../../../products/presentation/bloc/cart_cubit.dart';
-import '../../../products/presentation/bloc/catalog_cubit.dart';
-import '../../../products/presentation/pages/catalog_page.dart';
 import '../../../shifts/domain/repositories/shifts_repository.dart';
 import '../../../shifts/presentation/bloc/shifts_cubit.dart';
-import '../../../shifts/presentation/bloc/shifts_state.dart';
-import '../../../shifts/presentation/pages/shift_status_view.dart';
 import '../../../transactions/domain/repositories/checkout_repository.dart';
 import '../../../transactions/presentation/pages/admin_transaction_report_page.dart';
 import '../../../users/domain/repositories/user_management_repository.dart';
 import '../../../variant_groups/domain/repositories/variant_groups_repository.dart';
 import '../../../store_settings/domain/repositories/store_settings_repository.dart';
+import '../../../inventories/domain/repositories/inventory_repository.dart';
+import '../../../product_units/domain/repositories/product_units_repository.dart';
+import '../../../payment_method/domain/repositories/payment_methods_repository.dart';
+import '../widgets/cashier_tab.dart';
 import 'admin_dashboard_page.dart';
 import 'admin_management_page.dart';
 
@@ -35,6 +35,10 @@ class AdminNavigationPage extends StatefulWidget {
     required this.productManagementRepository,
     required this.categoriesRepository,
     required this.variantGroupsRepository,
+    this.discountsRepository,
+    this.paymentMethodsRepository,
+    this.inventoryRepository,
+    this.productUnitsRepository,
   });
 
   final AuthUser admin;
@@ -48,6 +52,10 @@ class AdminNavigationPage extends StatefulWidget {
   final ProductManagementRepository productManagementRepository;
   final CategoriesRepository categoriesRepository;
   final VariantGroupsRepository variantGroupsRepository;
+  final DiscountsRepository? discountsRepository;
+  final PaymentMethodsRepository? paymentMethodsRepository;
+  final InventoryRepository? inventoryRepository;
+  final ProductUnitsRepository? productUnitsRepository;
 
   @override
   State<AdminNavigationPage> createState() => _AdminNavigationPageState();
@@ -126,7 +134,7 @@ class _AdminNavigationPageState extends State<AdminNavigationPage> {
         },
         onOpenManagement: () => _selectDestination(2),
       ),
-      1 => _CashierTab(
+      1 => CashierTab(
         admin: widget.admin,
         catalogRepository: widget.catalogRepository,
         checkoutRepository: widget.checkoutRepository,
@@ -143,133 +151,12 @@ class _AdminNavigationPageState extends State<AdminNavigationPage> {
         checkoutRepository: widget.checkoutRepository,
         shiftsRepository: widget.shiftsRepository,
         variantGroupsRepository: widget.variantGroupsRepository,
+        discountsRepository: widget.discountsRepository,
+        paymentMethodsRepository: widget.paymentMethodsRepository,
+        inventoryRepository: widget.inventoryRepository,
+        productUnitsRepository: widget.productUnitsRepository,
       ),
       _ => const SizedBox.shrink(),
     };
   }
-}
-
-class _CashierTab extends StatelessWidget {
-  const _CashierTab({
-    required this.admin,
-    required this.catalogRepository,
-    required this.checkoutRepository,
-    required this.onManageShift,
-  });
-
-  final AuthUser admin;
-  final CatalogRepository catalogRepository;
-  final CheckoutRepository checkoutRepository;
-  final VoidCallback onManageShift;
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<ShiftsCubit, ShiftsState>(
-      builder: (context, state) => switch (state) {
-        ShiftsLoading() => const Scaffold(
-          appBar: _CashierAppBar(),
-          body: Center(child: CircularProgressIndicator()),
-        ),
-        ShiftsNeedsOpening() => Scaffold(
-          appBar: const _CashierAppBar(),
-          body: ShiftStatusView(
-            user: admin,
-            cashAvailability: state.cashAvailability,
-            errorMessage: state.errorMessage,
-          ),
-        ),
-        ShiftsOpening() => Scaffold(
-          appBar: const _CashierAppBar(),
-          body: ShiftStatusView(
-            user: admin,
-            cashAvailability: state.cashAvailability,
-            isOpening: true,
-          ),
-        ),
-        ShiftsActive() => MultiBlocProvider(
-          providers: [
-            BlocProvider(
-              create: (_) => CatalogCubit(catalogRepository)..load(),
-            ),
-            BlocProvider(create: (_) => CartCubit()),
-          ],
-          child: CatalogPage(
-            user: admin,
-            checkoutRepository: checkoutRepository,
-            outletId: state.shift.outletId,
-            activeShift: state.shift,
-            onManageShift: onManageShift,
-          ),
-        ),
-        ShiftsClosing() => Scaffold(
-          appBar: const _CashierAppBar(),
-          body: ShiftStatusView(
-            user: admin,
-            shift: state.shift,
-            isClosing: true,
-          ),
-        ),
-        ShiftsClosed() => Scaffold(
-          appBar: const _CashierAppBar(),
-          body: ShiftStatusView(
-            user: admin,
-            shift: state.shift,
-            isClosed: true,
-          ),
-        ),
-        ShiftsFailure() => Scaffold(
-          appBar: const _CashierAppBar(),
-          body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.cloud_off_outlined, size: 48),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Shift belum dapat diperiksa',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(state.message, textAlign: TextAlign.center),
-                  const SizedBox(height: 20),
-                  FilledButton(
-                    onPressed: context.read<ShiftsCubit>().loadActive,
-                    child: const Text('Coba lagi'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      },
-    );
-  }
-}
-
-class _CashierAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _CashierAppBar();
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
-
-  @override
-  Widget build(BuildContext context) => AppBar(
-    title: Row(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Image.asset(
-            'assets/images/logo.jpg',
-            width: 36,
-            height: 36,
-            fit: BoxFit.cover,
-          ),
-        ),
-        const SizedBox(width: 10),
-        const Text('Kasir'),
-      ],
-    ),
-  );
 }
