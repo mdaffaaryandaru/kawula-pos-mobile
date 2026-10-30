@@ -37,65 +37,387 @@ class _ShiftLogoTitle extends StatelessWidget {
   }
 }
 
-class _ShiftListSummary extends StatelessWidget {
-  const _ShiftListSummary({
-    required this.shiftCount,
-    required this.openShiftCount,
-  });
+class _ShiftHistoryHeader extends StatelessWidget {
+  const _ShiftHistoryHeader({required this.onRefresh});
 
-  final int shiftCount;
-  final int openShiftCount;
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: theme.colorScheme.primaryContainer,
-              child: const Icon(Icons.schedule_outlined),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$shiftCount shift ditemukan',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+    final isWide = MediaQuery.sizeOf(context).width >= 520;
+    return Container(
+      padding: EdgeInsets.all(isWide ? 28 : 20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x080F172A),
+            blurRadius: 12,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'LAPORAN',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2,
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '$openShiftCount sedang berjalan · mengikuti filter',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5EE),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '$openShiftCount aktif',
-                style: const TextStyle(
-                  color: Color(0xFF16834A),
-                  fontWeight: FontWeight.w600,
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  'Riwayat Shift',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Memantau riwayat shift kasir, status, dan ringkasan kas.',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          OutlinedButton.icon(
+            onPressed: onRefresh,
+            icon: const Icon(Icons.refresh_rounded),
+            label: Text(isWide ? 'Refresh' : 'Muat ulang'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.textPrimary,
+              side: const BorderSide(color: AppColors.border),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShiftHistorySearch extends StatelessWidget {
+  const _ShiftHistorySearch({
+    required this.controller,
+    required this.onChanged,
+    required this.selectedStatus,
+    required this.onStatusChanged,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final String? selectedStatus;
+  final ValueChanged<String?> onStatusChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      border: Border.all(color: AppColors.border),
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x080F172A),
+          blurRadius: 12,
+          offset: Offset(0, 3),
+        ),
+      ],
+    ),
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final search = TextField(
+          controller: controller,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            hintText: 'Cari kasir, outlet, atau status...',
+            prefixIcon: const Icon(Icons.search_rounded),
+            filled: true,
+            fillColor: const Color(0xFFF8FAFC),
+            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+          ),
+        );
+        final filter = DropdownButtonFormField<String>(
+          initialValue: selectedStatus ?? 'all',
+          isExpanded: true,
+          decoration: InputDecoration(
+            labelText: 'Status',
+            prefixIcon: const Icon(Icons.filter_list_rounded),
+            filled: true,
+            fillColor: const Color(0xFFF8FAFC),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+          ),
+          items: const [
+            DropdownMenuItem(value: 'all', child: Text('Semua shift')),
+            DropdownMenuItem(value: 'open', child: Text('Sedang berjalan')),
+            DropdownMenuItem(value: 'closed', child: Text('Ditutup manual')),
+            DropdownMenuItem(
+              value: 'auto_closed',
+              child: Text('Ditutup otomatis'),
             ),
           ],
-        ),
+          onChanged: onStatusChanged,
+        );
+
+        if (constraints.maxWidth >= 760) {
+          return Row(
+            children: [
+              Expanded(child: search),
+              const SizedBox(width: 12),
+              SizedBox(width: 220, child: filter),
+            ],
+          );
+        }
+        return Column(children: [search, const SizedBox(height: 12), filter]);
+      },
+    ),
+  );
+}
+
+class _ShiftHistoryEmpty extends StatelessWidget {
+  const _ShiftHistoryEmpty();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(32),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      border: Border.all(color: AppColors.border),
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: const Center(
+      child: Text('Tidak ada shift yang cocok dengan filter.'),
+    ),
+  );
+}
+
+class _ShiftHistoryTable extends StatelessWidget {
+  const _ShiftHistoryTable({
+    required this.shifts,
+    required this.minWidth,
+    required this.onDetails,
+    required this.onForceClose,
+  });
+
+  final List<ActiveShift> shifts;
+  final double minWidth;
+  final ValueChanged<ActiveShift> onDetails;
+  final ValueChanged<ActiveShift> onForceClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final header = Theme.of(context).textTheme.labelSmall?.copyWith(
+      color: AppColors.textSecondary,
+      fontWeight: FontWeight.w700,
+      letterSpacing: .5,
+    );
+    return ResponsiveDataTable(
+      minWidth: minWidth,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(18),
       ),
+      headingRowColor: const WidgetStatePropertyAll(Color(0xFFF9FAFC)),
+      horizontalMargin: 18,
+      columnSpacing: 18,
+      dataRowMinHeight: 80,
+      dataRowMaxHeight: 100,
+      columns: [
+        DataColumn(label: Text('KASIR', style: header)),
+        DataColumn(label: Text('OUTLET', style: header)),
+        DataColumn(label: Text('WAKTU SHIFT', style: header)),
+        DataColumn(label: Text('KAS', style: header)),
+        DataColumn(label: Text('RINGKASAN', style: header)),
+        DataColumn(label: Text('STATUS', style: header)),
+        DataColumn(label: Text('AKSI', style: header)),
+      ],
+      rows: shifts
+          .map(
+            (shift) => DataRow(
+              cells: [
+                DataCell(
+                  SizedBox(
+                    width: 145,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          shift.cashierName ?? 'Kasir',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          shift.cashierEmail ?? '—',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                DataCell(
+                  SizedBox(
+                    width: 150,
+                    child: Text(
+                      shift.outletName ?? 'Outlet',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                DataCell(
+                  SizedBox(
+                    width: 190,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Open: ${formatAdminShiftDateTime(shift.startTime)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        Text(
+                          'Tutup: ${shift.endTime == null ? '-' : formatAdminShiftDateTime(shift.endTime)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                DataCell(
+                  SizedBox(
+                    width: 145,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Awal: ${formatAdminShiftRupiah(shift.startingCash)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          'Seharusnya: ${formatAdminShiftRupiah(shift.expectedCash)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          'Fisik: ${shift.actualCash == null ? '-' : formatAdminShiftRupiah(shift.actualCash!)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                DataCell(
+                  SizedBox(
+                    width: 125,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${shift.totalTransactions} transaksi',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          formatAdminShiftRupiah(shift.totalSales),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          'Selisih: ${shift.cashDifference == null ? '-' : formatAdminShiftRupiah(shift.cashDifference!)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                DataCell(_ShiftStatusChip(status: shift.status)),
+                DataCell(
+                  SizedBox(
+                    width: shift.status == 'open' ? 185 : 92,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => onDetails(shift),
+                          icon: const Icon(Icons.visibility_outlined, size: 15),
+                          label: const Text('Detail'),
+                          style: OutlinedButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 9),
+                          ),
+                        ),
+                        if (shift.status == 'open')
+                          OutlinedButton(
+                            onPressed: () => onForceClose(shift),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.danger,
+                              side: BorderSide(
+                                color: AppColors.danger.withValues(alpha: .3),
+                              ),
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                              ),
+                            ),
+                            child: const Text('Tutup Paksa'),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+          .toList(growable: false),
     );
   }
 }
@@ -247,17 +569,15 @@ class _ShiftStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isOpen = status == 'open';
-    final color = isOpen
-        ? const Color(0xFF16834A)
-        : Theme.of(context).colorScheme.onSurfaceVariant;
+    final color = isOpen ? AppColors.warning : AppColors.success;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withValues(alpha: .1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        adminShiftStatusLabel(status),
+        isOpen ? 'Open' : 'Closed',
         style: TextStyle(color: color, fontWeight: FontWeight.w600),
       ),
     );

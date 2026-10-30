@@ -8,7 +8,7 @@ import '../../../products/presentation/bloc/catalog_cubit.dart';
 import '../../../products/presentation/pages/catalog_page.dart';
 import '../../../shifts/presentation/bloc/shifts_cubit.dart';
 import '../../../shifts/presentation/bloc/shifts_state.dart';
-import '../../../shifts/presentation/pages/shift_status_view.dart';
+import '../../../shifts/presentation/widgets/shift_action_dialog.dart';
 import '../../../transactions/domain/repositories/checkout_repository.dart';
 
 class CashierTab extends StatelessWidget {
@@ -17,13 +17,11 @@ class CashierTab extends StatelessWidget {
     required this.admin,
     required this.catalogRepository,
     required this.checkoutRepository,
-    required this.onManageShift,
   });
 
   final AuthUser admin;
   final CatalogRepository catalogRepository;
   final CheckoutRepository checkoutRepository;
-  final VoidCallback onManageShift;
 
   @override
   Widget build(BuildContext context) {
@@ -35,18 +33,59 @@ class CashierTab extends StatelessWidget {
         ),
         ShiftsNeedsOpening() => Scaffold(
           appBar: const CashierAppBar(),
-          body: ShiftStatusView(
-            user: admin,
-            cashAvailability: state.cashAvailability,
-            errorMessage: state.errorMessage,
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.lock_clock_outlined, size: 48),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Belum ada shift aktif',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Buka shift untuk mulai menggunakan kasir.',
+                      textAlign: TextAlign.center,
+                    ),
+                    if (state.errorMessage != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        state.errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    FilledButton.icon(
+                      onPressed: () => showShiftActionDialog(
+                        context,
+                        user: admin,
+                        mode: ShiftDialogMode.opening,
+                      ),
+                      icon: const Icon(Icons.lock_open_rounded),
+                      label: const Text('Open Shift'),
+                    ),
+                    TextButton(
+                      onPressed: context.read<ShiftsCubit>().loadActive,
+                      child: const Text('Perbarui status'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
         ShiftsOpening() => Scaffold(
           appBar: const CashierAppBar(),
-          body: ShiftStatusView(
-            user: admin,
-            cashAvailability: state.cashAvailability,
-            isOpening: true,
+          body: const Center(
+            child: CircularProgressIndicator(),
           ),
         ),
         ShiftsActive() => MultiBlocProvider(
@@ -61,23 +100,38 @@ class CashierTab extends StatelessWidget {
             checkoutRepository: checkoutRepository,
             outletId: state.shift.outletId,
             activeShift: state.shift,
-            onManageShift: onManageShift,
+            onManageShift: () => showShiftActionDialog(
+              context,
+              user: admin,
+              mode: ShiftDialogMode.closing,
+            ),
           ),
         ),
         ShiftsClosing() => Scaffold(
           appBar: const CashierAppBar(),
-          body: ShiftStatusView(
-            user: admin,
-            shift: state.shift,
-            isClosing: true,
+          body: const Center(
+            child: CircularProgressIndicator(),
           ),
         ),
         ShiftsClosed() => Scaffold(
           appBar: const CashierAppBar(),
-          body: ShiftStatusView(
-            user: admin,
-            shift: state.shift,
-            isClosed: true,
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.task_alt, size: 48, color: Colors.green),
+                  const SizedBox(height: 12),
+                  const Text('Shift berhasil ditutup'),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: context.read<ShiftsCubit>().loadActive,
+                    child: const Text('Selesai'),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
         ShiftsFailure() => Scaffold(

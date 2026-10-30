@@ -10,6 +10,7 @@ import '../../../discounts/domain/repositories/discounts_repository.dart';
 import '../../../discounts/presentation/pages/discounts_management_page.dart';
 import '../../../categories/presentation/pages/categories_management_page.dart';
 import '../../../products/domain/repositories/product_management_repository.dart';
+import '../../../products/domain/repositories/catalog_repository.dart';
 import '../../../products/presentation/pages/products_management_page.dart';
 import '../../../shifts/domain/repositories/admin_shifts_repository.dart';
 import '../../../shifts/presentation/pages/admin_shifts_page.dart';
@@ -27,6 +28,15 @@ import '../../../product_units/domain/repositories/product_units_repository.dart
 import '../../../product_units/presentation/pages/product_units_management_page.dart';
 import '../../../payment_method/domain/repositories/payment_methods_repository.dart';
 import '../../../payment_method/presentation/pages/payment_methods_management_page.dart';
+import '../../../outlets/domain/repositories/outlets_repository.dart';
+import '../../../outlets/presentation/pages/outlets_management_page.dart';
+import '../../../table_areas/domain/repositories/table_areas_repository.dart';
+import '../../../table_areas/presentation/pages/table_areas_management_page.dart';
+import '../../../tables/domain/repositories/tables_repository.dart';
+import '../../../tables/presentation/pages/tables_management_page.dart';
+import '../../../members/domain/repositories/members_repository.dart';
+import '../../../members/presentation/pages/members_management_page.dart';
+import '../../../members/presentation/pages/membership_program_page.dart';
 
 class AdminManagementPage extends StatelessWidget {
   const AdminManagementPage({
@@ -35,6 +45,7 @@ class AdminManagementPage extends StatelessWidget {
     required this.apiBaseUrl,
     required this.userManagementRepository,
     required this.productManagementRepository,
+    required this.catalogRepository,
     required this.categoriesRepository,
     required this.balancesRepository,
     required this.storeSettingsRepository,
@@ -45,12 +56,17 @@ class AdminManagementPage extends StatelessWidget {
     this.paymentMethodsRepository,
     this.inventoryRepository,
     this.productUnitsRepository,
+    this.outletsRepository,
+    this.tableAreasRepository,
+    this.tablesRepository,
+    this.membersRepository,
   });
 
   final AuthUser admin;
   final String apiBaseUrl;
   final UserManagementRepository userManagementRepository;
   final ProductManagementRepository productManagementRepository;
+  final CatalogRepository catalogRepository;
   final CategoriesRepository categoriesRepository;
   final BalancesRepository balancesRepository;
   final StoreSettingsRepository storeSettingsRepository;
@@ -61,6 +77,10 @@ class AdminManagementPage extends StatelessWidget {
   final PaymentMethodsRepository? paymentMethodsRepository;
   final InventoryRepository? inventoryRepository;
   final ProductUnitsRepository? productUnitsRepository;
+  final OutletsRepository? outletsRepository;
+  final TableAreasRepository? tableAreasRepository;
+  final TablesRepository? tablesRepository;
+  final MembersRepository? membersRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -71,42 +91,24 @@ class AdminManagementPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Operasional', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'KATALOG & PENJUALAN',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
-            _ManagementTile(
-              title: 'Laporan transaksi',
-              subtitle: 'Ringkasan penjualan, open bill, dan pengeluaran.',
-              icon: Icons.analytics_outlined,
-              onTap: () => _open(
-                context,
-                AdminTransactionReportPage(
-                  checkoutRepository: checkoutRepository,
-                  balancesRepository: balancesRepository,
+            if (inventoryRepository != null && productUnitsRepository != null)
+              _ManagementTile(
+                title: 'Inventaris',
+                subtitle: 'Kelola bahan, satuan, stok, dan riwayat mutasi.',
+                icon: Icons.inventory_outlined,
+                onTap: () => _open(
+                  context,
+                  InventoriesManagementPage(
+                    repository: inventoryRepository!,
+                    productUnitsRepository: productUnitsRepository!,
+                  ),
                 ),
               ),
-            ),
-            _ManagementTile(
-              title: 'Keuangan',
-              subtitle: 'Saldo, pengeluaran, dan riwayat mutasi.',
-              icon: Icons.account_balance_wallet_outlined,
-              onTap: () => _open(
-                context,
-                BalancesAdminPage(
-                  repository: balancesRepository,
-                  checkoutRepository: checkoutRepository,
-                ),
-              ),
-            ),
-            _ManagementTile(
-              title: 'Pemantauan shift',
-              subtitle: 'Lihat shift kasir dan detailnya.',
-              icon: Icons.schedule_outlined,
-              onTap: () =>
-                  _open(context, AdminShiftsPage(repository: shiftsRepository)),
-            ),
-            const SizedBox(height: 20),
-            Text('Katalog', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
             _ManagementTile(
               title: 'Produk',
               subtitle: 'Kelola menu, harga, stok, dan foto.',
@@ -121,7 +123,7 @@ class AdminManagementPage extends StatelessWidget {
               ),
             ),
             _ManagementTile(
-              title: 'Grup varian',
+              title: 'Grup Varian',
               subtitle: 'Kelola ukuran, rasa, dan opsi produk.',
               icon: Icons.tune_outlined,
               onTap: () => _open(
@@ -132,6 +134,9 @@ class AdminManagementPage extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 20),
+            Text('MASTER DATA', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
             _ManagementTile(
               title: 'Kategori',
               subtitle: 'Kelola kategori produk.',
@@ -143,7 +148,7 @@ class AdminManagementPage extends StatelessWidget {
             ),
             if (discountsRepository != null)
               _ManagementTile(
-                title: 'Discounts',
+                title: 'Diskon',
                 subtitle: 'Kelola diskon persentase dan nominal.',
                 icon: Icons.percent_outlined,
                 onTap: () => _open(
@@ -163,22 +168,9 @@ class AdminManagementPage extends StatelessWidget {
                   ),
                 ),
               ),
-            if (inventoryRepository != null && productUnitsRepository != null)
-              _ManagementTile(
-                title: 'Inventory',
-                subtitle: 'Kelola bahan, satuan, stok, dan riwayat mutasi.',
-                icon: Icons.inventory_outlined,
-                onTap: () => _open(
-                  context,
-                  InventoriesManagementPage(
-                    repository: inventoryRepository!,
-                    productUnitsRepository: productUnitsRepository!,
-                  ),
-                ),
-              ),
             if (productUnitsRepository != null)
               _ManagementTile(
-                title: 'Product Units',
+                title: 'Satuan Produk',
                 subtitle: 'Kelola nama, singkatan, dan status satuan produk.',
                 icon: Icons.straighten_outlined,
                 onTap: () => _open(
@@ -189,8 +181,126 @@ class AdminManagementPage extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 20),
-            Text('Pengaturan', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'AREA & OUTLET',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
+            if (outletsRepository != null) ...[
+              _ManagementTile(
+                title: 'Outlet',
+                subtitle: 'Kelola outlet/cabang operasional cafe.',
+                icon: Icons.storefront_outlined,
+                onTap: () => _open(
+                  context,
+                  OutletsManagementPage(repository: outletsRepository!),
+                ),
+              ),
+              if (tableAreasRepository != null)
+                _ManagementTile(
+                  title: 'Area',
+                  subtitle: 'Kelola area/zona meja pada setiap outlet.',
+                  icon: Icons.table_bar_outlined,
+                  onTap: () => _open(
+                    context,
+                    TableAreasManagementPage(
+                      repository: tableAreasRepository!,
+                      outletsRepository: outletsRepository!,
+                    ),
+                  ),
+                ),
+              if (tablesRepository != null &&
+                  tableAreasRepository != null &&
+                  outletsRepository != null)
+                _ManagementTile(
+                  title: 'Meja',
+                  subtitle: 'Kelola nomor meja, kapasitas, dan ketersediaan.',
+                  icon: Icons.table_restaurant_outlined,
+                  onTap: () => _open(
+                    context,
+                    TablesManagementPage(
+                      repository: tablesRepository!,
+                      areasRepository: tableAreasRepository!,
+                    ),
+                  ),
+                ),
+            ],
+            const SizedBox(height: 20),
+            Text('LAPORAN', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            _ManagementTile(
+              title: 'Laporan Transaksi',
+              subtitle: 'Ringkasan penjualan, open bill, dan pengeluaran.',
+              icon: Icons.analytics_outlined,
+              onTap: () => _open(
+                context,
+                AdminTransactionReportPage(
+                  checkoutRepository: checkoutRepository,
+                  balancesRepository: balancesRepository,
+                ),
+              ),
+            ),
+            _ManagementTile(
+              title: 'Riwayat Shift',
+              subtitle: 'Lihat shift kasir dan detailnya.',
+              icon: Icons.schedule_outlined,
+              onTap: () =>
+                  _open(context, AdminShiftsPage(repository: shiftsRepository)),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'ADMINISTRASI',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            _ManagementTile(
+              title: 'Pengguna',
+              subtitle: 'Kelola pengguna kasir dan PIN.',
+              icon: Icons.manage_accounts_outlined,
+              onTap: () => _open(
+                context,
+                AdminUsersPage(
+                  admin: admin,
+                  repository: userManagementRepository,
+                ),
+              ),
+            ),
+            if (membersRepository != null)
+              _ManagementTile(
+                title: 'Member',
+                subtitle: 'Kelola data pelanggan.',
+                icon: Icons.people_outline,
+                onTap: () => _open(
+                  context,
+                  MembersManagementPage(repository: membersRepository!),
+                ),
+              ),
+            _ManagementTile(
+              title: 'Keuangan & Saldo',
+              subtitle: 'Saldo, pengeluaran, dan riwayat mutasi.',
+              icon: Icons.account_balance_wallet_outlined,
+              onTap: () => _open(
+                context,
+                BalancesAdminPage(
+                  repository: balancesRepository,
+                  checkoutRepository: checkoutRepository,
+                ),
+              ),
+            ),
+            if (membersRepository != null && discountsRepository != null)
+              _ManagementTile(
+                title: 'Program Membership',
+                subtitle: 'Atur target stamp dan reward member.',
+                icon: Icons.card_giftcard_outlined,
+                onTap: () => _open(
+                  context,
+                  MembershipProgramPage(
+                    membersRepository: membersRepository!,
+                    catalogRepository: catalogRepository,
+                    discountsRepository: discountsRepository!,
+                  ),
+                ),
+              ),
             _ManagementTile(
               title: 'Pengaturan toko',
               subtitle: 'Identitas, biaya, logo, dan penutupan shift.',
@@ -200,18 +310,6 @@ class AdminManagementPage extends StatelessWidget {
                 StoreSettingsPage(
                   repository: storeSettingsRepository,
                   apiBaseUrl: apiBaseUrl,
-                ),
-              ),
-            ),
-            _ManagementTile(
-              title: 'Users',
-              subtitle: 'Kelola pengguna kasir dan PIN.',
-              icon: Icons.manage_accounts_outlined,
-              onTap: () => _open(
-                context,
-                AdminUsersPage(
-                  admin: admin,
-                  repository: userManagementRepository,
                 ),
               ),
             ),
@@ -235,7 +333,7 @@ class AdminManagementPage extends StatelessWidget {
                   'Keluar',
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
-                subtitle: const Text('Keluar dari akun Kawula POS ini.'),
+                subtitle: const Text('Keluar dari akun Kawula ini.'),
                 onTap: context.read<AuthCubit>().logout,
               ),
             ),

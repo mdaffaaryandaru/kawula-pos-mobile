@@ -21,6 +21,10 @@ import '../../../store_settings/domain/repositories/store_settings_repository.da
 import '../../../inventories/domain/repositories/inventory_repository.dart';
 import '../../../product_units/domain/repositories/product_units_repository.dart';
 import '../../../payment_method/domain/repositories/payment_methods_repository.dart';
+import '../../../outlets/domain/repositories/outlets_repository.dart';
+import '../../../table_areas/domain/repositories/table_areas_repository.dart';
+import '../../../tables/domain/repositories/tables_repository.dart';
+import '../../../members/domain/repositories/members_repository.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({
@@ -39,6 +43,10 @@ class AuthGate extends StatelessWidget {
     this.paymentMethodsRepository,
     this.inventoryRepository,
     this.productUnitsRepository,
+    this.outletsRepository,
+    this.tableAreasRepository,
+    this.tablesRepository,
+    this.membersRepository,
   });
 
   final ShiftsRepository shiftsRepository;
@@ -55,6 +63,10 @@ class AuthGate extends StatelessWidget {
   final PaymentMethodsRepository? paymentMethodsRepository;
   final InventoryRepository? inventoryRepository;
   final ProductUnitsRepository? productUnitsRepository;
+  final OutletsRepository? outletsRepository;
+  final TableAreasRepository? tableAreasRepository;
+  final TablesRepository? tablesRepository;
+  final MembersRepository? membersRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +93,10 @@ class AuthGate extends StatelessWidget {
               variantGroupsRepository: variantGroupsRepository,
               inventoryRepository: inventoryRepository,
               productUnitsRepository: productUnitsRepository,
+              outletsRepository: outletsRepository,
+              tableAreasRepository: tableAreasRepository,
+              tablesRepository: tablesRepository,
+              membersRepository: membersRepository,
             ),
           AuthAuthenticated() => CashierNavigationPage(
             user: state.user,

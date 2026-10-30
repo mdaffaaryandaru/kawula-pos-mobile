@@ -2,13 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../auth/domain/entities/auth_user.dart';
-import '../../../auth/presentation/bloc/auth_cubit.dart';
-import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../balances/domain/repositories/balances_repository.dart';
 import '../../../products/domain/repositories/catalog_repository.dart';
 import '../../../shifts/domain/repositories/shifts_repository.dart';
 import '../../../shifts/presentation/bloc/shifts_cubit.dart';
-import '../../../shifts/presentation/pages/shift_page.dart';
 import '../../../transactions/domain/repositories/checkout_repository.dart';
 import '../../../transactions/presentation/pages/admin_transaction_report_page.dart';
 import '../widgets/cashier_tab.dart';
@@ -67,7 +64,6 @@ class _CashierNavigationPageState extends State<CashierNavigationPage> {
         admin: widget.user,
         catalogRepository: widget.catalogRepository,
         checkoutRepository: widget.checkoutRepository,
-        onManageShift: _openShiftPage,
       ),
       2 => AdminTransactionReportPage(
         checkoutRepository: widget.checkoutRepository,
@@ -120,27 +116,5 @@ class _CashierNavigationPageState extends State<CashierNavigationPage> {
       _selectedIndex = index;
       _pages[index] ??= _pageAt(index);
     });
-  }
-
-  void _openShiftPage() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => BlocProvider.value(
-          value: _shiftsCubit,
-          child: BlocListener<AuthCubit, AuthState>(
-            listener: (context, state) {
-              if (state is AuthUnauthenticated) {
-                Navigator.of(context).pop();
-              }
-            },
-            child: ShiftPage(
-              user: widget.user,
-              catalogRepository: widget.catalogRepository,
-              checkoutRepository: widget.checkoutRepository,
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

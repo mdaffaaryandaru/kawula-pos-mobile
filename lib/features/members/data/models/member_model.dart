@@ -7,6 +7,7 @@ class MemberModel extends Member {
     required super.phoneNumber,
     required super.currentStamps,
     required super.isActive,
+    super.email,
   });
 
   factory MemberModel.fromJson(Map<String, dynamic> json) {
@@ -15,6 +16,7 @@ class MemberModel extends Member {
     final phoneNumber = json['phone_number'];
     final currentStamps = json['current_stamps'];
     final isActive = json['is_active'];
+    final email = json['email'];
     if (id is! String ||
         name is! String ||
         phoneNumber is! String ||
@@ -28,6 +30,7 @@ class MemberModel extends Member {
       phoneNumber: phoneNumber,
       currentStamps: currentStamps.toInt(),
       isActive: isActive,
+      email: email is String ? email : '',
     );
   }
 }

@@ -1,9 +1,9 @@
 part of '../pages/admin_dashboard_page.dart';
 
 class _ShiftStatusBanner extends StatelessWidget {
-  const _ShiftStatusBanner({required this.onOpenCashier});
+  const _ShiftStatusBanner({required this.user});
 
-  final VoidCallback onOpenCashier;
+  final AuthUser user;
 
   @override
   Widget build(BuildContext context) {
@@ -23,8 +23,8 @@ class _ShiftStatusBanner extends StatelessWidget {
           ),
         ),
         ShiftsActive() => _ActiveShiftBanner(
+          user: user,
           shift: state.shift,
-          onOpenCashier: onOpenCashier,
         ),
         ShiftsNeedsOpening() => _BannerShell(
           child: Row(
@@ -48,8 +48,12 @@ class _ShiftStatusBanner extends StatelessWidget {
                 ),
               ),
               TextButton(
-                onPressed: onOpenCashier,
-                child: const Text('Buka shift'),
+                onPressed: () => showShiftActionDialog(
+                  context,
+                  user: user,
+                  mode: ShiftDialogMode.opening,
+                ),
+                child: const Text('Open Shift'),
               ),
             ],
           ),
@@ -120,10 +124,13 @@ class _ShiftStatusBanner extends StatelessWidget {
 }
 
 class _ActiveShiftBanner extends StatelessWidget {
-  const _ActiveShiftBanner({required this.shift, required this.onOpenCashier});
+  const _ActiveShiftBanner({
+    required this.user,
+    required this.shift,
+  });
 
+  final AuthUser user;
   final ActiveShift shift;
-  final VoidCallback onOpenCashier;
 
   @override
   Widget build(BuildContext context) {
@@ -148,8 +155,12 @@ class _ActiveShiftBanner extends StatelessWidget {
             style: const TextStyle(color: AppColors.textSecondary),
           ),
           OutlinedButton(
-            onPressed: onOpenCashier,
-            child: const Text('Kelola Shift'),
+            onPressed: () => showShiftActionDialog(
+              context,
+              user: user,
+              mode: ShiftDialogMode.closing,
+            ),
+            child: const Text('Tutup Shift'),
           ),
         ],
       ),

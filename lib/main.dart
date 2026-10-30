@@ -29,6 +29,15 @@ import 'features/product_units/domain/repositories/product_units_repository.dart
 import 'features/payment_method/data/datasources/payment_methods_remote_data_source.dart';
 import 'features/payment_method/data/repositories/payment_methods_repository_impl.dart';
 import 'features/payment_method/domain/repositories/payment_methods_repository.dart';
+import 'features/outlets/data/datasources/outlets_remote_data_source.dart';
+import 'features/outlets/data/repositories/outlets_repository_impl.dart';
+import 'features/outlets/domain/repositories/outlets_repository.dart';
+import 'features/table_areas/data/datasources/table_areas_remote_data_source.dart';
+import 'features/table_areas/data/repositories/table_areas_repository_impl.dart';
+import 'features/table_areas/domain/repositories/table_areas_repository.dart';
+import 'features/tables/data/datasources/tables_remote_data_source.dart';
+import 'features/tables/data/repositories/tables_repository_impl.dart';
+import 'features/tables/domain/repositories/tables_repository.dart';
 import 'features/products/data/datasources/product_management_remote_data_source.dart';
 import 'features/products/data/repositories/product_management_repository_impl.dart';
 import 'features/products/domain/repositories/product_management_repository.dart';
@@ -45,12 +54,15 @@ import 'features/transactions/data/datasources/checkout_remote_data_source.dart'
 import 'features/transactions/data/repositories/checkout_repository_impl.dart';
 import 'features/transactions/domain/repositories/checkout_repository.dart';
 import 'features/members/data/datasources/members_remote_data_source.dart';
+import 'features/members/data/repositories/members_repository_impl.dart';
+import 'features/members/domain/repositories/members_repository.dart';
 import 'features/users/data/datasources/users_remote_data_source.dart';
 import 'features/users/data/repositories/user_management_repository_impl.dart';
 import 'features/users/domain/repositories/user_management_repository.dart';
 import 'features/variant_groups/data/datasources/variant_groups_remote_data_source.dart';
 import 'features/variant_groups/data/repositories/variant_groups_repository_impl.dart';
 import 'features/variant_groups/domain/repositories/variant_groups_repository.dart';
+import 'features/splash/presentation/pages/kawula_splash_screen.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
@@ -75,16 +87,18 @@ Future<void> main() async {
       localDataSource.readToken,
     ),
   );
+  final membersRemoteDataSource = MembersRemoteDataSource(
+    client,
+    ApiConfig.baseUrl,
+    localDataSource.readToken,
+  );
+  final membersRepository = MembersRepositoryImpl(membersRemoteDataSource);
   final checkoutRepository = CheckoutRepositoryImpl(
     CheckoutRemoteDataSource(
       client,
       ApiConfig.baseUrl,
       localDataSource.readToken,
-      membersRemoteDataSource: MembersRemoteDataSource(
-        client,
-        ApiConfig.baseUrl,
-        localDataSource.readToken,
-      ),
+      membersRemoteDataSource: membersRemoteDataSource,
     ),
   );
   final balancesRepository = BalancesRepositoryImpl(
@@ -158,6 +172,27 @@ Future<void> main() async {
     inventoryRepository,
     productUnitsRepository,
   );
+  final outletsRepository = OutletsRepositoryImpl(
+    OutletsRemoteDataSource(
+      client,
+      ApiConfig.baseUrl,
+      localDataSource.readToken,
+    ),
+  );
+  final tableAreasRepository = TableAreasRepositoryImpl(
+    TableAreasRemoteDataSource(
+      client,
+      ApiConfig.baseUrl,
+      localDataSource.readToken,
+    ),
+  );
+  final tablesRepository = TablesRepositoryImpl(
+    TablesRemoteDataSource(
+      client,
+      ApiConfig.baseUrl,
+      localDataSource.readToken,
+    ),
+  );
 
   runApp(
     KawulaPosApp(
@@ -176,6 +211,10 @@ Future<void> main() async {
       variantGroupsRepository: variantGroupsRepository,
       inventoryRepository: inventoryRepository,
       productUnitsRepository: productUnitsRepository,
+      outletsRepository: outletsRepository,
+      tableAreasRepository: tableAreasRepository,
+      tablesRepository: tablesRepository,
+      membersRepository: membersRepository,
     ),
   );
 }
@@ -198,6 +237,10 @@ class KawulaPosApp extends StatelessWidget {
     this.paymentMethodsRepository,
     this.inventoryRepository,
     this.productUnitsRepository,
+    this.outletsRepository,
+    this.tableAreasRepository,
+    this.tablesRepository,
+    this.membersRepository,
   });
 
   final AuthRepository authRepository;
@@ -215,30 +258,40 @@ class KawulaPosApp extends StatelessWidget {
   final VariantGroupsRepository variantGroupsRepository;
   final InventoryRepository? inventoryRepository;
   final ProductUnitsRepository? productUnitsRepository;
+  final OutletsRepository? outletsRepository;
+  final TableAreasRepository? tableAreasRepository;
+  final TablesRepository? tablesRepository;
+  final MembersRepository? membersRepository;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => AuthCubit(authRepository)..restoreSession(),
       child: MaterialApp(
-        title: 'Kawula POS',
+        title: 'Kawula',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
-        home: AuthGate(
-          apiBaseUrl: apiBaseUrl,
-          shiftsRepository: shiftsRepository,
-          catalogRepository: catalogRepository,
-          checkoutRepository: checkoutRepository,
-          balancesRepository: balancesRepository,
-          storeSettingsRepository: storeSettingsRepository,
-          userManagementRepository: userManagementRepository,
-          productManagementRepository: productManagementRepository,
-          categoriesRepository: categoriesRepository,
-          discountsRepository: discountsRepository,
-          paymentMethodsRepository: paymentMethodsRepository,
-          variantGroupsRepository: variantGroupsRepository,
-          inventoryRepository: inventoryRepository,
-          productUnitsRepository: productUnitsRepository,
+        home: KawulaSplashScreen(
+          child: AuthGate(
+            apiBaseUrl: apiBaseUrl,
+            shiftsRepository: shiftsRepository,
+            catalogRepository: catalogRepository,
+            checkoutRepository: checkoutRepository,
+            balancesRepository: balancesRepository,
+            storeSettingsRepository: storeSettingsRepository,
+            userManagementRepository: userManagementRepository,
+            productManagementRepository: productManagementRepository,
+            categoriesRepository: categoriesRepository,
+            discountsRepository: discountsRepository,
+            paymentMethodsRepository: paymentMethodsRepository,
+            variantGroupsRepository: variantGroupsRepository,
+            inventoryRepository: inventoryRepository,
+            productUnitsRepository: productUnitsRepository,
+            outletsRepository: outletsRepository,
+            tableAreasRepository: tableAreasRepository,
+            tablesRepository: tablesRepository,
+            membersRepository: membersRepository,
+          ),
         ),
       ),
     );

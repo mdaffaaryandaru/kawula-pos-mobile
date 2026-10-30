@@ -45,7 +45,6 @@ class _TransactionsTable extends StatelessWidget {
         rows: transactions
             .map(
               (transaction) => DataRow(
-                onSelectChanged: (_) => onTap(transaction),
                 cells: [
                   DataCell(
                     SizedBox(

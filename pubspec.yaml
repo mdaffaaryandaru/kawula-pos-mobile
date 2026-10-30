@@ -43,9 +43,15 @@ dependencies:
   pdf: ^3.13.1
   printing: ^5.15.1
 
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/images/logo.jpg
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.4
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -67,6 +73,7 @@ flutter:
   assets:
     - .env
     - assets/images/logo.jpg
+    - assets/splash/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

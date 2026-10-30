@@ -72,7 +72,7 @@ class _LoginFormState extends State<LoginForm> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Kawula POS',
+                      'Kawula',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(fontWeight: FontWeight.bold),

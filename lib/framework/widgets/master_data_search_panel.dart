@@ -8,6 +8,7 @@ class MasterDataSearchPanel extends StatelessWidget {
     required this.hintText,
     required this.onChanged,
     this.trailing,
+    this.trailingWidth = 220,
   });
 
   final TextEditingController controller;
@@ -15,6 +16,7 @@ class MasterDataSearchPanel extends StatelessWidget {
   final String hintText;
   final ValueChanged<String> onChanged;
   final Widget? trailing;
+  final double trailingWidth;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -60,7 +62,7 @@ class MasterDataSearchPanel extends StatelessWidget {
                 children: [
                   Expanded(child: searchField),
                   const SizedBox(width: 16),
-                  SizedBox(width: 220, child: trailing),
+                  SizedBox(width: trailingWidth, child: trailing),
                 ],
               ),
       );
