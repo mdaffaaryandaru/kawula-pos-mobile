@@ -68,15 +68,10 @@ class _DashboardHeading extends StatelessWidget {
 }
 
 class _MetricsGrid extends StatelessWidget {
-  const _MetricsGrid({
-    required this.metrics,
-    required this.availableWidth,
-    required this.onTap,
-  });
+  const _MetricsGrid({required this.metrics, required this.availableWidth});
 
   final List<_DashboardMetric> metrics;
   final double availableWidth;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +92,7 @@ class _MetricsGrid extends StatelessWidget {
           .map(
             (metric) => SizedBox(
               width: cardWidth,
-              child: _MetricCard(metric: metric, onTap: onTap),
+              child: _MetricCard(metric: metric),
             ),
           )
           .toList(),
@@ -106,101 +101,96 @@ class _MetricsGrid extends StatelessWidget {
 }
 
 class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.metric, required this.onTap});
+  const _MetricCard({required this.metric});
 
   final _DashboardMetric metric;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          constraints: const BoxConstraints(minHeight: 152),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x080F172A),
-                blurRadius: 12,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: metric.tint,
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    child: Icon(metric.icon, color: metric.color, size: 22),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        constraints: const BoxConstraints(minHeight: 152),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x080F172A),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: metric.tint,
+                    borderRadius: BorderRadius.circular(13),
                   ),
-                  const Spacer(),
-                  Icon(
-                    Icons.arrow_outward_rounded,
-                    size: 17,
-                    color: metric.color,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 500),
-                curve: Curves.easeOutCubic,
-                builder: (context, progress, child) => Opacity(
-                  opacity: progress,
-                  child: Transform.translate(
-                    offset: Offset(0, 8 * (1 - progress)),
-                    child: child,
-                  ),
+                  child: Icon(metric.icon, color: metric.color, size: 22),
                 ),
-                child: Text(
-                  metric.value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                metric.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 7),
-              Text(
-                metric.detail,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
+                const Spacer(),
+                Icon(
+                  Icons.arrow_outward_rounded,
+                  size: 17,
                   color: metric.color,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutCubic,
+              builder: (context, progress, child) => Opacity(
+                opacity: progress,
+                child: Transform.translate(
+                  offset: Offset(0, 8 * (1 - progress)),
+                  child: child,
                 ),
               ),
-            ],
-          ),
+              child: Text(
+                metric.value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              metric.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              metric.detail,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: metric.color,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );

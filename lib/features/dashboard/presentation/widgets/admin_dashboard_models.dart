@@ -24,10 +24,12 @@ class _DashboardAction {
     required this.icon,
     required this.color,
     required this.onTap,
+    this.enabled = true,
   });
 
   final String label;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
+  final bool enabled;
 }

@@ -17,6 +17,10 @@ import '../../../store_settings/domain/repositories/store_settings_repository.da
 import '../../../inventories/domain/repositories/inventory_repository.dart';
 import '../../../product_units/domain/repositories/product_units_repository.dart';
 import '../../../payment_method/domain/repositories/payment_methods_repository.dart';
+import '../../../outlets/domain/repositories/outlets_repository.dart';
+import '../../../table_areas/domain/repositories/table_areas_repository.dart';
+import '../../../tables/domain/repositories/tables_repository.dart';
+import '../../../members/domain/repositories/members_repository.dart';
 import '../widgets/cashier_tab.dart';
 import 'admin_dashboard_page.dart';
 import 'admin_management_page.dart';
@@ -39,6 +43,10 @@ class AdminNavigationPage extends StatefulWidget {
     this.paymentMethodsRepository,
     this.inventoryRepository,
     this.productUnitsRepository,
+    this.outletsRepository,
+    this.tableAreasRepository,
+    this.tablesRepository,
+    this.membersRepository,
   });
 
   final AuthUser admin;
@@ -56,6 +64,10 @@ class AdminNavigationPage extends StatefulWidget {
   final PaymentMethodsRepository? paymentMethodsRepository;
   final InventoryRepository? inventoryRepository;
   final ProductUnitsRepository? productUnitsRepository;
+  final OutletsRepository? outletsRepository;
+  final TableAreasRepository? tableAreasRepository;
+  final TablesRepository? tablesRepository;
+  final MembersRepository? membersRepository;
 
   @override
   State<AdminNavigationPage> createState() => _AdminNavigationPageState();
@@ -138,11 +150,11 @@ class _AdminNavigationPageState extends State<AdminNavigationPage> {
         admin: widget.admin,
         catalogRepository: widget.catalogRepository,
         checkoutRepository: widget.checkoutRepository,
-        onManageShift: () => _selectDestination(2),
       ),
       2 => AdminManagementPage(
         admin: widget.admin,
         apiBaseUrl: widget.apiBaseUrl,
+        catalogRepository: widget.catalogRepository,
         userManagementRepository: widget.userManagementRepository,
         productManagementRepository: widget.productManagementRepository,
         categoriesRepository: widget.categoriesRepository,
@@ -155,6 +167,10 @@ class _AdminNavigationPageState extends State<AdminNavigationPage> {
         paymentMethodsRepository: widget.paymentMethodsRepository,
         inventoryRepository: widget.inventoryRepository,
         productUnitsRepository: widget.productUnitsRepository,
+        outletsRepository: widget.outletsRepository,
+        tableAreasRepository: widget.tableAreasRepository,
+        tablesRepository: widget.tablesRepository,
+        membersRepository: widget.membersRepository,
       ),
       _ => const SizedBox.shrink(),
     };

@@ -189,7 +189,7 @@ class _AdminTransactionReportPageState
     try {
       await SharePlus.instance.share(
         ShareParams(
-          subject: 'Laporan transaksi Kawula POS',
+          subject: 'Laporan transaksi Kawula',
           files: [
             XFile.fromData(
               Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(csv)]),
@@ -241,7 +241,7 @@ class _AdminTransactionReportPageState
           pw.Center(
             child: pw.Text(
               transaction.outletName.isEmpty
-                  ? 'Kawula POS'
+                  ? 'Kawula'
                   : transaction.outletName,
               style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
               textAlign: pw.TextAlign.center,

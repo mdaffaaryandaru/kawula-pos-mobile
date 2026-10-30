@@ -7,6 +7,7 @@ import '../../../auth/presentation/bloc/auth_cubit.dart';
 import '../../../shifts/domain/entities/active_shift.dart';
 import '../../../shifts/presentation/bloc/shifts_cubit.dart';
 import '../../../shifts/presentation/bloc/shifts_state.dart';
+import '../../../shifts/presentation/widgets/shift_action_dialog.dart';
 import '../../../transactions/domain/entities/checkout.dart';
 import '../../../transactions/domain/repositories/checkout_repository.dart';
 
@@ -222,15 +223,14 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                             _MetricsGrid(
                               metrics: _metricsFor(today, records),
                               availableWidth: constraints.maxWidth,
-                              onTap: widget.onOpenReport,
                             ),
                             const SizedBox(height: 20),
                             _ShiftStatusBanner(
-                              onOpenCashier: widget.onOpenCashier,
+                              user: widget.admin,
                             ),
                             const SizedBox(height: 20),
                             _DashboardActions(
-                              onManageShift: widget.onOpenCashier,
+                              user: widget.admin,
                               onNewTransaction: widget.onOpenCashier,
                               onOpenReport: widget.onOpenReport,
                             ),

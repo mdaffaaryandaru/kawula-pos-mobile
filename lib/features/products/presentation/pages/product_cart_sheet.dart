@@ -13,10 +13,12 @@ class ProductCartSheet extends StatelessWidget {
     super.key,
     required this.checkoutRepository,
     required this.outletId,
+    this.onCheckoutReturn,
   });
 
   final CheckoutRepository checkoutRepository;
   final String? outletId;
+  final VoidCallback? onCheckoutReturn;
 
   @override
   Widget build(BuildContext context) {
@@ -347,17 +349,19 @@ class ProductCartSheet extends StatelessWidget {
     final navigator = Navigator.of(context);
     final cartCubit = context.read<CartCubit>();
     navigator.pop();
-    navigator.push(
-      MaterialPageRoute<void>(
-        builder: (_) => BlocProvider.value(
-          value: cartCubit,
-          child: BlocProvider(
-            create: (_) => CheckoutCubit(checkoutRepository)..load(),
-            child: CheckoutPage(outletId: outletId),
+    navigator
+        .push<void>(
+          MaterialPageRoute<void>(
+            builder: (_) => BlocProvider.value(
+              value: cartCubit,
+              child: BlocProvider(
+                create: (_) => CheckoutCubit(checkoutRepository)..load(),
+                child: CheckoutPage(outletId: outletId),
+              ),
+            ),
           ),
-        ),
-      ),
-    );
+        )
+        .then((_) => onCheckoutReturn?.call());
   }
 }
 

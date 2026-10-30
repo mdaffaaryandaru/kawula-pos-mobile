@@ -7,6 +7,8 @@ import '../../../../theme/app_colors.dart';
 import '../../../auth/domain/entities/auth_user.dart';
 import '../../../shifts/domain/entities/active_shift.dart';
 import '../../../transactions/domain/repositories/checkout_repository.dart';
+import '../../../transactions/domain/entities/checkout.dart';
+import '../../../transactions/presentation/widgets/cashier_open_bill_dialogs.dart';
 import '../../domain/entities/catalog_product.dart';
 import '../bloc/cart_cubit.dart';
 import '../bloc/catalog_cubit.dart';
@@ -37,11 +39,20 @@ class CatalogPage extends StatefulWidget {
 
 class _CatalogPageState extends State<CatalogPage> {
   final _searchController = TextEditingController();
+  List<TransactionRecord> _openBills = const [];
+  bool _isLoadingOpenBills = false;
+  String? _openBillsError;
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOpenBills();
   }
 
   @override
@@ -94,6 +105,7 @@ class _CatalogPageState extends State<CatalogPage> {
       body: Column(
         children: [
           _activeShiftBanner(context),
+          _openBillBanner(context),
           Expanded(
             child: BlocBuilder<CatalogCubit, CatalogState>(
               builder: (context, state) {
@@ -166,6 +178,173 @@ class _CatalogPageState extends State<CatalogPage> {
         },
       ),
     );
+  }
+
+  Widget _openBillBanner(BuildContext context) {
+    if (_openBills.isEmpty && _openBillsError == null) {
+      return const SizedBox.shrink();
+    }
+    final hasError = _openBillsError != null;
+    final foreground = hasError
+        ? Theme.of(context).colorScheme.error
+        : const Color(0xFFB45309);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: hasError
+            ? Theme.of(context).colorScheme.errorContainer
+            : const Color(0xFFFFFBEB),
+        border: Border.all(
+          color: hasError
+              ? Theme.of(context).colorScheme.error.withValues(alpha: .35)
+              : const Color(0xFFFBBF24),
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            hasError ? Icons.error_outline : Icons.schedule_outlined,
+            color: foreground,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasError
+                      ? 'Open Bill tidak dapat dimuat'
+                      : 'Open Bill (${_openBills.length})',
+                  style: TextStyle(
+                    color: foreground,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  hasError
+                      ? _openBillsError!
+                      : 'Ada tagihan tertunda yang belum dilunasi',
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: foreground),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: _isLoadingOpenBills
+                ? null
+                : hasError
+                ? _loadOpenBills
+                : () => _showOpenBills(context),
+            style: TextButton.styleFrom(
+              foregroundColor: foreground,
+              visualDensity: VisualDensity.compact,
+            ),
+            child: Text(
+              _isLoadingOpenBills
+                  ? 'Memuat...'
+                  : hasError
+                  ? 'Coba Lagi'
+                  : 'Lihat Tagihan',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadOpenBills() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingOpenBills = true;
+      _openBillsError = null;
+    });
+    try {
+      final transactions = await widget.checkoutRepository.getTransactions();
+      if (!mounted) return;
+      setState(() {
+        _openBills = transactions
+            .where((transaction) => transaction.isPending)
+            .toList(growable: false);
+        _openBillsError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _openBillsError = error.toString());
+    } finally {
+      if (mounted) setState(() => _isLoadingOpenBills = false);
+    }
+  }
+
+  Future<void> _showOpenBills(BuildContext context) async {
+    await _loadOpenBills();
+    if (!context.mounted) return;
+    if (_openBillsError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Open bill gagal dimuat: $_openBillsError')),
+      );
+      return;
+    }
+    if (_openBills.isEmpty) return;
+
+    final transaction = await showCashierOpenBillsDialog(context, _openBills);
+    if (transaction == null || !context.mounted) return;
+    await _settleOpenBill(context, transaction);
+  }
+
+  Future<void> _settleOpenBill(
+    BuildContext context,
+    TransactionRecord transaction,
+  ) async {
+    try {
+      final methods = (await widget.checkoutRepository.getPaymentMethods())
+          .where((method) => !method.isOpenBill)
+          .toList(growable: false);
+      if (!context.mounted) return;
+      if (methods.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tidak ada metode pembayaran aktif.')),
+        );
+        return;
+      }
+
+      final input = await showCashierOpenBillPaymentDialog(
+        context,
+        transaction: transaction,
+        methods: methods,
+      );
+      if (input == null || !context.mounted) return;
+
+      await widget.checkoutRepository.payPendingTransaction(
+        transactionId: transaction.id,
+        paymentMethod: input.paymentMethod,
+        paidAmount: input.paidAmount,
+        pin: input.pin,
+      );
+      await _loadOpenBills();
+      if (!context.mounted) return;
+      if (_openBillsError != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Pembayaran berhasil, tetapi daftar open bill gagal diperbarui: $_openBillsError',
+            ),
+          ),
+        );
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pembayaran open bill berhasil.')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Pembayaran gagal: $error')));
+    }
   }
 
   Widget _activeShiftBanner(BuildContext context) {
@@ -418,6 +597,7 @@ class _CatalogPageState extends State<CatalogPage> {
         child: ProductCartSheet(
           checkoutRepository: widget.checkoutRepository,
           outletId: widget.outletId,
+          onCheckoutReturn: _loadOpenBills,
         ),
       ),
     );

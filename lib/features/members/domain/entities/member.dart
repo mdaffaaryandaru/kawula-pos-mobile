@@ -5,6 +5,7 @@ class Member {
     required this.phoneNumber,
     required this.currentStamps,
     required this.isActive,
+    this.email = '',
   });
 
   final String id;
@@ -12,4 +13,5 @@ class Member {
   final String phoneNumber;
   final int currentStamps;
   final bool isActive;
+  final String email;
 }
