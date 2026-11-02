@@ -6,8 +6,8 @@ class MasterDataHeader extends StatelessWidget {
     required this.title,
     required this.description,
     required this.onRefresh,
-    required this.onAdd,
-    required this.addLabel,
+    this.onAdd,
+    this.addLabel = 'Tambah',
     this.eyebrow = 'MASTER DATA',
   });
 
@@ -16,7 +16,7 @@ class MasterDataHeader extends StatelessWidget {
   final String description;
   final String addLabel;
   final VoidCallback onRefresh;
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -52,11 +52,12 @@ class MasterDataHeader extends StatelessWidget {
             icon: const Icon(Icons.refresh),
             label: const Text('Refresh'),
           ),
-          FilledButton.icon(
-            onPressed: onAdd,
-            icon: const Icon(Icons.add),
-            label: Text(addLabel),
-          ),
+          if (onAdd != null)
+            FilledButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add),
+              label: Text(addLabel),
+            ),
         ],
       );
       return Container(

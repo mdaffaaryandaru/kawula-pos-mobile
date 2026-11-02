@@ -1,5 +1,6 @@
 import '../../../products/presentation/bloc/cart_cubit.dart';
 import '../../../members/domain/entities/member.dart';
+import '../../../members/domain/entities/member_reward_claim.dart';
 import '../../domain/entities/checkout.dart';
 import '../../domain/repositories/checkout_repository.dart';
 import '../datasources/checkout_remote_data_source.dart';
@@ -49,6 +50,10 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
   @override
   Future<List<Member>> searchMembers(String search) =>
       _remoteDataSource.searchMembers(search);
+
+  @override
+  Future<MemberRewardClaim> claimMemberReward(String memberId) =>
+      _remoteDataSource.claimMemberReward(memberId);
 
   @override
   Future<CheckoutResult> payPendingTransaction({

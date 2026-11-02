@@ -8,19 +8,26 @@ import '../../../../framework/widgets/master_data_search_panel.dart';
 import '../../../../framework/widgets/master_data_status_badge.dart';
 import '../../../../framework/widgets/responsive_data_table.dart';
 import '../../domain/entities/member.dart';
-import '../../domain/entities/membership_program.dart';
 import '../../domain/repositories/members_repository.dart';
+import '../../../membership_programs/domain/entities/membership_program.dart';
+import '../../../membership_programs/domain/repositories/membership_programs_repository.dart';
 import '../bloc/members_cubit.dart';
 import '../widgets/member_dialog.dart';
 
 class MembersManagementPage extends StatelessWidget {
-  const MembersManagementPage({super.key, required this.repository});
+  const MembersManagementPage({
+    super.key,
+    required this.repository,
+    required this.membershipProgramsRepository,
+  });
 
   final MembersRepository repository;
+  final MembershipProgramsRepository membershipProgramsRepository;
 
   @override
   Widget build(BuildContext context) => BlocProvider(
-    create: (_) => MembersCubit(repository)..load(),
+    create: (_) =>
+        MembersCubit(repository, membershipProgramsRepository)..load(),
     child: const _MembersView(),
   );
 }
@@ -58,16 +65,7 @@ class _MembersViewState extends State<_MembersView> {
           }
         },
         child: Scaffold(
-          appBar: AppBar(
-            title: const Text('Members'),
-            actions: [
-              IconButton(
-                tooltip: 'Refresh',
-                onPressed: () => context.read<MembersCubit>().load(),
-                icon: const Icon(Icons.refresh),
-              ),
-            ],
-          ),
+          appBar: AppBar(title: const Text('Members')),
           body: SafeArea(
             child: BlocBuilder<MembersCubit, MembersState>(
               builder: (context, state) => switch (state) {

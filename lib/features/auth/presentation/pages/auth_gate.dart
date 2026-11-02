@@ -25,6 +25,7 @@ import '../../../outlets/domain/repositories/outlets_repository.dart';
 import '../../../table_areas/domain/repositories/table_areas_repository.dart';
 import '../../../tables/domain/repositories/tables_repository.dart';
 import '../../../members/domain/repositories/members_repository.dart';
+import '../../../membership_programs/domain/repositories/membership_programs_repository.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({
@@ -47,6 +48,7 @@ class AuthGate extends StatelessWidget {
     this.tableAreasRepository,
     this.tablesRepository,
     this.membersRepository,
+    this.membershipProgramsRepository,
   });
 
   final ShiftsRepository shiftsRepository;
@@ -67,6 +69,7 @@ class AuthGate extends StatelessWidget {
   final TableAreasRepository? tableAreasRepository;
   final TablesRepository? tablesRepository;
   final MembersRepository? membersRepository;
+  final MembershipProgramsRepository? membershipProgramsRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -97,6 +100,7 @@ class AuthGate extends StatelessWidget {
               tableAreasRepository: tableAreasRepository,
               tablesRepository: tablesRepository,
               membersRepository: membersRepository,
+              membershipProgramsRepository: membershipProgramsRepository,
             ),
           AuthAuthenticated() => CashierNavigationPage(
             user: state.user,

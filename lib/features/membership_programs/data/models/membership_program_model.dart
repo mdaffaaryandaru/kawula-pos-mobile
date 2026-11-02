@@ -19,16 +19,15 @@ class MembershipProgramModel extends MembershipProgram {
         'Data program membership dari server tidak valid.',
       );
     }
+
     final rewardData = rewardType == 'discount'
         ? rewardDiscount
         : rewardProduct;
-    final rewardName = _nameFrom(rewardData);
-    final rewardId = _idFrom(rewardData);
     return MembershipProgramModel(
       targetVisits: targetVisits.toInt(),
       rewardType: rewardType,
-      rewardId: rewardId,
-      rewardName: rewardName,
+      rewardId: _idFrom(rewardData),
+      rewardName: _nameFrom(rewardData),
       isActive: json['is_active'] == true,
     );
   }

@@ -59,16 +59,7 @@ class _CategoriesViewState extends State<_CategoriesView> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Categories'),
-          actions: [
-            IconButton(
-              tooltip: 'Refresh',
-              onPressed: () => context.read<CategoriesCubit>().load(),
-              icon: const Icon(Icons.refresh),
-            ),
-          ],
-        ),
+        appBar: AppBar(title: const Text('Categories')),
         body: SafeArea(
           child: BlocBuilder<CategoriesCubit, CategoriesState>(
             builder: (context, state) => switch (state) {
@@ -237,5 +228,4 @@ class _CategoriesViewState extends State<_CategoriesView> {
       );
     }
   }
-
 }

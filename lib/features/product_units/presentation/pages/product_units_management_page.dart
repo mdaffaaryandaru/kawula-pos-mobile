@@ -59,16 +59,7 @@ class _ProductUnitsViewState extends State<_ProductUnitsView> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Product Units'),
-          actions: [
-            IconButton(
-              tooltip: 'Refresh',
-              onPressed: () => context.read<ProductUnitsCubit>().load(),
-              icon: const Icon(Icons.refresh),
-            ),
-          ],
-        ),
+        appBar: AppBar(title: const Text('Product Units')),
         body: SafeArea(
           child: BlocBuilder<ProductUnitsCubit, ProductUnitsState>(
             builder: (context, state) => switch (state) {
@@ -242,5 +233,4 @@ class _ProductUnitsViewState extends State<_ProductUnitsView> {
       );
     }
   }
-
 }

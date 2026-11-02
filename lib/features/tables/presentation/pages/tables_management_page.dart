@@ -70,16 +70,7 @@ class _TablesViewState extends State<_TablesView> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Tables'),
-          actions: [
-            IconButton(
-              tooltip: 'Refresh',
-              onPressed: () => context.read<TablesCubit>().load(),
-              icon: const Icon(Icons.refresh),
-            ),
-          ],
-        ),
+        appBar: AppBar(title: const Text('Meja')),
         body: SafeArea(
           child: BlocBuilder<TablesCubit, TablesState>(
             builder: (context, state) => switch (state) {
@@ -153,9 +144,9 @@ class _TablesViewState extends State<_TablesView> {
   }
 
   Widget _header(BuildContext context) => MasterDataHeader(
-    title: 'Tables',
+    title: 'Meja',
     description: 'Kelola nomor meja, kapasitas, area, dan status ketersediaan.',
-    addLabel: 'Tambah Tables',
+    addLabel: 'Tambah Meja',
     onRefresh: () => context.read<TablesCubit>().load(),
     onAdd: () {
       final state = context.read<TablesCubit>().state;

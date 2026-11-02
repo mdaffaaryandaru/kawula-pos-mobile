@@ -1,87 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../framework/widgets/master_data_feedback.dart';
+import '../../../../framework/widgets/master_data_header.dart';
 import '../../../discounts/domain/entities/discount_definition.dart';
-import '../../../discounts/domain/repositories/discounts_repository.dart';
 import '../../../products/domain/entities/catalog_product.dart';
-import '../../../products/domain/repositories/catalog_repository.dart';
 import '../../domain/entities/membership_program.dart';
-import '../../domain/repositories/members_repository.dart';
 import '../bloc/membership_program_cubit.dart';
 
-class MembershipProgramPage extends StatelessWidget {
-  const MembershipProgramPage({
+class MembershipProgramForm extends StatefulWidget {
+  const MembershipProgramForm({
     super.key,
-    required this.membersRepository,
-    required this.catalogRepository,
-    required this.discountsRepository,
-  });
-
-  final MembersRepository membersRepository;
-  final CatalogRepository catalogRepository;
-  final DiscountsRepository discountsRepository;
-
-  @override
-  Widget build(BuildContext context) => BlocProvider(
-    create: (_) => MembershipProgramCubit(
-      membersRepository,
-      catalogRepository,
-      discountsRepository,
-    )..load(),
-    child: const _MembershipProgramView(),
-  );
-}
-
-class _MembershipProgramView extends StatelessWidget {
-  const _MembershipProgramView();
-
-  @override
-  Widget build(BuildContext context) =>
-      BlocListener<MembershipProgramCubit, MembershipProgramState>(
-        listener: (context, state) {
-          final message = switch (state) {
-            MembershipProgramLoaded(errorMessage: final error?) => error,
-            MembershipProgramFailure(:final message) => message,
-            _ => null,
-          };
-          if (message != null) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(SnackBar(content: Text(message)));
-          }
-        },
-        child: Scaffold(
-          appBar: AppBar(title: const Text('Program Membership')),
-          body: SafeArea(
-            child: BlocBuilder<MembershipProgramCubit, MembershipProgramState>(
-              builder: (context, state) => switch (state) {
-                MembershipProgramLoading() => const MasterDataLoadingState(),
-                MembershipProgramFailure(:final message) =>
-                  MasterDataErrorState(
-                    title: 'Program membership belum dapat dimuat.',
-                    message: message,
-                    onRetry: context.read<MembershipProgramCubit>().load,
-                  ),
-                MembershipProgramLoaded(
-                  :final program,
-                  :final products,
-                  :final discounts,
-                ) =>
-                  _MembershipProgramForm(
-                    program: program,
-                    products: products,
-                    discounts: discounts,
-                  ),
-              },
-            ),
-          ),
-        ),
-      );
-}
-
-class _MembershipProgramForm extends StatefulWidget {
-  const _MembershipProgramForm({
     required this.program,
     required this.products,
     required this.discounts,
@@ -92,10 +20,10 @@ class _MembershipProgramForm extends StatefulWidget {
   final List<DiscountDefinition> discounts;
 
   @override
-  State<_MembershipProgramForm> createState() => _MembershipProgramFormState();
+  State<MembershipProgramForm> createState() => _MembershipProgramFormState();
 }
 
-class _MembershipProgramFormState extends State<_MembershipProgramForm> {
+class _MembershipProgramFormState extends State<MembershipProgramForm> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _targetVisitsController;
   late String _rewardType;
@@ -316,56 +244,13 @@ class _MembershipProgramFormState extends State<_MembershipProgramForm> {
     );
   }
 
-  Widget _header(BuildContext context) => Container(
-    padding: const EdgeInsets.all(24),
-    decoration: _panelDecoration(context),
-    child: LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 560;
-        final title = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'ADMINISTRASI',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.8,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Program Membership',
-              style: Theme.of(context).textTheme.headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Atur target stamp dan reward member yang otomatis berulang.',
-            ),
-          ],
-        );
-        final refresh = OutlinedButton.icon(
-          onPressed: _isSaving
-              ? null
-              : () => context.read<MembershipProgramCubit>().load(),
-          icon: const Icon(Icons.refresh),
-          label: const Text('Refresh'),
-        );
-        return compact
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [title, const SizedBox(height: 16), refresh],
-              )
-            : Row(
-                children: [
-                  Expanded(child: title),
-                  const SizedBox(width: 16),
-                  refresh,
-                ],
-              );
-      },
-    ),
+  Widget _header(BuildContext context) => MasterDataHeader(
+    eyebrow: 'ADMINISTRASI',
+    title: 'Program Membership',
+    description: 'Atur target stamp dan reward member yang otomatis berulang.',
+    onRefresh: () {
+      if (!_isSaving) context.read<MembershipProgramCubit>().load();
+    },
   );
 
   BoxDecoration _panelDecoration(BuildContext context) => BoxDecoration(

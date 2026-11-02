@@ -1,5 +1,5 @@
 import '../../domain/entities/member.dart';
-import '../../domain/entities/membership_program.dart';
+import '../../domain/entities/member_reward_claim.dart';
 import '../../domain/repositories/members_repository.dart';
 import '../datasources/members_remote_data_source.dart';
 
@@ -12,23 +12,8 @@ class MembersRepositoryImpl implements MembersRepository {
   Future<List<Member>> getMembers() => _remoteDataSource.getMembers();
 
   @override
-  Future<MembershipProgram> getMembershipProgram() =>
-      _remoteDataSource.getMembershipProgram();
-
-  @override
-  Future<MembershipProgram> saveMembershipProgram({
-    required int targetVisits,
-    required String rewardType,
-    required String? rewardId,
-    required bool isActive,
-  }) {
-    return _remoteDataSource.saveMembershipProgram(
-      targetVisits: targetVisits,
-      rewardType: rewardType,
-      rewardId: rewardId,
-      isActive: isActive,
-    );
-  }
+  Future<MemberRewardClaim> claimReward(String memberId) =>
+      _remoteDataSource.claimReward(memberId);
 
   @override
   Future<Member> createMember({

@@ -72,8 +72,7 @@ class _AdminUsersListState extends State<AdminUsersList> {
                 MasterDataEmptyState(
                   icon: Icons.people_outline,
                   title: 'Belum ada pengguna.',
-                  message:
-                      'Tambahkan akun admin atau kasir untuk mulai mengelola akses.',
+                  message: 'Tambahkan akun admin atau kasir untuk mulai mengelola akses.',
                   actionLabel: 'Tambah User',
                   onAction: widget.onAdd,
                 )
@@ -94,6 +93,7 @@ class _AdminUsersListState extends State<AdminUsersList> {
 
   Widget _header(BuildContext context) {
     return MasterDataHeader(
+      eyebrow: 'ADMINISTRASI',
       title: 'Users',
       description:
           'Kelola akun admin dan kasir toko secara real-time dari API.',
@@ -160,7 +160,6 @@ class _AdminUsersListState extends State<AdminUsersList> {
       ),
     ],
   );
-
 }
 
 class _RoleChip extends StatelessWidget {

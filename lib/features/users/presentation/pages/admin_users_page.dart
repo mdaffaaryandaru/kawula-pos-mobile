@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../framework/widgets/master_data_feedback.dart';
 import '../../../../framework/widgets/master_data_row_actions.dart';
 import '../../../auth/domain/entities/auth_user.dart';
-import '../../../auth/presentation/bloc/auth_cubit.dart';
 import '../../domain/repositories/user_management_repository.dart';
 import '../bloc/user_management_cubit.dart';
 import '../widgets/admin_users_list.dart';
@@ -25,16 +24,7 @@ class AdminUsersPage extends StatelessWidget {
     return BlocProvider(
       create: (_) => UserManagementCubit(repository)..load(),
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Users'),
-          actions: [
-            IconButton(
-              onPressed: context.read<AuthCubit>().logout,
-              tooltip: 'Keluar',
-              icon: const Icon(Icons.logout),
-            ),
-          ],
-        ),
+        appBar: AppBar(title: const Text('Users')),
         body: BlocBuilder<UserManagementCubit, UserManagementState>(
           builder: (context, state) => switch (state) {
             UserManagementLoading() => const MasterDataLoadingState(),

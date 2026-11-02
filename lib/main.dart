@@ -56,6 +56,9 @@ import 'features/transactions/domain/repositories/checkout_repository.dart';
 import 'features/members/data/datasources/members_remote_data_source.dart';
 import 'features/members/data/repositories/members_repository_impl.dart';
 import 'features/members/domain/repositories/members_repository.dart';
+import 'features/membership_programs/data/datasources/membership_programs_remote_data_source.dart';
+import 'features/membership_programs/data/repositories/membership_programs_repository_impl.dart';
+import 'features/membership_programs/domain/repositories/membership_programs_repository.dart';
 import 'features/users/data/datasources/users_remote_data_source.dart';
 import 'features/users/data/repositories/user_management_repository_impl.dart';
 import 'features/users/domain/repositories/user_management_repository.dart';
@@ -93,6 +96,13 @@ Future<void> main() async {
     localDataSource.readToken,
   );
   final membersRepository = MembersRepositoryImpl(membersRemoteDataSource);
+  final membershipProgramsRepository = MembershipProgramsRepositoryImpl(
+    MembershipProgramsRemoteDataSource(
+      client,
+      ApiConfig.baseUrl,
+      localDataSource.readToken,
+    ),
+  );
   final checkoutRepository = CheckoutRepositoryImpl(
     CheckoutRemoteDataSource(
       client,
@@ -215,6 +225,7 @@ Future<void> main() async {
       tableAreasRepository: tableAreasRepository,
       tablesRepository: tablesRepository,
       membersRepository: membersRepository,
+      membershipProgramsRepository: membershipProgramsRepository,
     ),
   );
 }
@@ -241,6 +252,7 @@ class KawulaPosApp extends StatelessWidget {
     this.tableAreasRepository,
     this.tablesRepository,
     this.membersRepository,
+    this.membershipProgramsRepository,
   });
 
   final AuthRepository authRepository;
@@ -262,6 +274,7 @@ class KawulaPosApp extends StatelessWidget {
   final TableAreasRepository? tableAreasRepository;
   final TablesRepository? tablesRepository;
   final MembersRepository? membersRepository;
+  final MembershipProgramsRepository? membershipProgramsRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -291,6 +304,7 @@ class KawulaPosApp extends StatelessWidget {
             tableAreasRepository: tableAreasRepository,
             tablesRepository: tablesRepository,
             membersRepository: membersRepository,
+            membershipProgramsRepository: membershipProgramsRepository,
           ),
         ),
       ),

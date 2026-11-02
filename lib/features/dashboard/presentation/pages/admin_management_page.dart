@@ -36,7 +36,8 @@ import '../../../tables/domain/repositories/tables_repository.dart';
 import '../../../tables/presentation/pages/tables_management_page.dart';
 import '../../../members/domain/repositories/members_repository.dart';
 import '../../../members/presentation/pages/members_management_page.dart';
-import '../../../members/presentation/pages/membership_program_page.dart';
+import '../../../membership_programs/domain/repositories/membership_programs_repository.dart';
+import '../../../membership_programs/presentation/pages/membership_program_page.dart';
 
 class AdminManagementPage extends StatelessWidget {
   const AdminManagementPage({
@@ -60,6 +61,7 @@ class AdminManagementPage extends StatelessWidget {
     this.tableAreasRepository,
     this.tablesRepository,
     this.membersRepository,
+    this.membershipProgramsRepository,
   });
 
   final AuthUser admin;
@@ -81,6 +83,7 @@ class AdminManagementPage extends StatelessWidget {
   final TableAreasRepository? tableAreasRepository;
   final TablesRepository? tablesRepository;
   final MembersRepository? membersRepository;
+  final MembershipProgramsRepository? membershipProgramsRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -265,14 +268,19 @@ class AdminManagementPage extends StatelessWidget {
                 ),
               ),
             ),
-            if (membersRepository != null)
+            if (membersRepository != null &&
+                membershipProgramsRepository != null)
               _ManagementTile(
                 title: 'Member',
                 subtitle: 'Kelola data pelanggan.',
                 icon: Icons.people_outline,
                 onTap: () => _open(
                   context,
-                  MembersManagementPage(repository: membersRepository!),
+                  MembersManagementPage(
+                    repository: membersRepository!,
+                    membershipProgramsRepository:
+                        membershipProgramsRepository!,
+                  ),
                 ),
               ),
             _ManagementTile(
@@ -287,7 +295,8 @@ class AdminManagementPage extends StatelessWidget {
                 ),
               ),
             ),
-            if (membersRepository != null && discountsRepository != null)
+            if (membershipProgramsRepository != null &&
+                discountsRepository != null)
               _ManagementTile(
                 title: 'Program Membership',
                 subtitle: 'Atur target stamp dan reward member.',
@@ -295,7 +304,8 @@ class AdminManagementPage extends StatelessWidget {
                 onTap: () => _open(
                   context,
                   MembershipProgramPage(
-                    membersRepository: membersRepository!,
+                    membershipProgramsRepository:
+                        membershipProgramsRepository!,
                     catalogRepository: catalogRepository,
                     discountsRepository: discountsRepository!,
                   ),

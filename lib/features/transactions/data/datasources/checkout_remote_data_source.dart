@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../../framework/core/exceptions/api_exception.dart';
 import '../../../members/domain/entities/member.dart';
+import '../../../members/domain/entities/member_reward_claim.dart';
 import '../../../members/data/datasources/members_remote_data_source.dart';
 import '../../../products/presentation/bloc/cart_cubit.dart';
 import '../models/checkout_models.dart';
@@ -23,6 +24,9 @@ class CheckoutRemoteDataSource {
 
   Future<List<Member>> searchMembers(String search) =>
       membersRemoteDataSource.searchMembers(search);
+
+  Future<MemberRewardClaim> claimMemberReward(String memberId) =>
+      membersRemoteDataSource.claimReward(memberId);
 
   Future<List<CheckoutPaymentMethodModel>> getPaymentMethods() async {
     final response = await _client.get(

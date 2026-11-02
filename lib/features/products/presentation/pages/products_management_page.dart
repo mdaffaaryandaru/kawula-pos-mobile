@@ -13,7 +13,6 @@ import '../dialogs/product_dialog.dart';
 import '../dialogs/product_recipes_dialog.dart';
 import '../widgets/product_management_widgets.dart';
 import '../widgets/product_table.dart';
-import '../../../variant_groups/presentation/pages/variant_groups_management_page.dart';
 
 class ProductsManagementPage extends StatelessWidget {
   const ProductsManagementPage({
@@ -108,23 +107,7 @@ class _ProductManagementTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Produk'),
-        actions: [
-          IconButton(
-            tooltip: 'Kelola grup varian',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => VariantGroupsManagementPage(
-                  repository: variantGroupsRepository,
-                  productsRepository: repository,
-                ),
-              ),
-            ),
-            icon: const Icon(Icons.tune_outlined),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Produk')),
       body: Column(
         children: [
           if (state.errorMessage != null)
@@ -150,10 +133,7 @@ class _ProductManagementTabs extends StatelessWidget {
 }
 
 class _ProductsTab extends StatefulWidget {
-  const _ProductsTab({
-    required this.state,
-    required this.discountsRepository,
-  });
+  const _ProductsTab({required this.state, required this.discountsRepository});
 
   final ProductManagementLoaded state;
   final DiscountsRepository? discountsRepository;

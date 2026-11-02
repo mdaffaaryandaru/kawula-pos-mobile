@@ -20,16 +20,43 @@ extension _CheckoutMemberWidgets on _CheckoutPageState {
             ),
             const SizedBox(height: 12),
             if (_selectedMember case final member?)
-              InputChip(
-                avatar: const Icon(Icons.person_outline),
-                label: Text('${member.name} · ${member.phoneNumber}'),
-                deleteButtonTooltipMessage: 'Hapus member',
-                onDeleted: isSubmitting
-                    ? null
-                    : () => setState(() {
-                        _selectedMember = null;
-                        _memberSearchController.clear();
-                      }),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  InputChip(
+                    avatar: const Icon(Icons.person_outline),
+                    label: Text('${member.name} · ${member.phoneNumber}'),
+                    deleteButtonTooltipMessage: 'Hapus member',
+                    onDeleted: isSubmitting || _isClaimingReward
+                        ? null
+                        : () => setState(() {
+                            _selectedMember = null;
+                            _memberSearchController.clear();
+                          }),
+                  ),
+                  Text('${member.currentStamps} stamp'),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: isSubmitting || _isClaimingReward
+                        ? null
+                        : () => _claimSelectedMemberReward(context),
+                    icon: _isClaimingReward
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.card_giftcard_outlined),
+                    label: Text(
+                      _isClaimingReward ? 'Memproses klaim...' : 'Klaim reward',
+                    ),
+                  ),
+                  Text(
+                    'Klaim langsung memotong stamp dan terpisah dari transaksi. '
+                    'Reward perlu diberikan atau diterapkan manual.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
               )
             else
               TextField(
@@ -136,6 +163,69 @@ extension _CheckoutMemberWidgets on _CheckoutPageState {
         ),
       ),
     );
+  }
+
+  Future<void> _claimSelectedMemberReward(BuildContext context) async {
+    final member = _selectedMember;
+    if (member == null || _isClaimingReward) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Klaim reward member?'),
+        content: Text(
+          'Klaim untuk ${member.name} akan langsung mengurangi stamp sesuai '
+          'program aktif. Klaim ini tidak terhubung ke pembayaran dan reward '
+          'harus diberikan atau diterapkan manual.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Klaim sekarang'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || !context.mounted) return;
+
+    setState(() => _isClaimingReward = true);
+    try {
+      final claim = await context.read<CheckoutCubit>().claimMemberReward(
+        member.id,
+      );
+      if (!mounted || !context.mounted) return;
+      setState(() {
+        _selectedMember = claim.member;
+        _isClaimingReward = false;
+      });
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Reward berhasil diklaim'),
+          content: Text(
+            '${claim.rewardName} (${claim.rewardType}) untuk ${claim.member.name}. '
+            'Sisa stamp: ${claim.member.currentStamps}. '
+            'Reward belum diterapkan otomatis ke transaksi.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Mengerti'),
+            ),
+          ],
+        ),
+      );
+    } catch (error) {
+      if (!mounted || !context.mounted) return;
+      setState(() => _isClaimingReward = false);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text('Klaim reward gagal: $error')));
+    }
   }
 
   void _onMemberSearchChanged(String value) {

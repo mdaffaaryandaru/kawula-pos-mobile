@@ -38,6 +38,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   List<Member> _memberResults = const [];
   Member? _selectedMember;
   bool _isSearchingMembers = false;
+  bool _isClaimingReward = false;
   String? _memberSearchError;
   int _memberSearchGeneration = 0;
   String? _selectedMethodCode;

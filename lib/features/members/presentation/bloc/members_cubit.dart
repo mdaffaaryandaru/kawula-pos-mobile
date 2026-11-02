@@ -1,8 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/member.dart';
-import '../../domain/entities/membership_program.dart';
 import '../../domain/repositories/members_repository.dart';
+import '../../../membership_programs/domain/entities/membership_program.dart';
+import '../../../membership_programs/domain/repositories/membership_programs_repository.dart';
 
 sealed class MembersState {
   const MembersState();
@@ -31,15 +32,17 @@ final class MembersFailure extends MembersState {
 }
 
 class MembersCubit extends Cubit<MembersState> {
-  MembersCubit(this._repository) : super(const MembersLoading());
+  MembersCubit(this._repository, this._membershipProgramsRepository)
+    : super(const MembersLoading());
 
   final MembersRepository _repository;
+  final MembershipProgramsRepository _membershipProgramsRepository;
 
   Future<void> load() async {
     emit(const MembersLoading());
     try {
       final members = await _repository.getMembers();
-      final program = await _repository.getMembershipProgram();
+      final program = await _membershipProgramsRepository.getCurrentProgram();
       emit(MembersLoaded(members: members, program: program));
     } catch (error) {
       emit(MembersFailure(_messageFor(error)));

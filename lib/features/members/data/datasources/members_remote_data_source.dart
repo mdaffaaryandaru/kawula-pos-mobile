@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../../framework/core/exceptions/api_exception.dart';
 import '../models/member_model.dart';
-import '../models/membership_program_model.dart';
+import '../models/member_reward_claim_model.dart';
 
 class MembersRemoteDataSource {
   MembersRemoteDataSource(this._client, this._baseUrl, this._readToken);
@@ -84,42 +84,16 @@ class MembersRemoteDataSource {
     _decodeResponse(response);
   }
 
-  Future<MembershipProgramModel> getMembershipProgram() async {
-    final response = await _client.get(
-      _uri('membership-programs/current'),
+  Future<MemberRewardClaimModel> claimReward(String memberId) async {
+    final response = await _client.post(
+      _uri('members/$memberId/claim-reward'),
       headers: await _authorizedHeaders(),
     );
     final decoded = _decodeResponse(response);
     if (decoded is! Map<String, dynamic>) {
-      throw const ApiException('Respons program membership tidak valid.');
+      throw const ApiException('Respons klaim reward member tidak valid.');
     }
-    return MembershipProgramModel.fromJson(decoded);
-  }
-
-  Future<MembershipProgramModel> saveMembershipProgram({
-    required int targetVisits,
-    required String rewardType,
-    required String? rewardId,
-    required bool isActive,
-  }) async {
-    final response = await _client.patch(
-      _uri('membership-programs'),
-      headers: await _authorizedJsonHeaders(),
-      body: jsonEncode({
-        'target_visits': targetVisits,
-        'reward_type': rewardType,
-        'reward_product_id': rewardType == 'product' ? rewardId : null,
-        'reward_discount_id': rewardType == 'discount' ? rewardId : null,
-        'is_active': isActive,
-      }),
-    );
-    final decoded = _decodeResponse(response);
-    if (decoded is! Map<String, dynamic>) {
-      throw const ApiException(
-        'Respons server program membership tidak valid.',
-      );
-    }
-    return MembershipProgramModel.fromJson(decoded);
+    return MemberRewardClaimModel.fromJson(decoded);
   }
 
   Future<MemberModel> _memberFromResponse(http.Response response) async {

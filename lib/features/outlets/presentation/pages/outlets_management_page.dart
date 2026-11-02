@@ -59,16 +59,7 @@ class _OutletsViewState extends State<_OutletsView> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Outlets'),
-          actions: [
-            IconButton(
-              tooltip: 'Refresh',
-              onPressed: () => context.read<OutletsCubit>().load(),
-              icon: const Icon(Icons.refresh),
-            ),
-          ],
-        ),
+        appBar: AppBar(title: const Text('Outlets')),
         body: SafeArea(
           child: BlocBuilder<OutletsCubit, OutletsState>(
             builder: (context, state) => switch (state) {

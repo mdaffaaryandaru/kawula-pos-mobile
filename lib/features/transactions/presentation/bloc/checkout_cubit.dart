@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../products/presentation/bloc/cart_cubit.dart';
 import '../../../members/domain/entities/member.dart';
+import '../../../members/domain/entities/member_reward_claim.dart';
 import '../../domain/repositories/checkout_repository.dart';
 import 'checkout_state.dart';
 
@@ -12,6 +13,9 @@ class CheckoutCubit extends Cubit<CheckoutState> {
 
   Future<List<Member>> searchMembers(String search) =>
       _repository.searchMembers(search);
+
+  Future<MemberRewardClaim> claimMemberReward(String memberId) =>
+      _repository.claimMemberReward(memberId);
 
   Future<void> load() async {
     emit(const CheckoutLoading());

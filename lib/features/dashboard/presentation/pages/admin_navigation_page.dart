@@ -21,6 +21,7 @@ import '../../../outlets/domain/repositories/outlets_repository.dart';
 import '../../../table_areas/domain/repositories/table_areas_repository.dart';
 import '../../../tables/domain/repositories/tables_repository.dart';
 import '../../../members/domain/repositories/members_repository.dart';
+import '../../../membership_programs/domain/repositories/membership_programs_repository.dart';
 import '../widgets/cashier_tab.dart';
 import 'admin_dashboard_page.dart';
 import 'admin_management_page.dart';
@@ -47,6 +48,7 @@ class AdminNavigationPage extends StatefulWidget {
     this.tableAreasRepository,
     this.tablesRepository,
     this.membersRepository,
+    this.membershipProgramsRepository,
   });
 
   final AuthUser admin;
@@ -68,6 +70,7 @@ class AdminNavigationPage extends StatefulWidget {
   final TableAreasRepository? tableAreasRepository;
   final TablesRepository? tablesRepository;
   final MembersRepository? membersRepository;
+  final MembershipProgramsRepository? membershipProgramsRepository;
 
   @override
   State<AdminNavigationPage> createState() => _AdminNavigationPageState();
@@ -171,6 +174,7 @@ class _AdminNavigationPageState extends State<AdminNavigationPage> {
         tableAreasRepository: widget.tableAreasRepository,
         tablesRepository: widget.tablesRepository,
         membersRepository: widget.membersRepository,
+        membershipProgramsRepository: widget.membershipProgramsRepository,
       ),
       _ => const SizedBox.shrink(),
     };

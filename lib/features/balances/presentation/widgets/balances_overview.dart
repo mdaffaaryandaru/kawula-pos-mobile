@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../framework/widgets/master_data_header.dart';
 import '../../../../theme/app_colors.dart';
 import '../../domain/entities/balance.dart';
 import 'balance_history_widgets.dart';
@@ -72,126 +73,14 @@ class BalancesOverview extends StatelessWidget {
   }
 
   Widget _pageHeader(BuildContext context) {
-    final theme = Theme.of(context);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final actions = Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            FilledButton.icon(
-              onPressed: onAdjustBalance,
-              icon: const Icon(Icons.account_balance_outlined),
-              label: const Text('Sesuaikan Saldo'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(13),
-                ),
-              ),
-            ),
-            IconButton.filledTonal(
-              tooltip: 'Muat ulang',
-              onPressed: onRefresh,
-              icon: const Icon(Icons.refresh),
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: AppColors.textSecondary,
-                side: const BorderSide(color: AppColors.border),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                fixedSize: const Size(54, 54),
-              ),
-            ),
-            PopupMenuButton<String>(
-              tooltip: 'Aksi keuangan lainnya',
-              onSelected: (action) {
-                if (action == 'expense') onRecordExpense();
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem(
-                  value: 'expense',
-                  child: Text('Catat pengeluaran'),
-                ),
-              ],
-              child: Container(
-                height: 54,
-                width: 48,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: const Icon(
-                  Icons.more_vert,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-          ],
-        );
-        final heading = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'ADMINISTRASI',
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Keuangan & Saldo',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Pantau pergerakan uang tunai maupun non-tunai dan tetapkan saldo awal perusahaan.',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ],
-        );
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x080F172A),
-                blurRadius: 16,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: constraints.maxWidth >= 760
-              ? Row(
-                  children: [
-                    Expanded(child: heading),
-                    const SizedBox(width: 20),
-                    actions,
-                  ],
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [heading, const SizedBox(height: 18), actions],
-                ),
-        );
-      },
+    return MasterDataHeader(
+      eyebrow: 'ADMINISTRASI',
+      title: 'Keuangan & Saldo',
+      description:
+          'Pantau pergerakan uang tunai maupun non-tunai dan tetapkan saldo awal perusahaan.',
+      onRefresh: onRefresh,
+      addLabel: 'Sesuaikan Saldo',
+      onAdd: onAdjustBalance,
     );
   }
 

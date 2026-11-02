@@ -85,11 +85,15 @@ extension _AdminTransactionReportWidgets on _AdminTransactionReportPageState {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
       children: [
-        _ReportHeader(
-          onExpense: widget.canRecordExpenses
+        MasterDataHeader(
+          eyebrow: 'LAPORAN',
+          title: 'Transaksi Masuk',
+          description: 'Default menampilkan transaksi hari ini, termasuk penjualan, open bill, dan pembatalan.',
+          onRefresh: _refreshReport,
+          addLabel: 'Catat Biaya',
+          onAdd: widget.canRecordExpenses
               ? () => _recordExpense(data.history)
               : null,
-          onRefresh: _refreshReport,
         ),
         const SizedBox(height: 14),
         LayoutBuilder(

@@ -68,16 +68,7 @@ class _TableAreasViewState extends State<_TableAreasView> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Areas'),
-          actions: [
-            IconButton(
-              tooltip: 'Refresh',
-              onPressed: () => context.read<TableAreasCubit>().load(),
-              icon: const Icon(Icons.refresh),
-            ),
-          ],
-        ),
+        appBar: AppBar(title: const Text('Area')),
         body: SafeArea(
           child: BlocBuilder<TableAreasCubit, TableAreasState>(
             builder: (context, state) => switch (state) {
@@ -149,9 +140,9 @@ class _TableAreasViewState extends State<_TableAreasView> {
   }
 
   Widget _header(BuildContext context) => MasterDataHeader(
-    title: 'Areas',
+    title: 'Area',
     description: 'Kelola area/zona meja pada setiap outlet.',
-    addLabel: 'Tambah Areas',
+    addLabel: 'Tambah Area',
     onRefresh: () => context.read<TableAreasCubit>().load(),
     onAdd: () {
       final state = context.read<TableAreasCubit>().state;
@@ -194,8 +185,8 @@ class _TableAreasViewState extends State<_TableAreasView> {
     return ResponsiveDataTable(
       minWidth: availableWidth - 40,
       columns: const [
-        DataColumn(label: Text('NAMA AREAS')),
-        DataColumn(label: Text('OUTLETS')),
+        DataColumn(label: Text('NAMA AREA')),
+        DataColumn(label: Text('OUTLET')),
         DataColumn(label: Text('DESKRIPSI')),
         DataColumn(label: Text('STATUS')),
         DataColumn(label: Text('AKSI')),

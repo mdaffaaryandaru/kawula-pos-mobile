@@ -5,7 +5,7 @@ import '../../../discounts/domain/repositories/discounts_repository.dart';
 import '../../../products/domain/entities/catalog_product.dart';
 import '../../../products/domain/repositories/catalog_repository.dart';
 import '../../domain/entities/membership_program.dart';
-import '../../domain/repositories/members_repository.dart';
+import '../../domain/repositories/membership_programs_repository.dart';
 
 sealed class MembershipProgramState {
   const MembershipProgramState();
@@ -37,19 +37,19 @@ final class MembershipProgramFailure extends MembershipProgramState {
 
 class MembershipProgramCubit extends Cubit<MembershipProgramState> {
   MembershipProgramCubit(
-    this._membersRepository,
+    this._membershipProgramsRepository,
     this._catalogRepository,
     this._discountsRepository,
   ) : super(const MembershipProgramLoading());
 
-  final MembersRepository _membersRepository;
+  final MembershipProgramsRepository _membershipProgramsRepository;
   final CatalogRepository _catalogRepository;
   final DiscountsRepository _discountsRepository;
 
   Future<void> load() async {
     emit(const MembershipProgramLoading());
     try {
-      final program = await _membersRepository.getMembershipProgram();
+      final program = await _membershipProgramsRepository.getCurrentProgram();
       final products = await _catalogRepository.getProducts();
       final discounts = await _discountsRepository.getDiscounts();
       emit(
@@ -77,7 +77,7 @@ class MembershipProgramCubit extends Cubit<MembershipProgramState> {
     final currentState = state;
     if (currentState is! MembershipProgramLoaded) return false;
     try {
-      final program = await _membersRepository.saveMembershipProgram(
+      final program = await _membershipProgramsRepository.updateCurrentProgram(
         targetVisits: targetVisits,
         rewardType: rewardType,
         rewardId: rewardId,

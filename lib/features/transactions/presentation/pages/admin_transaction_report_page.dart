@@ -7,6 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../../framework/widgets/master_data_header.dart';
 import '../../../../framework/widgets/responsive_data_table.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../balances/domain/entities/balance.dart';
@@ -15,13 +16,19 @@ import '../../domain/entities/checkout.dart';
 import '../../domain/repositories/checkout_repository.dart';
 
 part '../widgets/admin_transaction_report_builder.dart';
-part '../widgets/admin_report_header_widgets.dart';
 part '../widgets/admin_report_filter_widgets.dart';
 part '../widgets/admin_report_transaction_widgets.dart';
 part '../widgets/admin_report_profit_widgets.dart';
 part '../widgets/admin_report_status_badge.dart';
 part '../widgets/admin_report_expense_dialog.dart';
 part '../widgets/admin_report_summary_widgets.dart';
+
+class _ReportData {
+  const _ReportData({required this.transactions, required this.history});
+
+  final List<TransactionRecord> transactions;
+  final List<BalanceHistoryEntry> history;
+}
 
 class AdminTransactionReportPage extends StatefulWidget {
   const AdminTransactionReportPage({
@@ -79,16 +86,7 @@ class _AdminTransactionReportPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Laporan Transaksi'),
-        actions: [
-          IconButton(
-            tooltip: 'Muat ulang',
-            onPressed: _refreshReport,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Laporan Transaksi')),
       body: FutureBuilder<_ReportData>(
         future: _report,
         builder: (context, snapshot) {

@@ -1,5 +1,6 @@
 import '../../../products/presentation/bloc/cart_cubit.dart';
 import '../../../members/domain/entities/member.dart';
+import '../../../members/domain/entities/member_reward_claim.dart';
 import '../entities/checkout.dart';
 
 abstract interface class CheckoutRepository {
@@ -23,6 +24,8 @@ abstract interface class CheckoutRepository {
   });
 
   Future<List<Member>> searchMembers(String search);
+
+  Future<MemberRewardClaim> claimMemberReward(String memberId);
 
   Future<CheckoutResult> payPendingTransaction({
     required String transactionId,

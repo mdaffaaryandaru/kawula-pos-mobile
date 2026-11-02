@@ -1,17 +1,10 @@
 import '../entities/member.dart';
-import '../entities/membership_program.dart';
+import '../entities/member_reward_claim.dart';
 
 abstract interface class MembersRepository {
   Future<List<Member>> getMembers();
 
-  Future<MembershipProgram> getMembershipProgram();
-
-  Future<MembershipProgram> saveMembershipProgram({
-    required int targetVisits,
-    required String rewardType,
-    required String? rewardId,
-    required bool isActive,
-  });
+  Future<MemberRewardClaim> claimReward(String memberId);
 
   Future<Member> createMember({
     required String name,
