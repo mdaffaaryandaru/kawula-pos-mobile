@@ -1,7 +1,9 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../auth/domain/entities/auth_user.dart';
-import '../../domain/repositories/user_management_repository.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/users/domain/repositories/user_management_repository.dart';
 
 sealed class UserManagementState {
   const UserManagementState();

@@ -1,6 +1,7 @@
-import '../../domain/entities/discount_definition.dart';
-import '../../domain/repositories/discounts_repository.dart';
-import '../datasources/discounts_remote_data_source.dart';
+// Project imports:
+import 'package:kawula_pos/features/discounts/data/datasources/discounts_remote_data_source.dart';
+import 'package:kawula_pos/features/discounts/domain/entities/discount_definition.dart';
+import 'package:kawula_pos/features/discounts/domain/repositories/discounts_repository.dart';
 
 class DiscountsRepositoryImpl implements DiscountsRepository {
   const DiscountsRepositoryImpl(this._remoteDataSource);

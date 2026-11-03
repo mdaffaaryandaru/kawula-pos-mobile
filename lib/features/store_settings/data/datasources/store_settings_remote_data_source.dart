@@ -1,10 +1,13 @@
+// Dart imports:
 import 'dart:convert';
 
+// Package imports:
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
-import '../../../../framework/core/exceptions/api_exception.dart';
-import '../models/store_settings_model.dart';
+// Project imports:
+import 'package:kawula_pos/features/store_settings/data/models/store_settings_model.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class StoreSettingsRemoteDataSource {
   StoreSettingsRemoteDataSource(this._client, this._baseUrl, this._readToken);

@@ -1,10 +1,15 @@
+// Dart imports:
 import 'dart:convert';
 
+// Flutter imports:
 import 'package:flutter/foundation.dart';
+
+// Package imports:
 import 'package:http/http.dart' as http;
 
-import '../../../../framework/core/exceptions/api_exception.dart';
-import '../models/inventory_models.dart';
+// Project imports:
+import 'package:kawula_pos/features/inventories/data/models/inventory_models.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class InventoryRemoteDataSource {
   InventoryRemoteDataSource(this._client, this._baseUrl, this._readToken);

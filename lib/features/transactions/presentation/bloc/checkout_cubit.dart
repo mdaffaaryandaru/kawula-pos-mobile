@@ -1,10 +1,12 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../products/presentation/bloc/cart_cubit.dart';
-import '../../../members/domain/entities/member.dart';
-import '../../../members/domain/entities/member_reward_claim.dart';
-import '../../domain/repositories/checkout_repository.dart';
-import 'checkout_state.dart';
+// Project imports:
+import 'package:kawula_pos/features/members/domain/entities/member.dart';
+import 'package:kawula_pos/features/members/domain/entities/member_reward_claim.dart';
+import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/presentation/bloc/checkout_state.dart';
 
 class CheckoutCubit extends Cubit<CheckoutState> {
   CheckoutCubit(this._repository) : super(const CheckoutLoading());

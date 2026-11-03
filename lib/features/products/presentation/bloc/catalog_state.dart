@@ -1,4 +1,5 @@
-import '../../domain/entities/catalog_product.dart';
+// Project imports:
+import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 
 sealed class CatalogState {
   const CatalogState();

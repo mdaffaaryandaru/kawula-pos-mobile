@@ -1,11 +1,13 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../discounts/domain/entities/discount_definition.dart';
-import '../../../discounts/domain/repositories/discounts_repository.dart';
-import '../../../products/domain/entities/catalog_product.dart';
-import '../../../products/domain/repositories/catalog_repository.dart';
-import '../../domain/entities/membership_program.dart';
-import '../../domain/repositories/membership_programs_repository.dart';
+// Project imports:
+import 'package:kawula_pos/features/discounts/domain/entities/discount_definition.dart';
+import 'package:kawula_pos/features/discounts/domain/repositories/discounts_repository.dart';
+import 'package:kawula_pos/features/membership_programs/domain/entities/membership_program.dart';
+import 'package:kawula_pos/features/membership_programs/domain/repositories/membership_programs_repository.dart';
+import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
+import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
 
 sealed class MembershipProgramState {
   const MembershipProgramState();

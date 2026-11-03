@@ -1,12 +1,16 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../framework/widgets/master_data_feedback.dart';
-import '../../../discounts/domain/repositories/discounts_repository.dart';
-import '../../../products/domain/repositories/catalog_repository.dart';
-import '../../domain/repositories/membership_programs_repository.dart';
-import '../bloc/membership_program_cubit.dart';
-import '../widgets/membership_program_form.dart';
+// Project imports:
+import 'package:kawula_pos/features/discounts/domain/repositories/discounts_repository.dart';
+import 'package:kawula_pos/features/membership_programs/domain/repositories/membership_programs_repository.dart';
+import 'package:kawula_pos/features/membership_programs/presentation/bloc/membership_program_cubit.dart';
+import 'package:kawula_pos/features/membership_programs/presentation/widgets/membership_program_form.dart';
+import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
+import 'package:kawula_pos/framework/widgets/master_data_feedback.dart';
 
 class MembershipProgramPage extends StatelessWidget {
   const MembershipProgramPage({

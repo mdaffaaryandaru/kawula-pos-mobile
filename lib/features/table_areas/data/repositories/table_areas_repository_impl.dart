@@ -1,6 +1,7 @@
-import '../../domain/entities/table_area.dart';
-import '../../domain/repositories/table_areas_repository.dart';
-import '../datasources/table_areas_remote_data_source.dart';
+// Project imports:
+import 'package:kawula_pos/features/table_areas/data/datasources/table_areas_remote_data_source.dart';
+import 'package:kawula_pos/features/table_areas/domain/entities/table_area.dart';
+import 'package:kawula_pos/features/table_areas/domain/repositories/table_areas_repository.dart';
 
 class TableAreasRepositoryImpl implements TableAreasRepository {
   const TableAreasRepositoryImpl(this._remoteDataSource);

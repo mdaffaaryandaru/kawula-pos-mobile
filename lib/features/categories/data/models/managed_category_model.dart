@@ -1,4 +1,5 @@
-import '../../domain/entities/managed_category.dart';
+// Project imports:
+import 'package:kawula_pos/features/categories/domain/entities/managed_category.dart';
 
 class ManagedCategoryModel extends ManagedCategory {
   const ManagedCategoryModel({

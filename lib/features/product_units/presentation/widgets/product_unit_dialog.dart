@@ -1,6 +1,8 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 
-import '../../domain/entities/product_unit.dart';
+// Project imports:
+import 'package:kawula_pos/features/product_units/domain/entities/product_unit.dart';
 
 class ProductUnitDialog extends StatefulWidget {
   const ProductUnitDialog({super.key, this.unit});

@@ -1,4 +1,10 @@
-part of '../pages/variant_groups_management_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
+
+// Project imports:
+import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
+import 'package:kawula_pos/features/variant_groups/domain/entities/variant_group_definition.dart';
+import 'package:kawula_pos/framework/widgets/master_data_feedback.dart';
 
 class VariantGroupsList extends StatelessWidget {
   const VariantGroupsList({

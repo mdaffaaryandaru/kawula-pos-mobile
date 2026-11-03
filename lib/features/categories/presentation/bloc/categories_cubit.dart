@@ -1,7 +1,9 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/entities/managed_category.dart';
-import '../../domain/repositories/categories_repository.dart';
+// Project imports:
+import 'package:kawula_pos/features/categories/domain/entities/managed_category.dart';
+import 'package:kawula_pos/features/categories/domain/repositories/categories_repository.dart';
 
 sealed class CategoriesState {
   const CategoriesState();

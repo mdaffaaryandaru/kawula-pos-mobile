@@ -1,7 +1,9 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 
-import '../../../transactions/domain/entities/checkout.dart';
-import '../../domain/entities/balance.dart';
+// Project imports:
+import 'package:kawula_pos/features/balances/domain/entities/balance.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 
 class BalanceEditDialog extends StatefulWidget {
   const BalanceEditDialog({

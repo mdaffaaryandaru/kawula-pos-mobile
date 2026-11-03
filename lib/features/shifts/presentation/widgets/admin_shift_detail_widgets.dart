@@ -1,4 +1,16 @@
-part of '../pages/admin_shifts_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
+
+// Project imports:
+import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
+import 'package:kawula_pos/features/shifts/domain/entities/admin_shift_detail.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
+
+import 'package:kawula_pos/features/shifts/presentation/widgets/admin_shift_list_widgets.dart'
+    show ShiftStatusChip;
+
+import 'package:kawula_pos/features/shifts/presentation/pages/admin_shifts_page.dart'
+    show adminShiftInitials, formatAdminShiftDateTime, formatAdminShiftRupiah;
 
 class AdminShiftDetailBody extends StatelessWidget {
   const AdminShiftDetailBody({
@@ -222,7 +234,7 @@ class _ShiftDetailHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _ShiftStatusChip(status: shift.status),
+                ShiftStatusChip(status: shift.status),
               ],
             ),
             const Divider(height: 28),

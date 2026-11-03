@@ -1,23 +1,20 @@
+// Dart imports:
 import 'dart:async';
 
+// Flutter imports:
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:share_plus/share_plus.dart';
 
-import '../../../products/presentation/bloc/cart_cubit.dart';
-import '../../../products/presentation/pages/product_formatters.dart';
-import '../../../members/domain/entities/member.dart';
-import '../../domain/entities/checkout.dart';
-import '../bloc/checkout_cubit.dart';
-import '../bloc/checkout_state.dart';
-
-part '../widgets/checkout_form_widgets.dart';
-part '../widgets/checkout_receipt_actions.dart';
-part '../widgets/checkout_member_widgets.dart';
-part '../widgets/checkout_state_widgets.dart';
-part '../widgets/checkout_receipt_widgets.dart';
-part '../widgets/checkout_shared_widgets.dart';
+// Project imports:
+import 'package:kawula_pos/features/members/domain/entities/member.dart';
+import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
+import 'package:kawula_pos/features/transactions/presentation/bloc/checkout_cubit.dart';
+import 'package:kawula_pos/features/transactions/presentation/bloc/checkout_state.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/checkout_form_widgets.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/checkout_receipt_widgets.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/checkout_state_widgets.dart';
 
 class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key, required this.outletId});
@@ -25,34 +22,39 @@ class CheckoutPage extends StatefulWidget {
   final String? outletId;
 
   @override
-  State<CheckoutPage> createState() => _CheckoutPageState();
+  State<CheckoutPage> createState() => CheckoutPageState();
 }
 
-class _CheckoutPageState extends State<CheckoutPage> {
-  final _cashController = TextEditingController();
-  final _pinController = TextEditingController();
-  final _memberSearchController = TextEditingController();
-  final _tableNumberController = TextEditingController();
-  final _memberSearchFocusNode = FocusNode();
-  Timer? _memberSearchTimer;
-  List<Member> _memberResults = const [];
-  Member? _selectedMember;
-  bool _isSearchingMembers = false;
-  bool _isClaimingReward = false;
-  String? _memberSearchError;
-  int _memberSearchGeneration = 0;
-  String? _selectedMethodCode;
-  bool _openBill = false;
-  String? _validationMessage;
+class CheckoutPageState extends State<CheckoutPage> {
+  final cashController = TextEditingController();
+  final pinController = TextEditingController();
+  final memberSearchController = TextEditingController();
+  final tableNumberController = TextEditingController();
+  final memberSearchFocusNode = FocusNode();
+  Timer? memberSearchTimer;
+  List<Member> memberResults = const [];
+  Member? selectedMember;
+  bool isSearchingMembers = false;
+  bool isClaimingReward = false;
+  String? memberSearchError;
+  int memberSearchGeneration = 0;
+  String? selectedMethodCode;
+  bool openBill = false;
+  String? validationMessage;
+
+  void updateState(VoidCallback update) {
+    if (!mounted) return;
+    setState(update);
+  }
 
   @override
   void dispose() {
-    _cashController.dispose();
-    _pinController.dispose();
-    _memberSearchTimer?.cancel();
-    _memberSearchController.dispose();
-    _tableNumberController.dispose();
-    _memberSearchFocusNode.dispose();
+    cashController.dispose();
+    pinController.dispose();
+    memberSearchTimer?.cancel();
+    memberSearchController.dispose();
+    tableNumberController.dispose();
+    memberSearchFocusNode.dispose();
     super.dispose();
   }
 
@@ -87,16 +89,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
             CheckoutLoading() => const Center(
               child: CircularProgressIndicator(),
             ),
-            CheckoutFailure() => _failure(context, state.message),
-            CheckoutCompleted() => _completed(state.result, state.settings),
-            CheckoutReady() => _checkoutForm(
+            CheckoutFailure() => failure(context, state.message),
+            CheckoutCompleted() => completed(state.result, state.settings),
+            CheckoutReady() => checkoutForm(
               context,
               state.paymentMethods,
               state.settings,
               isSubmitting: false,
               errorMessage: state.errorMessage,
             ),
-            CheckoutSubmitting() => _checkoutForm(
+            CheckoutSubmitting() => checkoutForm(
               context,
               state.paymentMethods,
               state.settings,

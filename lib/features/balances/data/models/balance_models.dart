@@ -1,4 +1,5 @@
-import '../../domain/entities/balance.dart';
+// Project imports:
+import 'package:kawula_pos/features/balances/domain/entities/balance.dart';
 
 class BalanceAccountModel extends BalanceAccount {
   const BalanceAccountModel({
@@ -14,11 +15,7 @@ class BalanceAccountModel extends BalanceAccount {
     if (id is! String || method is! String || balance is! num) {
       throw const FormatException('Data saldo dari server tidak valid.');
     }
-    return BalanceAccountModel(
-      id: id,
-      paymentMethod: method,
-      balance: balance,
-    );
+    return BalanceAccountModel(id: id, paymentMethod: method, balance: balance);
   }
 }
 
@@ -46,7 +43,9 @@ class BalanceHistoryEntryModel extends BalanceHistoryEntry {
         type is! String ||
         amount is! num ||
         finalBalance is! num) {
-      throw const FormatException('Data riwayat saldo dari server tidak valid.');
+      throw const FormatException(
+        'Data riwayat saldo dari server tidak valid.',
+      );
     }
     final user = json['created_by'];
     final date = json['createdAt'] ?? json['created_at'];

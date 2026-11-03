@@ -1,4 +1,5 @@
-import '../../../../config/api_config.dart';
+// Project imports:
+import 'package:kawula_pos/config/api_config.dart';
 
 num? parseNonNegativeNumber(String? value) {
   final number = num.tryParse(value ?? '');

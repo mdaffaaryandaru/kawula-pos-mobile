@@ -1,11 +1,13 @@
-part of '../pages/variant_groups_management_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-// These extensions keep stateful form sections separate from the dialog shell.
-// ignore_for_file: invalid_use_of_protected_member
+// Project imports:
+import 'package:kawula_pos/features/variant_groups/presentation/widgets/variant_group_dialog.dart';
 
-extension _VariantGroupOptionEditors on _VariantGroupDialogState {
-  Widget _optionEditor(int index) {
-    final option = _options[index];
+extension VariantGroupOptionEditors on VariantGroupDialogState {
+  Widget optionEditor(int index) {
+    final option = options[index];
     return Card(
       margin: const EdgeInsets.only(top: 8),
       child: Padding(
@@ -21,11 +23,11 @@ extension _VariantGroupOptionEditors on _VariantGroupDialogState {
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
-                if (_options.length > 1)
+                if (options.length > 1)
                   IconButton(
                     tooltip: 'Hapus opsi',
-                    onPressed: () => setState(() {
-                      _options.removeAt(index).dispose();
+                    onPressed: () => updateState(() {
+                      options.removeAt(index).dispose();
                     }),
                     icon: const Icon(Icons.delete_outline),
                   ),
@@ -74,9 +76,9 @@ extension _VariantGroupOptionEditors on _VariantGroupDialogState {
                       widget.references.inventories.isEmpty ||
                           widget.references.units.isEmpty
                       ? null
-                      : () => setState(
+                      : () => updateState(
                           () => option.recipes.add(
-                            _VariantRecipeForm(references: widget.references),
+                            VariantRecipeForm(references: widget.references),
                           ),
                         ),
                   icon: const Icon(Icons.add),
@@ -102,7 +104,7 @@ extension _VariantGroupOptionEditors on _VariantGroupDialogState {
     );
   }
 
-  Widget _recipeEditor(_VariantOptionForm option, int index) {
+  Widget _recipeEditor(VariantOptionForm option, int index) {
     final recipe = option.recipes[index];
     return Padding(
       padding: const EdgeInsets.only(top: 8),
@@ -116,7 +118,7 @@ extension _VariantGroupOptionEditors on _VariantGroupDialogState {
                 DropdownMenuItem(value: item.id, child: Text(item.name)),
             ],
             validator: (value) => value == null ? 'Pilih bahan baku.' : null,
-            onChanged: (value) => setState(() => recipe.inventoryId = value),
+            onChanged: (value) => updateState(() => recipe.inventoryId = value),
           ),
           const SizedBox(height: 8),
           Row(
@@ -151,7 +153,8 @@ extension _VariantGroupOptionEditors on _VariantGroupDialogState {
                       DropdownMenuItem(value: unit.id, child: Text(unit.name)),
                   ],
                   validator: (value) => value == null ? 'Pilih satuan.' : null,
-                  onChanged: (value) => setState(() => recipe.unitId = value),
+                  onChanged: (value) =>
+                      updateState(() => recipe.unitId = value),
                 ),
               ),
             ],
@@ -182,7 +185,7 @@ extension _VariantGroupOptionEditors on _VariantGroupDialogState {
               ),
               IconButton(
                 tooltip: 'Hapus resep',
-                onPressed: () => setState(() {
+                onPressed: () => updateState(() {
                   option.recipes.removeAt(index).dispose();
                 }),
                 icon: const Icon(Icons.delete_outline),

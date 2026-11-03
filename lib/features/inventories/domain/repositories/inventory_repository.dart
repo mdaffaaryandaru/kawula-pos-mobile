@@ -1,4 +1,5 @@
-import '../entities/inventory_item.dart';
+// Project imports:
+import 'package:kawula_pos/features/inventories/domain/entities/inventory_item.dart';
 
 abstract interface class InventoryRepository {
   Future<List<InventoryItem>> getInventories();

@@ -1,4 +1,5 @@
-import '../entities/variant_group_definition.dart';
+// Project imports:
+import 'package:kawula_pos/features/variant_groups/domain/entities/variant_group_definition.dart';
 
 abstract interface class VariantGroupsRepository {
   Future<List<VariantGroupDefinition>> getVariantGroupDefinitions();

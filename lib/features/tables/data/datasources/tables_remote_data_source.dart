@@ -1,9 +1,12 @@
+// Dart imports:
 import 'dart:convert';
 
+// Package imports:
 import 'package:http/http.dart' as http;
 
-import '../../../../framework/core/exceptions/api_exception.dart';
-import '../models/managed_table_model.dart';
+// Project imports:
+import 'package:kawula_pos/features/tables/data/models/managed_table_model.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class TablesRemoteDataSource {
   const TablesRemoteDataSource(this._client, this._baseUrl, this._readToken);

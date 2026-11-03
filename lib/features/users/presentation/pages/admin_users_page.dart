@@ -1,13 +1,17 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../framework/widgets/master_data_feedback.dart';
-import '../../../../framework/widgets/master_data_row_actions.dart';
-import '../../../auth/domain/entities/auth_user.dart';
-import '../../domain/repositories/user_management_repository.dart';
-import '../bloc/user_management_cubit.dart';
-import '../widgets/admin_users_list.dart';
-import '../widgets/user_form_dialog.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/users/domain/repositories/user_management_repository.dart';
+import 'package:kawula_pos/features/users/presentation/bloc/user_management_cubit.dart';
+import 'package:kawula_pos/features/users/presentation/widgets/admin_users_list.dart';
+import 'package:kawula_pos/features/users/presentation/widgets/user_form_dialog.dart';
+import 'package:kawula_pos/framework/widgets/master_data_feedback.dart';
+import 'package:kawula_pos/framework/widgets/master_data_row_actions.dart';
 
 class AdminUsersPage extends StatelessWidget {
   const AdminUsersPage({

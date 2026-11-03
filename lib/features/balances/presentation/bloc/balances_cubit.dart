@@ -1,7 +1,9 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/entities/balance.dart';
-import '../../domain/repositories/balances_repository.dart';
+// Project imports:
+import 'package:kawula_pos/features/balances/domain/entities/balance.dart';
+import 'package:kawula_pos/features/balances/domain/repositories/balances_repository.dart';
 
 sealed class BalancesState {
   const BalancesState();

@@ -1,11 +1,15 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../auth/domain/entities/auth_user.dart';
-import '../../domain/entities/active_shift.dart';
-import '../bloc/shifts_cubit.dart';
-import '../bloc/shifts_state.dart';
-import 'shift_formatters.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
+import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
+import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
+import 'package:kawula_pos/features/shifts/presentation/widgets/shift_formatters.dart';
 
 enum ShiftDialogMode { opening, closing }
 

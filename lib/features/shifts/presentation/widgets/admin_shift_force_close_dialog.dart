@@ -1,15 +1,22 @@
-part of '../pages/admin_shifts_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
 
-class _ForceCloseDialog extends StatefulWidget {
-  const _ForceCloseDialog({required this.shift});
+// Project imports:
+import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
+
+import 'package:kawula_pos/features/shifts/presentation/pages/admin_shifts_page.dart'
+    show formatAdminShiftRupiah;
+
+class ForceCloseDialog extends StatefulWidget {
+  const ForceCloseDialog({super.key, required this.shift});
 
   final ActiveShift shift;
 
   @override
-  State<_ForceCloseDialog> createState() => _ForceCloseDialogState();
+  State<ForceCloseDialog> createState() => _ForceCloseDialogState();
 }
 
-class _ForceCloseDialogState extends State<_ForceCloseDialog> {
+class _ForceCloseDialogState extends State<ForceCloseDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _actualCashController;
   final _notesController = TextEditingController();
@@ -82,7 +89,7 @@ class _ForceCloseDialogState extends State<_ForceCloseDialog> {
             if (!_formKey.currentState!.validate()) return;
             Navigator.pop(
               context,
-              _ForceCloseDraft(
+              ForceCloseDraft(
                 actualCash: num.parse(_actualCashController.text),
                 notes: _notesController.text.trim(),
               ),
@@ -95,8 +102,8 @@ class _ForceCloseDialogState extends State<_ForceCloseDialog> {
   }
 }
 
-class _ForceCloseDraft {
-  const _ForceCloseDraft({required this.actualCash, required this.notes});
+class ForceCloseDraft {
+  const ForceCloseDraft({required this.actualCash, required this.notes});
 
   final num actualCash;
   final String notes;

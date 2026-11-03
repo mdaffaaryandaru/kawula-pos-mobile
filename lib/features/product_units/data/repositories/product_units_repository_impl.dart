@@ -1,6 +1,7 @@
-import '../../domain/entities/product_unit.dart';
-import '../../domain/repositories/product_units_repository.dart';
-import '../datasources/product_units_remote_data_source.dart';
+// Project imports:
+import 'package:kawula_pos/features/product_units/data/datasources/product_units_remote_data_source.dart';
+import 'package:kawula_pos/features/product_units/domain/entities/product_unit.dart';
+import 'package:kawula_pos/features/product_units/domain/repositories/product_units_repository.dart';
 
 class ProductUnitsRepositoryImpl implements ProductUnitsRepository {
   const ProductUnitsRepositoryImpl(this._remoteDataSource);

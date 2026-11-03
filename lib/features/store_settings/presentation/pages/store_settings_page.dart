@@ -1,12 +1,16 @@
+// Dart imports:
 import 'dart:typed_data';
 
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:image_picker/image_picker.dart';
 
-import '../../domain/entities/store_settings.dart';
-import '../../domain/repositories/store_settings_repository.dart';
-
-part '../widgets/store_settings_form.dart';
+// Project imports:
+import 'package:kawula_pos/features/store_settings/domain/entities/store_settings.dart';
+import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
+import 'package:kawula_pos/features/store_settings/presentation/widgets/store_settings_form.dart';
 
 class StoreSettingsPage extends StatefulWidget {
   const StoreSettingsPage({

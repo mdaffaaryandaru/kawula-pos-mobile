@@ -1,7 +1,9 @@
-part of '../pages/admin_transaction_report_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
 
-class _ReportMetric extends StatelessWidget {
-  const _ReportMetric({
+class ReportMetric extends StatelessWidget {
+  const ReportMetric({
+    super.key,
     required this.label,
     required this.value,
     required this.color,
@@ -63,8 +65,8 @@ class _ReportMetric extends StatelessWidget {
   }
 }
 
-class _ReportMessage extends StatelessWidget {
-  const _ReportMessage({required this.message, this.action});
+class ReportMessage extends StatelessWidget {
+  const ReportMessage({super.key, required this.message, this.action});
 
   final String message;
   final Widget? action;

@@ -1,4 +1,5 @@
-import '../entities/managed_category.dart';
+// Project imports:
+import 'package:kawula_pos/features/categories/domain/entities/managed_category.dart';
 
 abstract interface class CategoriesRepository {
   Future<List<ManagedCategory>> getCategories();

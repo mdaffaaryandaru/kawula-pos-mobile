@@ -1,4 +1,5 @@
-import '../../../auth/domain/entities/auth_user.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
 
 abstract interface class UserManagementRepository {
   Future<List<AuthUser>> getUsers();

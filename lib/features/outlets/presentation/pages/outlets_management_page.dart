@@ -1,16 +1,20 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../framework/widgets/master_data_feedback.dart';
-import '../../../../framework/widgets/master_data_header.dart';
-import '../../../../framework/widgets/master_data_row_actions.dart';
-import '../../../../framework/widgets/master_data_search_panel.dart';
-import '../../../../framework/widgets/master_data_status_badge.dart';
-import '../../../../framework/widgets/responsive_data_table.dart';
-import '../../domain/entities/outlet.dart';
-import '../../domain/repositories/outlets_repository.dart';
-import '../bloc/outlets_cubit.dart';
-import '../widgets/outlet_dialog.dart';
+// Project imports:
+import 'package:kawula_pos/features/outlets/domain/entities/outlet.dart';
+import 'package:kawula_pos/features/outlets/domain/repositories/outlets_repository.dart';
+import 'package:kawula_pos/features/outlets/presentation/bloc/outlets_cubit.dart';
+import 'package:kawula_pos/features/outlets/presentation/widgets/outlet_dialog.dart';
+import 'package:kawula_pos/framework/widgets/master_data_feedback.dart';
+import 'package:kawula_pos/framework/widgets/master_data_header.dart';
+import 'package:kawula_pos/framework/widgets/master_data_row_actions.dart';
+import 'package:kawula_pos/framework/widgets/master_data_search_panel.dart';
+import 'package:kawula_pos/framework/widgets/master_data_status_badge.dart';
+import 'package:kawula_pos/framework/widgets/responsive_data_table.dart';
 
 class OutletsManagementPage extends StatelessWidget {
   const OutletsManagementPage({super.key, required this.repository});

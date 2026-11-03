@@ -1,9 +1,11 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../table_areas/domain/entities/table_area.dart';
-import '../../../table_areas/domain/repositories/table_areas_repository.dart';
-import '../../domain/entities/managed_table.dart';
-import '../../domain/repositories/tables_repository.dart';
+// Project imports:
+import 'package:kawula_pos/features/table_areas/domain/entities/table_area.dart';
+import 'package:kawula_pos/features/table_areas/domain/repositories/table_areas_repository.dart';
+import 'package:kawula_pos/features/tables/domain/entities/managed_table.dart';
+import 'package:kawula_pos/features/tables/domain/repositories/tables_repository.dart';
 
 sealed class TablesState {
   const TablesState();

@@ -1,6 +1,8 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 
-import '../../domain/entities/member.dart';
+// Project imports:
+import 'package:kawula_pos/features/members/domain/entities/member.dart';
 
 class MemberDialog extends StatefulWidget {
   const MemberDialog({super.key, this.member});

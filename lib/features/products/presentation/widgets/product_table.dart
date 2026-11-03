@@ -1,11 +1,13 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 
-import '../../../../framework/widgets/responsive_data_table.dart';
-import '../../../../framework/widgets/master_data_row_actions.dart';
-import '../../../../theme/app_colors.dart';
-import '../../../products/domain/entities/product_management.dart';
-import 'product_management_helpers.dart';
-import 'product_management_widgets.dart';
+// Project imports:
+import 'package:kawula_pos/features/products/domain/entities/product_management.dart';
+import 'package:kawula_pos/features/products/presentation/widgets/product_management_helpers.dart';
+import 'package:kawula_pos/features/products/presentation/widgets/product_management_widgets.dart';
+import 'package:kawula_pos/framework/widgets/master_data_row_actions.dart';
+import 'package:kawula_pos/framework/widgets/responsive_data_table.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
 
 class ProductsTable extends StatelessWidget {
   const ProductsTable({

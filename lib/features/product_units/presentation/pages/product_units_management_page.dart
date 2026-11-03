@@ -1,16 +1,20 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../framework/widgets/master_data_header.dart';
-import '../../../../framework/widgets/master_data_search_panel.dart';
-import '../../../../framework/widgets/master_data_status_badge.dart';
-import '../../../../framework/widgets/master_data_feedback.dart';
-import '../../../../framework/widgets/master_data_row_actions.dart';
-import '../../../../framework/widgets/responsive_data_table.dart';
-import '../../domain/entities/product_unit.dart';
-import '../../domain/repositories/product_units_repository.dart';
-import '../bloc/product_units_cubit.dart';
-import '../widgets/product_unit_dialog.dart';
+// Project imports:
+import 'package:kawula_pos/features/product_units/domain/entities/product_unit.dart';
+import 'package:kawula_pos/features/product_units/domain/repositories/product_units_repository.dart';
+import 'package:kawula_pos/features/product_units/presentation/bloc/product_units_cubit.dart';
+import 'package:kawula_pos/features/product_units/presentation/widgets/product_unit_dialog.dart';
+import 'package:kawula_pos/framework/widgets/master_data_feedback.dart';
+import 'package:kawula_pos/framework/widgets/master_data_header.dart';
+import 'package:kawula_pos/framework/widgets/master_data_row_actions.dart';
+import 'package:kawula_pos/framework/widgets/master_data_search_panel.dart';
+import 'package:kawula_pos/framework/widgets/master_data_status_badge.dart';
+import 'package:kawula_pos/framework/widgets/responsive_data_table.dart';
 
 class ProductUnitsManagementPage extends StatelessWidget {
   const ProductUnitsManagementPage({super.key, required this.repository});

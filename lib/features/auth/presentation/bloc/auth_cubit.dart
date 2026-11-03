@@ -1,7 +1,9 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/repositories/auth_repository.dart';
-import 'auth_state.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/repositories/auth_repository.dart';
+import 'package:kawula_pos/features/auth/presentation/bloc/auth_state.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   AuthCubit(this._repository) : super(const AuthChecking());

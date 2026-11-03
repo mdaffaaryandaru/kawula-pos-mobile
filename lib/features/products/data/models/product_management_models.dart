@@ -1,6 +1,7 @@
-import '../../../products/data/models/catalog_models.dart';
-import '../../../inventories/data/models/inventory_models.dart';
-import '../../domain/entities/product_management.dart';
+// Project imports:
+import 'package:kawula_pos/features/inventories/data/models/inventory_models.dart';
+import 'package:kawula_pos/features/products/data/models/catalog_models.dart';
+import 'package:kawula_pos/features/products/domain/entities/product_management.dart';
 
 class ManagedProductModel extends ManagedProduct {
   const ManagedProductModel({

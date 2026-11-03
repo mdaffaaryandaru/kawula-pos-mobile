@@ -1,7 +1,14 @@
-part of '../pages/admin_transaction_report_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-class _RecordExpenseDialog extends StatefulWidget {
-  const _RecordExpenseDialog({
+// Project imports:
+import 'package:kawula_pos/features/balances/domain/repositories/balances_repository.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
+
+class RecordExpenseDialog extends StatefulWidget {
+  const RecordExpenseDialog({
+    super.key,
     required this.paymentMethods,
     required this.repository,
   });
@@ -10,10 +17,10 @@ class _RecordExpenseDialog extends StatefulWidget {
   final BalancesRepository repository;
 
   @override
-  State<_RecordExpenseDialog> createState() => _RecordExpenseDialogState();
+  State<RecordExpenseDialog> createState() => _RecordExpenseDialogState();
 }
 
-class _RecordExpenseDialogState extends State<_RecordExpenseDialog> {
+class _RecordExpenseDialogState extends State<RecordExpenseDialog> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();

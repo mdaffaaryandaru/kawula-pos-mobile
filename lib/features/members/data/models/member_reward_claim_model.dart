@@ -1,5 +1,6 @@
-import '../../domain/entities/member_reward_claim.dart';
-import 'member_model.dart';
+// Project imports:
+import 'package:kawula_pos/features/members/data/models/member_model.dart';
+import 'package:kawula_pos/features/members/domain/entities/member_reward_claim.dart';
 
 class MemberRewardClaimModel extends MemberRewardClaim {
   const MemberRewardClaimModel({

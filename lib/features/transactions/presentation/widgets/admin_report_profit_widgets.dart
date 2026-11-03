@@ -1,7 +1,14 @@
-part of '../pages/admin_transaction_report_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
 
-class _ProfitSummary extends StatelessWidget {
-  const _ProfitSummary({
+// Project imports:
+import 'package:kawula_pos/features/balances/domain/entities/balance.dart';
+import 'package:kawula_pos/features/transactions/presentation/pages/admin_transaction_report_page.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
+
+class ProfitSummary extends StatelessWidget {
+  const ProfitSummary({
+    super.key,
     required this.sales,
     required this.cogs,
     required this.serviceCharge,
@@ -77,7 +84,7 @@ class _ProfitSummary extends StatelessWidget {
                   Expanded(
                     child: Text(
                       '${entry.notes.isEmpty ? 'Biaya operasional' : entry.notes} · '
-                      '${entry.paymentMethod} · ${_formatDateTime(entry.createdAt)}',
+                      '${entry.paymentMethod} · ${formatDateTime(entry.createdAt)}',
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 11,
@@ -85,7 +92,7 @@ class _ProfitSummary extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '-${_formatRupiah(entry.amount.abs())}',
+                    '-${formatRupiah(entry.amount.abs())}',
                     style: const TextStyle(
                       color: AppColors.danger,
                       fontSize: 11,
@@ -129,7 +136,7 @@ class _ProfitLine extends StatelessWidget {
           ),
         ),
         Text(
-          _formatRupiah(amount),
+          formatRupiah(amount),
           style: TextStyle(
             color: amount < 0
                 ? AppColors.danger

@@ -1,4 +1,5 @@
-import '../../domain/entities/outlet.dart';
+// Project imports:
+import 'package:kawula_pos/features/outlets/domain/entities/outlet.dart';
 
 class OutletModel extends Outlet {
   const OutletModel({

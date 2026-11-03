@@ -1,7 +1,9 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/repositories/catalog_repository.dart';
-import 'catalog_state.dart';
+// Project imports:
+import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
+import 'package:kawula_pos/features/products/presentation/bloc/catalog_state.dart';
 
 class CatalogCubit extends Cubit<CatalogState> {
   CatalogCubit(this._repository) : super(const CatalogLoading());

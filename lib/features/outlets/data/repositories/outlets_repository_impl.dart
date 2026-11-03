@@ -1,6 +1,7 @@
-import '../../domain/entities/outlet.dart';
-import '../../domain/repositories/outlets_repository.dart';
-import '../datasources/outlets_remote_data_source.dart';
+// Project imports:
+import 'package:kawula_pos/features/outlets/data/datasources/outlets_remote_data_source.dart';
+import 'package:kawula_pos/features/outlets/domain/entities/outlet.dart';
+import 'package:kawula_pos/features/outlets/domain/repositories/outlets_repository.dart';
 
 class OutletsRepositoryImpl implements OutletsRepository {
   const OutletsRepositoryImpl(this._remoteDataSource);

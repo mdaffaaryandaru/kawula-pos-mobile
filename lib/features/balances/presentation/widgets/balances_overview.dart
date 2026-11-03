@@ -1,10 +1,12 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 
-import '../../../../framework/widgets/master_data_header.dart';
-import '../../../../theme/app_colors.dart';
-import '../../domain/entities/balance.dart';
-import 'balance_history_widgets.dart';
-import 'balance_summary_widgets.dart';
+// Project imports:
+import 'package:kawula_pos/features/balances/domain/entities/balance.dart';
+import 'package:kawula_pos/features/balances/presentation/widgets/balance_history_widgets.dart';
+import 'package:kawula_pos/features/balances/presentation/widgets/balance_summary_widgets.dart';
+import 'package:kawula_pos/framework/widgets/master_data_header.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
 
 class BalancesOverview extends StatelessWidget {
   const BalancesOverview({
@@ -76,8 +78,7 @@ class BalancesOverview extends StatelessWidget {
     return MasterDataHeader(
       eyebrow: 'ADMINISTRASI',
       title: 'Keuangan & Saldo',
-      description:
-          'Pantau pergerakan uang tunai maupun non-tunai dan tetapkan saldo awal perusahaan.',
+      description: 'Pantau pergerakan uang tunai maupun non-tunai dan tetapkan saldo awal perusahaan.',
       onRefresh: onRefresh,
       addLabel: 'Sesuaikan Saldo',
       onAdd: onAdjustBalance,

@@ -1,7 +1,9 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/entities/outlet.dart';
-import '../../domain/repositories/outlets_repository.dart';
+// Project imports:
+import 'package:kawula_pos/features/outlets/domain/entities/outlet.dart';
+import 'package:kawula_pos/features/outlets/domain/repositories/outlets_repository.dart';
 
 sealed class OutletsState {
   const OutletsState();

@@ -1,7 +1,9 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/entities/discount_definition.dart';
-import '../../domain/repositories/discounts_repository.dart';
+// Project imports:
+import 'package:kawula_pos/features/discounts/domain/entities/discount_definition.dart';
+import 'package:kawula_pos/features/discounts/domain/repositories/discounts_repository.dart';
 
 sealed class DiscountsState {
   const DiscountsState();

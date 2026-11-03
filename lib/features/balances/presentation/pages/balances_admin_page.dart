@@ -1,13 +1,17 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../transactions/domain/entities/checkout.dart';
-import '../../../transactions/domain/repositories/checkout_repository.dart';
-import '../../domain/entities/balance.dart';
-import '../../domain/repositories/balances_repository.dart';
-import '../bloc/balances_cubit.dart';
-import '../widgets/balance_edit_dialog.dart';
-import '../widgets/balances_overview.dart';
+// Project imports:
+import 'package:kawula_pos/features/balances/domain/entities/balance.dart';
+import 'package:kawula_pos/features/balances/domain/repositories/balances_repository.dart';
+import 'package:kawula_pos/features/balances/presentation/bloc/balances_cubit.dart';
+import 'package:kawula_pos/features/balances/presentation/widgets/balance_edit_dialog.dart';
+import 'package:kawula_pos/features/balances/presentation/widgets/balances_overview.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 
 class BalancesAdminPage extends StatefulWidget {
   const BalancesAdminPage({

@@ -1,7 +1,9 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../domain/entities/payment_method.dart';
+// Project imports:
+import 'package:kawula_pos/features/payment_method/domain/entities/payment_method.dart';
 
 class PaymentMethodDialog extends StatefulWidget {
   const PaymentMethodDialog({super.key, this.paymentMethod});

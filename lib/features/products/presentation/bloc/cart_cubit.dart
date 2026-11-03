@@ -1,6 +1,8 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/entities/catalog_product.dart';
+// Project imports:
+import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 
 class CartItem {
   const CartItem({

@@ -1,17 +1,21 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../framework/widgets/master_data_feedback.dart';
-import '../../../../framework/widgets/master_data_header.dart';
-import '../../../../framework/widgets/master_data_row_actions.dart';
-import '../../../../framework/widgets/master_data_search_panel.dart';
-import '../../../../framework/widgets/master_data_status_badge.dart';
-import '../../../../framework/widgets/responsive_data_table.dart';
-import '../../../products/presentation/widgets/product_management_helpers.dart';
-import '../../domain/entities/discount_definition.dart';
-import '../../domain/repositories/discounts_repository.dart';
-import '../bloc/discounts_cubit.dart';
-import '../widgets/discount_dialog.dart';
+// Project imports:
+import 'package:kawula_pos/features/discounts/domain/entities/discount_definition.dart';
+import 'package:kawula_pos/features/discounts/domain/repositories/discounts_repository.dart';
+import 'package:kawula_pos/features/discounts/presentation/bloc/discounts_cubit.dart';
+import 'package:kawula_pos/features/discounts/presentation/widgets/discount_dialog.dart';
+import 'package:kawula_pos/features/products/presentation/widgets/product_management_helpers.dart';
+import 'package:kawula_pos/framework/widgets/master_data_feedback.dart';
+import 'package:kawula_pos/framework/widgets/master_data_header.dart';
+import 'package:kawula_pos/framework/widgets/master_data_row_actions.dart';
+import 'package:kawula_pos/framework/widgets/master_data_search_panel.dart';
+import 'package:kawula_pos/framework/widgets/master_data_status_badge.dart';
+import 'package:kawula_pos/framework/widgets/responsive_data_table.dart';
 
 class DiscountsManagementPage extends StatelessWidget {
   const DiscountsManagementPage({super.key, required this.repository});
@@ -27,7 +31,6 @@ class DiscountsManagementPage extends StatelessWidget {
 
 class _DiscountsView extends StatefulWidget {
   const _DiscountsView();
-
   @override
   State<_DiscountsView> createState() => _DiscountsViewState();
 }
@@ -44,39 +47,40 @@ class _DiscountsViewState extends State<_DiscountsView> {
   }
 
   @override
-  Widget build(BuildContext context) => BlocListener<DiscountsCubit, DiscountsState>(
-    listener: (context, state) {
-      final message = switch (state) {
-        DiscountsLoaded(errorMessage: final error?) => error,
-        DiscountsFailure(:final message) => message,
-        _ => null,
-      };
-      if (message != null) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text(message)));
-      }
-    },
-    child: Scaffold(
-      appBar: AppBar(title: const Text('Discounts')),
-      body: SafeArea(
-        child: BlocBuilder<DiscountsCubit, DiscountsState>(
-          builder: (context, state) => switch (state) {
-            DiscountsLoading() => const MasterDataLoadingState(),
-            DiscountsFailure(:final message) => MasterDataErrorState(
-              title: 'Daftar discount belum dapat dimuat.',
-              message: message,
-              onRetry: context.read<DiscountsCubit>().load,
+  Widget build(BuildContext context) =>
+      BlocListener<DiscountsCubit, DiscountsState>(
+        listener: (context, state) {
+          final message = switch (state) {
+            DiscountsLoaded(errorMessage: final error?) => error,
+            DiscountsFailure(:final message) => message,
+            _ => null,
+          };
+          if (message != null) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(content: Text(message)));
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(title: const Text('Discounts')),
+          body: SafeArea(
+            child: BlocBuilder<DiscountsCubit, DiscountsState>(
+              builder: (context, state) => switch (state) {
+                DiscountsLoading() => const MasterDataLoadingState(),
+                DiscountsFailure(:final message) => MasterDataErrorState(
+                  title: 'Daftar discount belum dapat dimuat.',
+                  message: message,
+                  onRetry: context.read<DiscountsCubit>().load,
+                ),
+                DiscountsLoaded(:final discounts) => _buildLoaded(
+                  context,
+                  discounts,
+                ),
+              },
             ),
-            DiscountsLoaded(:final discounts) => _buildLoaded(
-              context,
-              discounts,
-            ),
-          },
+          ),
         ),
-      ),
-    ),
-  );
+      );
 
   Widget _buildLoaded(
     BuildContext context,
@@ -84,10 +88,9 @@ class _DiscountsViewState extends State<_DiscountsView> {
   ) {
     final visible = discounts
         .where((discount) {
-          final matchesSearch =
-              '${discount.name} ${discount.description}'
-                  .toLowerCase()
-                  .contains(_query);
+          final matchesSearch = '${discount.name} ${discount.description}'
+              .toLowerCase()
+              .contains(_query);
           return matchesSearch &&
               (_typeFilter == null || discount.type == _typeFilter);
         })
@@ -112,9 +115,8 @@ class _DiscountsViewState extends State<_DiscountsView> {
               controller: _searchController,
               query: _query,
               hintText: 'Cari nama / deskripsi...',
-              onChanged: (value) => setState(
-                () => _query = value.trim().toLowerCase(),
-              ),
+              onChanged: (value) =>
+                  setState(() => _query = value.trim().toLowerCase()),
               trailing: DropdownButtonFormField<DiscountType?>(
                 initialValue: _typeFilter,
                 isExpanded: true,

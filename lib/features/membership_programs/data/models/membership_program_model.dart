@@ -1,4 +1,5 @@
-import '../../domain/entities/membership_program.dart';
+// Project imports:
+import 'package:kawula_pos/features/membership_programs/domain/entities/membership_program.dart';
 
 class MembershipProgramModel extends MembershipProgram {
   const MembershipProgramModel({

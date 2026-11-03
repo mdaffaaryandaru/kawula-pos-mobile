@@ -1,6 +1,7 @@
-import '../../domain/entities/payment_method.dart';
-import '../../domain/repositories/payment_methods_repository.dart';
-import '../datasources/payment_methods_remote_data_source.dart';
+// Project imports:
+import 'package:kawula_pos/features/payment_method/data/datasources/payment_methods_remote_data_source.dart';
+import 'package:kawula_pos/features/payment_method/domain/entities/payment_method.dart';
+import 'package:kawula_pos/features/payment_method/domain/repositories/payment_methods_repository.dart';
 
 class PaymentMethodsRepositoryImpl implements PaymentMethodsRepository {
   const PaymentMethodsRepositoryImpl(this._remoteDataSource);

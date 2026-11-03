@@ -1,9 +1,10 @@
-import '../../../products/presentation/bloc/cart_cubit.dart';
-import '../../../members/domain/entities/member.dart';
-import '../../../members/domain/entities/member_reward_claim.dart';
-import '../../domain/entities/checkout.dart';
-import '../../domain/repositories/checkout_repository.dart';
-import '../datasources/checkout_remote_data_source.dart';
+// Project imports:
+import 'package:kawula_pos/features/members/domain/entities/member.dart';
+import 'package:kawula_pos/features/members/domain/entities/member_reward_claim.dart';
+import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
+import 'package:kawula_pos/features/transactions/data/datasources/checkout_remote_data_source.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 
 class CheckoutRepositoryImpl implements CheckoutRepository {
   const CheckoutRepositoryImpl(this._remoteDataSource);

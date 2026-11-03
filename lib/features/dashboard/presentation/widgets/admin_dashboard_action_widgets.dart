@@ -1,7 +1,20 @@
-part of '../pages/admin_dashboard_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
 
-class _DashboardActions extends StatelessWidget {
-  const _DashboardActions({
+// Package imports:
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/dashboard/presentation/widgets/admin_dashboard_models.dart';
+import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
+import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
+import 'package:kawula_pos/features/shifts/presentation/widgets/shift_action_dialog.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
+
+class DashboardActions extends StatelessWidget {
+  const DashboardActions({
+    super.key,
     required this.user,
     required this.onNewTransaction,
     required this.onOpenReport,
@@ -15,7 +28,7 @@ class _DashboardActions extends StatelessWidget {
   Widget build(BuildContext context) => BlocBuilder<ShiftsCubit, ShiftsState>(
     builder: (context, state) {
       final shiftAction = switch (state) {
-        ShiftsNeedsOpening() => _DashboardAction(
+        ShiftsNeedsOpening() => DashboardAction(
           label: 'Open Shift',
           icon: Icons.lock_open_rounded,
           color: AppColors.primary,
@@ -25,7 +38,7 @@ class _DashboardActions extends StatelessWidget {
             mode: ShiftDialogMode.opening,
           ),
         ),
-        ShiftsActive() => _DashboardAction(
+        ShiftsActive() => DashboardAction(
           label: 'Close Shift',
           icon: Icons.lock_outline_rounded,
           color: AppColors.danger,
@@ -35,7 +48,7 @@ class _DashboardActions extends StatelessWidget {
             mode: ShiftDialogMode.closing,
           ),
         ),
-        ShiftsFailure() => _DashboardAction(
+        ShiftsFailure() => DashboardAction(
           label: 'Coba Lagi',
           icon: Icons.refresh_rounded,
           color: AppColors.warning,
@@ -44,7 +57,7 @@ class _DashboardActions extends StatelessWidget {
         ShiftsLoading() ||
         ShiftsOpening() ||
         ShiftsClosing() ||
-        ShiftsClosed() => _DashboardAction(
+        ShiftsClosed() => DashboardAction(
           label: switch (state) {
             ShiftsOpening() => 'Membuka Shift...',
             ShiftsClosing() => 'Menutup Shift...',
@@ -59,13 +72,13 @@ class _DashboardActions extends StatelessWidget {
       };
       final actions = [
         shiftAction,
-        _DashboardAction(
+        DashboardAction(
           label: 'Transaksi Baru · Buka Kasir',
           icon: Icons.point_of_sale_rounded,
           color: AppColors.success,
           onTap: onNewTransaction,
         ),
-        _DashboardAction(
+        DashboardAction(
           label: 'Riwayat Hari Ini',
           icon: Icons.trending_up_rounded,
           color: AppColors.navy,
@@ -103,7 +116,7 @@ class _DashboardActions extends StatelessWidget {
 class _ActionCard extends StatelessWidget {
   const _ActionCard({required this.action});
 
-  final _DashboardAction action;
+  final DashboardAction action;
 
   @override
   Widget build(BuildContext context) {

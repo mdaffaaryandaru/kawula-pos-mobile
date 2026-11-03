@@ -1,4 +1,8 @@
-part of '../pages/store_settings_page.dart';
+// Dart imports:
+import 'dart:typed_data';
+
+// Flutter imports:
+import 'package:flutter/material.dart';
 
 class StoreSettingsForm extends StatelessWidget {
   const StoreSettingsForm({

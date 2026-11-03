@@ -1,13 +1,16 @@
+// Dart imports:
 import 'dart:convert';
 
+// Package imports:
 import 'package:http/http.dart' as http;
 
-import '../../../../framework/core/exceptions/api_exception.dart';
-import '../../../members/domain/entities/member.dart';
-import '../../../members/domain/entities/member_reward_claim.dart';
-import '../../../members/data/datasources/members_remote_data_source.dart';
-import '../../../products/presentation/bloc/cart_cubit.dart';
-import '../models/checkout_models.dart';
+// Project imports:
+import 'package:kawula_pos/features/members/data/datasources/members_remote_data_source.dart';
+import 'package:kawula_pos/features/members/domain/entities/member.dart';
+import 'package:kawula_pos/features/members/domain/entities/member_reward_claim.dart';
+import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
+import 'package:kawula_pos/features/transactions/data/models/checkout_models.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class CheckoutRemoteDataSource {
   CheckoutRemoteDataSource(

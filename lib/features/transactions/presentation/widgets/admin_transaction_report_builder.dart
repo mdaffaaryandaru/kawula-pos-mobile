@@ -1,11 +1,19 @@
-part of '../pages/admin_transaction_report_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
 
-// Extensions keep report rendering close to its page-owned state.
-// ignore_for_file: invalid_use_of_protected_member
+// Project imports:
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
+import 'package:kawula_pos/features/transactions/presentation/pages/admin_transaction_report_page.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/admin_report_filter_widgets.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/admin_report_profit_widgets.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/admin_report_summary_widgets.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/admin_report_transaction_widgets.dart';
+import 'package:kawula_pos/framework/widgets/master_data_header.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
 
-extension _AdminTransactionReportWidgets on _AdminTransactionReportPageState {
-  Widget _buildReport(BuildContext context, _ReportData data) {
-    final transactions = data.transactions.where(_inSelectedRange).toList()
+extension AdminTransactionReportBuilder on AdminTransactionReportPageState {
+  Widget buildReport(BuildContext context, ReportData data) {
+    final transactions = data.transactions.where(inSelectedRange).toList()
       ..sort((a, b) {
         final aDate = a.createdAt;
         final bDate = b.createdAt;
@@ -15,9 +23,9 @@ extension _AdminTransactionReportWidgets on _AdminTransactionReportPageState {
       });
     final expenses = data.history.where((entry) {
       return entry.type.toLowerCase() == 'expense' &&
-          _dateInSelectedRange(entry.createdAt);
+          dateInSelectedRange(entry.createdAt);
     }).toList();
-    final normalizedQuery = _query.trim().toLowerCase();
+    final normalizedQuery = query.trim().toLowerCase();
     final filteredTransactions = transactions.where((transaction) {
       final matchesQuery =
           normalizedQuery.isEmpty ||
@@ -29,11 +37,11 @@ extension _AdminTransactionReportWidgets on _AdminTransactionReportPageState {
             (item) => item.productName.toLowerCase().contains(normalizedQuery),
           );
       final matchesStatus =
-          _statusFilter == 'all' ||
-          transaction.status.toLowerCase() == _statusFilter;
+          statusFilter == 'all' ||
+          transaction.status.toLowerCase() == statusFilter;
       final matchesPayment =
-          _paymentFilter == 'all' ||
-          transaction.paymentMethod.toLowerCase() == _paymentFilter;
+          paymentFilter == 'all' ||
+          transaction.paymentMethod.toLowerCase() == paymentFilter;
       return matchesQuery && matchesStatus && matchesPayment;
     }).toList();
 
@@ -89,10 +97,10 @@ extension _AdminTransactionReportWidgets on _AdminTransactionReportPageState {
           eyebrow: 'LAPORAN',
           title: 'Transaksi Masuk',
           description: 'Default menampilkan transaksi hari ini, termasuk penjualan, open bill, dan pembatalan.',
-          onRefresh: _refreshReport,
+          onRefresh: refreshReport,
           addLabel: 'Catat Biaya',
           onAdd: widget.canRecordExpenses
-              ? () => _recordExpense(data.history)
+              ? () => recordExpense(data.history)
               : null,
         ),
         const SizedBox(height: 14),
@@ -115,35 +123,35 @@ extension _AdminTransactionReportWidgets on _AdminTransactionReportPageState {
                   ? 2.1
                   : 2.7,
               children: [
-                _ReportMetric(
+                ReportMetric(
                   label: 'Omzet penjualan',
-                  value: _formatRupiah(sales),
+                  value: formatRupiah(sales),
                   detail:
-                      'Cash: ${_formatRupiah(_salesByMethod(completed, 'cash'))} · '
-                      'Non-cash: ${_formatRupiah(_salesByMethod(completed, 'cash', exclude: true))}',
+                      'Cash: ${formatRupiah(_salesByMethod(completed, 'cash'))} · '
+                      'Non-cash: ${formatRupiah(_salesByMethod(completed, 'cash', exclude: true))}',
                   color: const Color(0xFF2563EB),
                   background: const Color(0xFFF0F7FF),
                 ),
                 if (widget.canRecordExpenses)
-                  _ReportMetric(
+                  ReportMetric(
                     label: 'Laba bersih',
-                    value: _formatRupiah(netProfit),
+                    value: formatRupiah(netProfit),
                     detail: 'Omzet - HPP - Pajak - Layanan - Biaya',
                     color: const Color(0xFF059669),
                     background: const Color(0xFFECFDF5),
                   ),
                 if (widget.canRecordExpenses)
-                  _ReportMetric(
+                  ReportMetric(
                     label: 'Beban & operasional',
-                    value: _formatRupiah(cogs + expenseTotal),
+                    value: formatRupiah(cogs + expenseTotal),
                     detail:
-                        'HPP: ${_formatRupiah(cogs)} · Biaya: ${_formatRupiah(expenseTotal)}',
+                        'HPP: ${formatRupiah(cogs)} · Biaya: ${formatRupiah(expenseTotal)}',
                     color: const Color(0xFFDC2626),
                     background: const Color(0xFFFFF1F2),
                   ),
-                _ReportMetric(
+                ReportMetric(
                   label: 'Open bill / transaksi',
-                  value: _formatRupiah(openBills),
+                  value: formatRupiah(openBills),
                   detail: '${transactions.length} total transaksi',
                   color: const Color(0xFFD97706),
                   background: const Color(0xFFFFFBEB),
@@ -159,37 +167,37 @@ extension _AdminTransactionReportWidgets on _AdminTransactionReportPageState {
           style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
         ),
         const SizedBox(height: 16),
-        _ReportFilters(
-          startDate: _startDate,
-          endDate: _endDate,
-          query: _query,
-          status: _statusFilter,
-          payment: _paymentFilter,
+        ReportFilters(
+          startDate: startDate,
+          endDate: endDate,
+          query: query,
+          status: statusFilter,
+          payment: paymentFilter,
           paymentMethods: paymentMethods,
           resultCount: filteredTransactions.length,
-          onChooseRange: _chooseDateRange,
-          onQueryChanged: (value) => setState(() => _query = value),
+          onChooseRange: chooseDateRange,
+          onQueryChanged: (value) => updateState(() => query = value),
           onStatusChanged: (value) =>
-              setState(() => _statusFilter = value ?? 'all'),
+              updateState(() => statusFilter = value ?? 'all'),
           onPaymentChanged: (value) =>
-              setState(() => _paymentFilter = value ?? 'all'),
+              updateState(() => paymentFilter = value ?? 'all'),
           onExport: filteredTransactions.isEmpty
               ? null
-              : () => _exportCsv(filteredTransactions),
+              : () => exportCsv(filteredTransactions),
         ),
         const SizedBox(height: 12),
         if (filteredTransactions.isEmpty)
-          const _ReportMessage(
+          const ReportMessage(
             message: 'Tidak ada transaksi sesuai filter yang dipilih.',
           )
         else
-          _TransactionsTable(
+          TransactionsTable(
             transactions: filteredTransactions,
-            onTap: _showTransactionDetails,
+            onTap: showTransactionDetails,
           ),
         if (widget.canRecordExpenses) ...[
           const SizedBox(height: 16),
-          _ProfitSummary(
+          ProfitSummary(
             sales: sales,
             cogs: cogs,
             serviceCharge: serviceCharge,

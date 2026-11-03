@@ -1,4 +1,5 @@
-import '../../domain/entities/discount_definition.dart';
+// Project imports:
+import 'package:kawula_pos/features/discounts/domain/entities/discount_definition.dart';
 
 class DiscountModel extends DiscountDefinition {
   const DiscountModel({

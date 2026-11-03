@@ -1,7 +1,12 @@
-part of '../pages/admin_transaction_report_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
 
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
+// Project imports:
+import 'package:kawula_pos/features/transactions/presentation/pages/admin_transaction_report_page.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
+
+class StatusBadge extends StatelessWidget {
+  const StatusBadge({super.key, required this.status});
 
   final String status;
 
@@ -29,7 +34,7 @@ class _StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        _statusLabel(status).toUpperCase(),
+        statusLabel(status).toUpperCase(),
         style: TextStyle(
           color: color,
           fontSize: 9,

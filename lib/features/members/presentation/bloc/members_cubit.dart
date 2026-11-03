@@ -1,9 +1,11 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/entities/member.dart';
-import '../../domain/repositories/members_repository.dart';
-import '../../../membership_programs/domain/entities/membership_program.dart';
-import '../../../membership_programs/domain/repositories/membership_programs_repository.dart';
+// Project imports:
+import 'package:kawula_pos/features/members/domain/entities/member.dart';
+import 'package:kawula_pos/features/members/domain/repositories/members_repository.dart';
+import 'package:kawula_pos/features/membership_programs/domain/entities/membership_program.dart';
+import 'package:kawula_pos/features/membership_programs/domain/repositories/membership_programs_repository.dart';
 
 sealed class MembersState {
   const MembersState();

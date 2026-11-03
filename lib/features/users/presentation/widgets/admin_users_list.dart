@@ -1,11 +1,13 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 
-import '../../../../framework/widgets/master_data_feedback.dart';
-import '../../../../framework/widgets/responsive_data_table.dart';
-import '../../../../framework/widgets/master_data_header.dart';
-import '../../../../framework/widgets/master_data_row_actions.dart';
-import '../../../../framework/widgets/master_data_search_panel.dart';
-import '../../../auth/domain/entities/auth_user.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/framework/widgets/master_data_feedback.dart';
+import 'package:kawula_pos/framework/widgets/master_data_header.dart';
+import 'package:kawula_pos/framework/widgets/master_data_row_actions.dart';
+import 'package:kawula_pos/framework/widgets/master_data_search_panel.dart';
+import 'package:kawula_pos/framework/widgets/responsive_data_table.dart';
 
 class AdminUsersList extends StatefulWidget {
   const AdminUsersList({

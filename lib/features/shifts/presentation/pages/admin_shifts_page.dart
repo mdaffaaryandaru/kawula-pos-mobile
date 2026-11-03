@@ -1,17 +1,18 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../framework/widgets/responsive_data_table.dart';
-import '../../../../theme/app_colors.dart';
-import '../../../transactions/domain/entities/checkout.dart';
-import '../../domain/entities/active_shift.dart';
-import '../../domain/entities/admin_shift_detail.dart';
-import '../../domain/repositories/admin_shifts_repository.dart';
-import '../bloc/admin_shifts_cubit.dart';
-
-part '../widgets/admin_shift_list_widgets.dart';
-part '../widgets/admin_shift_detail_widgets.dart';
-part '../widgets/admin_shift_force_close_dialog.dart';
+// Project imports:
+import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
+import 'package:kawula_pos/features/shifts/domain/entities/admin_shift_detail.dart';
+import 'package:kawula_pos/features/shifts/domain/repositories/admin_shifts_repository.dart';
+import 'package:kawula_pos/features/shifts/presentation/bloc/admin_shifts_cubit.dart';
+import 'package:kawula_pos/features/shifts/presentation/widgets/admin_shift_detail_widgets.dart';
+import 'package:kawula_pos/features/shifts/presentation/widgets/admin_shift_force_close_dialog.dart';
+import 'package:kawula_pos/features/shifts/presentation/widgets/admin_shift_list_widgets.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
 
 class AdminShiftsPage extends StatefulWidget {
   const AdminShiftsPage({super.key, required this.repository});
@@ -39,11 +40,11 @@ class _AdminShiftsPageState extends State<AdminShiftsPage> {
       child: BlocBuilder<AdminShiftsCubit, AdminShiftsState>(
         builder: (context, state) => switch (state) {
           AdminShiftsLoading() => const Scaffold(
-            appBar: _AdminShiftsAppBar(),
+            appBar: AdminShiftsAppBar(),
             body: Center(child: CircularProgressIndicator()),
           ),
           AdminShiftsFailure() => Scaffold(
-            appBar: const _AdminShiftsAppBar(),
+            appBar: const AdminShiftsAppBar(),
             body: _loadFailure(context, state.message),
           ),
           AdminShiftsLoaded() => _shiftList(context, state),
@@ -83,7 +84,7 @@ class _AdminShiftsPageState extends State<AdminShiftsPage> {
     final shifts = state.shifts.where(_matchesSearch).toList(growable: false);
     return Scaffold(
       backgroundColor: AppColors.dashboardBackground,
-      appBar: AppBar(title: const _ShiftLogoTitle(title: 'Shift kasir')),
+      appBar: AppBar(title: const ShiftLogoTitle(title: 'Shift kasir')),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final horizontalPadding = constraints.maxWidth >= 900 ? 28.0 : 16.0;
@@ -106,13 +107,13 @@ class _AdminShiftsPageState extends State<AdminShiftsPage> {
                     32,
                   ),
                   children: [
-                    _ShiftHistoryHeader(
+                    ShiftHistoryHeader(
                       onRefresh: () => context.read<AdminShiftsCubit>().load(
                         status: state.statusFilter,
                       ),
                     ),
                     const SizedBox(height: 20),
-                    _ShiftHistorySearch(
+                    ShiftHistorySearch(
                       controller: _searchController,
                       onChanged: (value) => setState(() {
                         _searchQuery = value.trim().toLowerCase();
@@ -141,7 +142,7 @@ class _AdminShiftsPageState extends State<AdminShiftsPage> {
                     ],
                     const SizedBox(height: 24),
                     if (shifts.isEmpty)
-                      const _ShiftHistoryEmpty()
+                      const ShiftHistoryEmpty()
                     else
                       LayoutBuilder(
                         builder: (context, tableConstraints) {
@@ -151,7 +152,7 @@ class _AdminShiftsPageState extends State<AdminShiftsPage> {
                                   .map(
                                     (shift) => Padding(
                                       padding: const EdgeInsets.only(bottom: 8),
-                                      child: _ShiftCard(
+                                      child: ShiftCard(
                                         shift: shift,
                                         onTap: () => _openDetails(
                                           context,
@@ -164,7 +165,7 @@ class _AdminShiftsPageState extends State<AdminShiftsPage> {
                                   .toList(growable: false),
                             );
                           }
-                          return _ShiftHistoryTable(
+                          return ShiftHistoryTable(
                             shifts: shifts,
                             minWidth: tableConstraints.maxWidth,
                             onDetails: (shift) => _openDetails(
@@ -173,7 +174,7 @@ class _AdminShiftsPageState extends State<AdminShiftsPage> {
                               state.statusFilter,
                             ),
                             onForceClose: (shift) async {
-                              final closed = await _forceCloseShift(
+                              final closed = await forceCloseAdminShift(
                                 context,
                                 widget.repository,
                                 shift,
@@ -255,7 +256,7 @@ class _AdminShiftDetailPageState extends State<AdminShiftDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const _ShiftLogoTitle(title: 'Detail shift')),
+      appBar: AppBar(title: const ShiftLogoTitle(title: 'Detail shift')),
       body: FutureBuilder<AdminShiftDetail>(
         future: _detail,
         builder: (context, snapshot) {
@@ -304,19 +305,23 @@ class _AdminShiftDetailPageState extends State<AdminShiftDetailPage> {
   }
 
   Future<void> _forceClose(ActiveShift shift) async {
-    final closed = await _forceCloseShift(context, widget.repository, shift);
+    final closed = await forceCloseAdminShift(
+      context,
+      widget.repository,
+      shift,
+    );
     if (closed && mounted) Navigator.pop(context, true);
   }
 }
 
-Future<bool> _forceCloseShift(
+Future<bool> forceCloseAdminShift(
   BuildContext context,
   AdminShiftsRepository repository,
   ActiveShift shift,
 ) async {
-  final draft = await showDialog<_ForceCloseDraft>(
+  final draft = await showDialog<ForceCloseDraft>(
     context: context,
-    builder: (_) => _ForceCloseDialog(shift: shift),
+    builder: (_) => ForceCloseDialog(shift: shift),
   );
   if (draft == null || !context.mounted) return false;
   final confirmed = await showDialog<bool>(

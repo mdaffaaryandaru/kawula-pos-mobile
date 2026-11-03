@@ -1,4 +1,5 @@
-import '../../domain/entities/auth_user.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
 
 class AuthUserModel extends AuthUser {
   const AuthUserModel({

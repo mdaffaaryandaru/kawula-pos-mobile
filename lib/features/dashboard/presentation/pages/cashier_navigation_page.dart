@@ -1,15 +1,19 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../auth/domain/entities/auth_user.dart';
-import '../../../balances/domain/repositories/balances_repository.dart';
-import '../../../products/domain/repositories/catalog_repository.dart';
-import '../../../shifts/domain/repositories/shifts_repository.dart';
-import '../../../shifts/presentation/bloc/shifts_cubit.dart';
-import '../../../transactions/domain/repositories/checkout_repository.dart';
-import '../../../transactions/presentation/pages/admin_transaction_report_page.dart';
-import '../widgets/cashier_tab.dart';
-import 'admin_dashboard_page.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/balances/domain/repositories/balances_repository.dart';
+import 'package:kawula_pos/features/dashboard/presentation/pages/admin_dashboard_page.dart';
+import 'package:kawula_pos/features/dashboard/presentation/widgets/cashier_tab.dart';
+import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
+import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
+import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/presentation/pages/admin_transaction_report_page.dart';
 
 class CashierNavigationPage extends StatefulWidget {
   const CashierNavigationPage({

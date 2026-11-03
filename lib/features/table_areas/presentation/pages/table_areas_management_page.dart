@@ -1,18 +1,22 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../framework/widgets/master_data_feedback.dart';
-import '../../../../framework/widgets/master_data_header.dart';
-import '../../../../framework/widgets/master_data_row_actions.dart';
-import '../../../../framework/widgets/master_data_search_panel.dart';
-import '../../../../framework/widgets/master_data_status_badge.dart';
-import '../../../../framework/widgets/responsive_data_table.dart';
-import '../../../outlets/domain/entities/outlet.dart';
-import '../../../outlets/domain/repositories/outlets_repository.dart';
-import '../../domain/entities/table_area.dart';
-import '../../domain/repositories/table_areas_repository.dart';
-import '../bloc/table_areas_cubit.dart';
-import '../widgets/table_area_dialog.dart';
+// Project imports:
+import 'package:kawula_pos/features/outlets/domain/entities/outlet.dart';
+import 'package:kawula_pos/features/outlets/domain/repositories/outlets_repository.dart';
+import 'package:kawula_pos/features/table_areas/domain/entities/table_area.dart';
+import 'package:kawula_pos/features/table_areas/domain/repositories/table_areas_repository.dart';
+import 'package:kawula_pos/features/table_areas/presentation/bloc/table_areas_cubit.dart';
+import 'package:kawula_pos/features/table_areas/presentation/widgets/table_area_dialog.dart';
+import 'package:kawula_pos/framework/widgets/master_data_feedback.dart';
+import 'package:kawula_pos/framework/widgets/master_data_header.dart';
+import 'package:kawula_pos/framework/widgets/master_data_row_actions.dart';
+import 'package:kawula_pos/framework/widgets/master_data_search_panel.dart';
+import 'package:kawula_pos/framework/widgets/master_data_status_badge.dart';
+import 'package:kawula_pos/framework/widgets/responsive_data_table.dart';
 
 class TableAreasManagementPage extends StatelessWidget {
   const TableAreasManagementPage({

@@ -1,8 +1,9 @@
-import '../../../../framework/core/exceptions/api_exception.dart';
-import '../../domain/repositories/auth_repository.dart';
-import '../../domain/entities/auth_user.dart';
-import '../datasources/auth_local_data_source.dart';
-import '../datasources/auth_remote_data_source.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/data/datasources/auth_local_data_source.dart';
+import 'package:kawula_pos/features/auth/data/datasources/auth_remote_data_source.dart';
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/auth/domain/repositories/auth_repository.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this._remoteDataSource, this._localDataSource);

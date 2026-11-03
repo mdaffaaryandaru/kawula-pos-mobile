@@ -1,4 +1,5 @@
-import '../entities/membership_program.dart';
+// Project imports:
+import 'package:kawula_pos/features/membership_programs/domain/entities/membership_program.dart';
 
 abstract interface class MembershipProgramsRepository {
   Future<MembershipProgram> getCurrentProgram();

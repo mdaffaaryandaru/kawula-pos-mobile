@@ -1,15 +1,19 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../auth/domain/entities/auth_user.dart';
-import '../../../products/domain/repositories/catalog_repository.dart';
-import '../../../products/presentation/bloc/cart_cubit.dart';
-import '../../../products/presentation/bloc/catalog_cubit.dart';
-import '../../../products/presentation/pages/catalog_page.dart';
-import '../../../shifts/presentation/bloc/shifts_cubit.dart';
-import '../../../shifts/presentation/bloc/shifts_state.dart';
-import '../../../shifts/presentation/widgets/shift_action_dialog.dart';
-import '../../../transactions/domain/repositories/checkout_repository.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
+import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
+import 'package:kawula_pos/features/products/presentation/bloc/catalog_cubit.dart';
+import 'package:kawula_pos/features/products/presentation/pages/catalog_page.dart';
+import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
+import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
+import 'package:kawula_pos/features/shifts/presentation/widgets/shift_action_dialog.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 
 class CashierTab extends StatelessWidget {
   const CashierTab({
@@ -84,9 +88,7 @@ class CashierTab extends StatelessWidget {
         ),
         ShiftsOpening() => Scaffold(
           appBar: const CashierAppBar(),
-          body: const Center(
-            child: CircularProgressIndicator(),
-          ),
+          body: const Center(child: CircularProgressIndicator()),
         ),
         ShiftsActive() => MultiBlocProvider(
           providers: [
@@ -109,9 +111,7 @@ class CashierTab extends StatelessWidget {
         ),
         ShiftsClosing() => Scaffold(
           appBar: const CashierAppBar(),
-          body: const Center(
-            child: CircularProgressIndicator(),
-          ),
+          body: const Center(child: CircularProgressIndicator()),
         ),
         ShiftsClosed() => Scaffold(
           appBar: const CashierAppBar(),

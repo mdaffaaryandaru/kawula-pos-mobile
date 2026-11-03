@@ -1,7 +1,9 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 
-import '../../../outlets/domain/entities/outlet.dart';
-import '../../domain/entities/table_area.dart';
+// Project imports:
+import 'package:kawula_pos/features/outlets/domain/entities/outlet.dart';
+import 'package:kawula_pos/features/table_areas/domain/entities/table_area.dart';
 
 class TableAreaDialog extends StatefulWidget {
   const TableAreaDialog({super.key, required this.outlets, this.area});

@@ -1,7 +1,9 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/entities/payment_method.dart';
-import '../../domain/repositories/payment_methods_repository.dart';
+// Project imports:
+import 'package:kawula_pos/features/payment_method/domain/entities/payment_method.dart';
+import 'package:kawula_pos/features/payment_method/domain/repositories/payment_methods_repository.dart';
 
 sealed class PaymentMethodsState {
   const PaymentMethodsState();

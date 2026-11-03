@@ -1,4 +1,5 @@
-import '../entities/outlet.dart';
+// Project imports:
+import 'package:kawula_pos/features/outlets/domain/entities/outlet.dart';
 
 abstract interface class OutletsRepository {
   Future<List<Outlet>> getOutlets();

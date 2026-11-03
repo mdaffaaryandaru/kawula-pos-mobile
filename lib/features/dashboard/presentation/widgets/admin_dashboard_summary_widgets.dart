@@ -1,7 +1,13 @@
-part of '../pages/admin_dashboard_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
 
-class _DashboardHeading extends StatelessWidget {
-  const _DashboardHeading({required this.admin});
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/dashboard/presentation/widgets/admin_dashboard_models.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
+
+class DashboardHeading extends StatelessWidget {
+  const DashboardHeading({super.key, required this.admin});
 
   final AuthUser admin;
 
@@ -53,7 +59,7 @@ class _DashboardHeading extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  _formatDate(now),
+                  formatDashboardDate(now),
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
@@ -67,10 +73,14 @@ class _DashboardHeading extends StatelessWidget {
   }
 }
 
-class _MetricsGrid extends StatelessWidget {
-  const _MetricsGrid({required this.metrics, required this.availableWidth});
+class MetricsGrid extends StatelessWidget {
+  const MetricsGrid({
+    super.key,
+    required this.metrics,
+    required this.availableWidth,
+  });
 
-  final List<_DashboardMetric> metrics;
+  final List<DashboardMetric> metrics;
   final double availableWidth;
 
   @override
@@ -103,7 +113,7 @@ class _MetricsGrid extends StatelessWidget {
 class _MetricCard extends StatelessWidget {
   const _MetricCard({required this.metric});
 
-  final _DashboardMetric metric;
+  final DashboardMetric metric;
 
   @override
   Widget build(BuildContext context) {

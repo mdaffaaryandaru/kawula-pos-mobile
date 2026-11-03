@@ -1,6 +1,7 @@
-import '../../domain/entities/balance.dart';
-import '../../domain/repositories/balances_repository.dart';
-import '../datasources/balances_remote_data_source.dart';
+// Project imports:
+import 'package:kawula_pos/features/balances/data/datasources/balances_remote_data_source.dart';
+import 'package:kawula_pos/features/balances/domain/entities/balance.dart';
+import 'package:kawula_pos/features/balances/domain/repositories/balances_repository.dart';
 
 class BalancesRepositoryImpl implements BalancesRepository {
   const BalancesRepositoryImpl(this._remoteDataSource);
@@ -8,8 +9,7 @@ class BalancesRepositoryImpl implements BalancesRepository {
   final BalancesRemoteDataSource _remoteDataSource;
 
   @override
-  Future<List<BalanceAccount>> getBalances() =>
-      _remoteDataSource.getBalances();
+  Future<List<BalanceAccount>> getBalances() => _remoteDataSource.getBalances();
 
   @override
   Future<List<BalanceHistoryEntry>> getHistory() =>

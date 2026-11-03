@@ -1,9 +1,11 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../theme/app_colors.dart';
-import '../../../products/presentation/pages/product_formatters.dart';
-import '../../domain/entities/checkout.dart';
+// Project imports:
+import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
 
 Future<TransactionRecord?> showCashierOpenBillsDialog(
   BuildContext context,

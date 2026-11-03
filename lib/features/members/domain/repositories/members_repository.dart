@@ -1,5 +1,6 @@
-import '../entities/member.dart';
-import '../entities/member_reward_claim.dart';
+// Project imports:
+import 'package:kawula_pos/features/members/domain/entities/member.dart';
+import 'package:kawula_pos/features/members/domain/entities/member_reward_claim.dart';
 
 abstract interface class MembersRepository {
   Future<List<Member>> getMembers();

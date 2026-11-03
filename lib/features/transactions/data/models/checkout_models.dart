@@ -1,4 +1,5 @@
-import '../../domain/entities/checkout.dart';
+// Project imports:
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 
 class CheckoutPaymentMethodModel extends CheckoutPaymentMethod {
   const CheckoutPaymentMethodModel({required super.name, required super.code});

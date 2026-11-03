@@ -1,8 +1,10 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../domain/entities/inventory_item.dart';
-import '../../../product_units/domain/entities/product_unit.dart';
+// Project imports:
+import 'package:kawula_pos/features/inventories/domain/entities/inventory_item.dart';
+import 'package:kawula_pos/features/product_units/domain/entities/product_unit.dart';
 
 class InventoryFormDialog extends StatefulWidget {
   const InventoryFormDialog({super.key, required this.units, this.item});

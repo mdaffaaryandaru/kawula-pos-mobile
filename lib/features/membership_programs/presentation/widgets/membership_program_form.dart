@@ -1,11 +1,15 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../framework/widgets/master_data_header.dart';
-import '../../../discounts/domain/entities/discount_definition.dart';
-import '../../../products/domain/entities/catalog_product.dart';
-import '../../domain/entities/membership_program.dart';
-import '../bloc/membership_program_cubit.dart';
+// Project imports:
+import 'package:kawula_pos/features/discounts/domain/entities/discount_definition.dart';
+import 'package:kawula_pos/features/membership_programs/domain/entities/membership_program.dart';
+import 'package:kawula_pos/features/membership_programs/presentation/bloc/membership_program_cubit.dart';
+import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
+import 'package:kawula_pos/framework/widgets/master_data_header.dart';
 
 class MembershipProgramForm extends StatefulWidget {
   const MembershipProgramForm({

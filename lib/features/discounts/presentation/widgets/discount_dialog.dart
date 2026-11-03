@@ -1,7 +1,9 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../domain/entities/discount_definition.dart';
+// Project imports:
+import 'package:kawula_pos/features/discounts/domain/entities/discount_definition.dart';
 
 class DiscountDialog extends StatefulWidget {
   const DiscountDialog({super.key, this.discount});

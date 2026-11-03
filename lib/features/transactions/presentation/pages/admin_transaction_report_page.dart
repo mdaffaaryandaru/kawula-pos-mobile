@@ -1,30 +1,27 @@
+// Dart imports:
 import 'dart:convert';
 
+// Flutter imports:
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
+
+// Package imports:
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../../framework/widgets/master_data_header.dart';
-import '../../../../framework/widgets/responsive_data_table.dart';
-import '../../../../theme/app_colors.dart';
-import '../../../balances/domain/entities/balance.dart';
-import '../../../balances/domain/repositories/balances_repository.dart';
-import '../../domain/entities/checkout.dart';
-import '../../domain/repositories/checkout_repository.dart';
+// Project imports:
+import 'package:kawula_pos/features/balances/domain/entities/balance.dart';
+import 'package:kawula_pos/features/balances/domain/repositories/balances_repository.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/admin_report_expense_dialog.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/admin_report_summary_widgets.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/admin_transaction_report_builder.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/transaction_receipt_component.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
 
-part '../widgets/admin_transaction_report_builder.dart';
-part '../widgets/admin_report_filter_widgets.dart';
-part '../widgets/admin_report_transaction_widgets.dart';
-part '../widgets/admin_report_profit_widgets.dart';
-part '../widgets/admin_report_status_badge.dart';
-part '../widgets/admin_report_expense_dialog.dart';
-part '../widgets/admin_report_summary_widgets.dart';
-
-class _ReportData {
-  const _ReportData({required this.transactions, required this.history});
+class ReportData {
+  const ReportData({required this.transactions, required this.history});
 
   final List<TransactionRecord> transactions;
   final List<BalanceHistoryEntry> history;
@@ -44,31 +41,36 @@ class AdminTransactionReportPage extends StatefulWidget {
 
   @override
   State<AdminTransactionReportPage> createState() =>
-      _AdminTransactionReportPageState();
+      AdminTransactionReportPageState();
 }
 
-class _AdminTransactionReportPageState
+class AdminTransactionReportPageState
     extends State<AdminTransactionReportPage> {
-  late DateTime _startDate;
-  late DateTime _endDate;
-  late Future<_ReportData> _report;
-  String _query = '';
-  String _statusFilter = 'all';
-  String _paymentFilter = 'all';
+  late DateTime startDate;
+  late DateTime endDate;
+  late Future<ReportData> _report;
+  String query = '';
+  String statusFilter = 'all';
+  String paymentFilter = 'all';
+
+  void updateState(VoidCallback update) {
+    if (!mounted) return;
+    setState(update);
+  }
 
   @override
   void initState() {
     super.initState();
     final today = _dateOnly(DateTime.now());
-    _startDate = today;
-    _endDate = today;
+    startDate = today;
+    endDate = today;
     _report = _loadReport();
   }
 
-  Future<_ReportData> _loadReport() async {
+  Future<ReportData> _loadReport() async {
     final transactionsFuture = widget.checkoutRepository.getTransactions();
     if (!widget.canRecordExpenses) {
-      return _ReportData(
+      return ReportData(
         transactions: await transactionsFuture,
         history: const [],
       );
@@ -77,7 +79,7 @@ class _AdminTransactionReportPageState
       transactionsFuture,
       widget.balancesRepository.getHistory(),
     ]);
-    return _ReportData(
+    return ReportData(
       transactions: results[0] as List<TransactionRecord>,
       history: results[1] as List<BalanceHistoryEntry>,
     );
@@ -87,40 +89,38 @@ class _AdminTransactionReportPageState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Laporan Transaksi')),
-      body: FutureBuilder<_ReportData>(
+      body: FutureBuilder<ReportData>(
         future: _report,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return _ReportMessage(
+            return ReportMessage(
               message: 'Laporan gagal dimuat: ${snapshot.error}',
               action: TextButton(
-                onPressed: _refreshReport,
+                onPressed: refreshReport,
                 child: const Text('Coba lagi'),
               ),
             );
           }
           final data = snapshot.data;
           if (data == null) {
-            return const _ReportMessage(
-              message: 'Data laporan tidak tersedia.',
-            );
+            return const ReportMessage(message: 'Data laporan tidak tersedia.');
           }
-          return _buildReport(context, data);
+          return buildReport(context, data);
         },
       ),
     );
   }
 
-  void _refreshReport() {
+  void refreshReport() {
     setState(() {
       _report = _loadReport();
     });
   }
 
-  Future<void> _recordExpense(List<BalanceHistoryEntry> history) async {
+  Future<void> recordExpense(List<BalanceHistoryEntry> history) async {
     final methods = history
         .map((entry) => entry.paymentMethod)
         .where((method) => method.isNotEmpty)
@@ -128,32 +128,32 @@ class _AdminTransactionReportPageState
     methods.add('CASH');
     final success = await showDialog<bool>(
       context: context,
-      builder: (context) => _RecordExpenseDialog(
+      builder: (context) => RecordExpenseDialog(
         paymentMethods: methods.toList()..sort(),
         repository: widget.balancesRepository,
       ),
     );
     if (!mounted || success != true) return;
-    _refreshReport();
+    refreshReport();
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('Biaya berhasil dicatat.')));
   }
 
-  Future<void> _chooseDateRange() async {
+  Future<void> chooseDateRange() async {
     final range = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
-      initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
+      initialDateRange: DateTimeRange(start: startDate, end: endDate),
     );
     if (!mounted || range == null) return;
     setState(() {
-      _startDate = _dateOnly(range.start);
-      _endDate = _dateOnly(range.end);
+      startDate = _dateOnly(range.start);
+      endDate = _dateOnly(range.end);
     });
   }
 
-  Future<void> _exportCsv(List<TransactionRecord> transactions) async {
+  Future<void> exportCsv(List<TransactionRecord> transactions) async {
     final rows = <List<String>>[
       [
         'ID',
@@ -182,8 +182,8 @@ class _AdminTransactionReportPageState
     ];
     final csv = rows.map((row) => row.map(_csvCell).join(',')).join('\r\n');
     final fileName =
-        'laporan-transaksi-${_fileDate(_startDate)}-'
-        '${_fileDate(_endDate)}.csv';
+        'laporan-transaksi-${_fileDate(startDate)}-'
+        '${_fileDate(endDate)}.csv';
     try {
       await SharePlus.instance.share(
         ShareParams(
@@ -205,7 +205,7 @@ class _AdminTransactionReportPageState
     }
   }
 
-  Future<void> _showTransactionDetails(TransactionRecord transaction) async {
+  Future<void> showTransactionDetails(TransactionRecord transaction) async {
     try {
       final detail = await widget.checkoutRepository.getTransaction(
         transaction.id,
@@ -216,7 +216,7 @@ class _AdminTransactionReportPageState
         builder: (_) => _TransactionDetailsDialog(
           transaction: detail.withFallbackDetails(transaction),
           repository: widget.checkoutRepository,
-          onCompleted: _refreshReport,
+          onCompleted: refreshReport,
           onPrint: _printTransactionReceipt,
         ),
       );
@@ -229,98 +229,17 @@ class _AdminTransactionReportPageState
   }
 
   Future<void> _printTransactionReceipt(TransactionRecord transaction) async {
-    final document = pw.Document();
-    final isPending = transaction.isPending;
-    document.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.roll80,
-        margin: const pw.EdgeInsets.all(8),
-        build: (context) => [
-          pw.Center(
-            child: pw.Text(
-              transaction.outletName.isEmpty
-                  ? 'Kawula'
-                  : transaction.outletName,
-              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
-              textAlign: pw.TextAlign.center,
-            ),
-          ),
-          pw.SizedBox(height: 8),
-          pw.Center(
-            child: pw.Text(
-              isPending ? 'OPEN BILL - BELUM LUNAS' : 'STRUK PEMBAYARAN',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-            ),
-          ),
-          pw.Divider(),
-          _receiptPdfRow('No. transaksi', transaction.id),
-          _receiptPdfRow('Waktu', _formatDateTime(transaction.createdAt)),
-          if (transaction.cashierName.isNotEmpty)
-            _receiptPdfRow('Kasir', transaction.cashierName),
-          if (transaction.memberName.isNotEmpty)
-            _receiptPdfRow('Member', transaction.memberName),
-          if (transaction.tableNumber.isNotEmpty)
-            _receiptPdfRow('No. meja', transaction.tableNumber),
-          pw.Divider(),
-          if (transaction.items.isEmpty)
-            pw.Text('Rincian item tidak tersedia.')
-          else
-            for (final item in transaction.items) ...[
-              _receiptPdfRow(
-                '${item.quantity} x ${item.productName}',
-                _formatRupiah(item.price * item.quantity),
-              ),
-              if (item.notes.isNotEmpty)
-                pw.Padding(
-                  padding: const pw.EdgeInsets.only(left: 6),
-                  child: pw.Text('Catatan: ${item.notes}'),
-                ),
-            ],
-          pw.Divider(),
-          if (transaction.subtotal > 0)
-            _receiptPdfRow('Subtotal', _formatRupiah(transaction.subtotal)),
-          if (transaction.taxAmount > 0)
-            _receiptPdfRow('Pajak', _formatRupiah(transaction.taxAmount)),
-          if (transaction.serviceCharge > 0)
-            _receiptPdfRow(
-              'Biaya layanan',
-              _formatRupiah(transaction.serviceCharge),
-            ),
-          if (transaction.discountAmount > 0)
-            _receiptPdfRow(
-              'Diskon',
-              '- ${_formatRupiah(transaction.discountAmount)}',
-            ),
-          _receiptPdfRow(
-            'TOTAL',
-            _formatRupiah(transaction.totalAmount),
-            emphasize: true,
-          ),
-          pw.Divider(),
-          _receiptPdfRow('Metode', transaction.paymentMethod),
-          if (isPending)
-            _receiptPdfRow('Status', 'Belum lunas')
-          else ...[
-            _receiptPdfRow('Dibayar', _formatRupiah(transaction.paidAmount)),
-            _receiptPdfRow(
-              'Kembalian',
-              _formatRupiah(transaction.changeAmount),
-            ),
-          ],
-          if (transaction.notes.isNotEmpty) ...[
-            pw.SizedBox(height: 6),
-            pw.Text('Catatan transaksi: ${transaction.notes}'),
-          ],
-          pw.SizedBox(height: 12),
-          pw.Center(child: pw.Text('Terima kasih')),
-        ],
-      ),
-    );
-
     try {
+      final settings = await widget.checkoutRepository.getSettings();
+      final receipt = TransactionReceiptData.fromTransaction(
+        transaction,
+        logoUrl: settings.logoUrl,
+      );
+      final logoBytes = await loadTransactionReceiptLogo(receipt);
       await Printing.layoutPdf(
         name: 'struk-${transaction.id}.pdf',
-        onLayout: (_) => document.save(),
+        onLayout: (_) =>
+            buildTransactionReceiptPdf(receipt, logoBytes: logoBytes).save(),
       );
     } catch (error) {
       if (!mounted) return;
@@ -330,13 +249,13 @@ class _AdminTransactionReportPageState
     }
   }
 
-  bool _inSelectedRange(TransactionRecord transaction) =>
-      _dateInSelectedRange(transaction.createdAt);
+  bool inSelectedRange(TransactionRecord transaction) =>
+      dateInSelectedRange(transaction.createdAt);
 
-  bool _dateInSelectedRange(DateTime? date) {
+  bool dateInSelectedRange(DateTime? date) {
     if (date == null) return false;
     final day = _dateOnly(date.toLocal());
-    return !day.isBefore(_startDate) && !day.isAfter(_endDate);
+    return !day.isBefore(startDate) && !day.isAfter(endDate);
   }
 }
 
@@ -429,92 +348,18 @@ class _TransactionDetailsDialogState extends State<_TransactionDetailsDialog> {
               child: ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
-                  _transactionInfoCard(context, transaction),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Pesanan',
-                    style: Theme.of(context).textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700),
+                  TransactionReceiptCard(
+                    receipt: TransactionReceiptData.fromTransaction(
+                      transaction,
+                    ),
                   ),
-                  const SizedBox(height: 10),
-                  if (transaction.items.isEmpty)
-                    const Text('Rincian item tidak tersedia.')
-                  else
-                    for (final item in transaction.items)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(11),
-                              ),
-                              child: const Icon(
-                                Icons.receipt_long_outlined,
-                                size: 19,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(width: 11),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.productName,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${item.quantity} × ${_formatRupiah(item.price)}',
-                                    style: const TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  for (final variant in item.selectedVariants)
-                                    Text(
-                                      '${variant.groupName}: ${variant.optionName}',
-                                      style: const TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  if (item.notes.isNotEmpty)
-                                    Text(
-                                      'Catatan: ${item.notes}',
-                                      style: const TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _formatRupiah(item.price * item.quantity),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  if (transaction.notes.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+                  if (transaction.refundAmount > 0) ...[
+                    const SizedBox(height: 12),
                     Text(
-                      'Catatan transaksi: ${transaction.notes}',
-                      style: const TextStyle(color: AppColors.textSecondary),
+                      'Refund: ${_formatRupiah(transaction.refundAmount)}',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ],
-                  const SizedBox(height: 10),
-                  _transactionTotals(context, transaction),
                   if (transaction.refundReason.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Text('Alasan: ${transaction.refundReason}'),
@@ -577,113 +422,6 @@ class _TransactionDetailsDialogState extends State<_TransactionDetailsDialog> {
     );
   }
 
-  Widget _transactionInfoCard(
-    BuildContext context,
-    TransactionRecord transaction,
-  ) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      border: Border.all(color: AppColors.border),
-      borderRadius: BorderRadius.circular(16),
-    ),
-    child: LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 440 ? 2 : 1;
-        return Wrap(
-          runSpacing: 14,
-          children: [
-            _TransactionInfoCell(
-              width: columns == 2 ? (constraints.maxWidth - 14) / 2 : null,
-              label: 'Waktu',
-              value: _formatDateTime(transaction.createdAt),
-            ),
-            _TransactionInfoCell(
-              width: columns == 2 ? (constraints.maxWidth - 14) / 2 : null,
-              label: 'Outlet & Kasir',
-              value:
-                  '${transaction.outletName.isEmpty ? '—' : transaction.outletName} · '
-                  '${transaction.cashierName.isEmpty ? '—' : transaction.cashierName}',
-            ),
-            _TransactionInfoCell(
-              width: columns == 2 ? (constraints.maxWidth - 14) / 2 : null,
-              label: 'Metode & Status',
-              value:
-                  '${transaction.paymentMethod} · ${_statusLabel(transaction.status)}',
-            ),
-            _TransactionInfoCell(
-              width: columns == 2 ? (constraints.maxWidth - 14) / 2 : null,
-              label: 'Pelanggan',
-              value: transaction.memberName.isEmpty
-                  ? '—'
-                  : transaction.memberName,
-            ),
-            _TransactionInfoCell(
-              width: columns == 2 ? (constraints.maxWidth - 14) / 2 : null,
-              label: 'No. Meja',
-              value: transaction.tableNumber.isEmpty
-                  ? '—'
-                  : transaction.tableNumber,
-            ),
-          ],
-        );
-      },
-    ),
-  );
-
-  Widget _transactionTotals(
-    BuildContext context,
-    TransactionRecord transaction,
-  ) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: const Color(0xFFF8FAFC),
-      borderRadius: BorderRadius.circular(16),
-    ),
-    child: Column(
-      children: [
-        _TransactionAmountRow(label: 'Subtotal', amount: transaction.subtotal),
-        if (transaction.discountAmount > 0)
-          _TransactionAmountRow(
-            label: 'Diskon',
-            amount: -transaction.discountAmount,
-          ),
-        if (transaction.taxAmount > 0)
-          _TransactionAmountRow(label: 'Pajak', amount: transaction.taxAmount),
-        if (transaction.serviceCharge > 0)
-          _TransactionAmountRow(
-            label: 'Biaya Layanan',
-            amount: transaction.serviceCharge,
-          ),
-        const Divider(height: 24),
-        _TransactionAmountRow(
-          label: 'Total Tagihan',
-          amount: transaction.totalAmount,
-          emphasized: true,
-        ),
-        if (transaction.isPending)
-          const _TransactionAmountRow(
-            label: 'Status pembayaran',
-            trailingText: 'Belum lunas',
-          )
-        else ...[
-          _TransactionAmountRow(
-            label: 'Uang Diterima',
-            amount: transaction.paidAmount,
-          ),
-          _TransactionAmountRow(
-            label: 'Kembalian',
-            amount: transaction.changeAmount,
-          ),
-        ],
-        if (transaction.refundAmount > 0)
-          _TransactionAmountRow(
-            label: 'Refund',
-            amount: transaction.refundAmount,
-          ),
-      ],
-    ),
-  );
-
   Future<void> _runTransactionAction({required bool refund}) async {
     final input = await showDialog<_TransactionActionInput>(
       context: context,
@@ -729,77 +467,6 @@ class _TransactionDetailsDialogState extends State<_TransactionDetailsDialog> {
         _actionError = 'Operasi gagal: $error';
       });
     }
-  }
-}
-
-class _TransactionInfoCell extends StatelessWidget {
-  const _TransactionInfoCell({
-    required this.label,
-    required this.value,
-    required this.width,
-  });
-
-  final String label;
-  final String value;
-  final double? width;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: width,
-    child: Padding(
-      padding: const EdgeInsets.only(right: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 11,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-        ],
-      ),
-    ),
-  );
-}
-
-class _TransactionAmountRow extends StatelessWidget {
-  const _TransactionAmountRow({
-    required this.label,
-    this.amount,
-    this.trailingText,
-    this.emphasized = false,
-  });
-
-  final String label;
-  final num? amount;
-  final String? trailingText;
-  final bool emphasized;
-
-  @override
-  Widget build(BuildContext context) {
-    final textStyle = TextStyle(
-      fontWeight: emphasized ? FontWeight.w800 : FontWeight.normal,
-      fontSize: emphasized ? 16 : 13,
-      color: emphasized ? AppColors.textPrimary : AppColors.textSecondary,
-    );
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: textStyle)),
-          Text(
-            trailingText ?? _formatRupiah(amount ?? 0),
-            style: textStyle.copyWith(
-              color: emphasized ? AppColors.textPrimary : null,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -916,24 +583,6 @@ class _TransactionActionPromptState extends State<_TransactionActionPrompt> {
 
 DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
 
-pw.Widget _receiptPdfRow(String label, String value, {bool emphasize = false}) {
-  final style = pw.TextStyle(
-    fontSize: 9,
-    fontWeight: emphasize ? pw.FontWeight.bold : pw.FontWeight.normal,
-  );
-  return pw.Padding(
-    padding: const pw.EdgeInsets.symmetric(vertical: 2),
-    child: pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Expanded(child: pw.Text(label, style: style)),
-        pw.SizedBox(width: 8),
-        pw.Text(value, style: style, textAlign: pw.TextAlign.right),
-      ],
-    ),
-  );
-}
-
 String _formatDate(DateTime date) =>
     '${date.day.toString().padLeft(2, '0')}/'
     '${date.month.toString().padLeft(2, '0')}/${date.year}';
@@ -972,3 +621,11 @@ String _formatRupiah(num amount) {
   }
   return result.toString();
 }
+
+String formatDate(DateTime date) => _formatDate(date);
+
+String formatDateTime(DateTime? date) => _formatDateTime(date);
+
+String statusLabel(String status) => _statusLabel(status);
+
+String formatRupiah(num amount) => _formatRupiah(amount);

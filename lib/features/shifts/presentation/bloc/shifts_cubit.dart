@@ -1,7 +1,9 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/repositories/shifts_repository.dart';
-import 'shifts_state.dart';
+// Project imports:
+import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
+import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
 
 class ShiftsCubit extends Cubit<ShiftsState> {
   ShiftsCubit(this._repository) : super(const ShiftsLoading());

@@ -1,11 +1,14 @@
+// Dart imports:
 import 'dart:convert';
 
+// Package imports:
 import 'package:http/http.dart' as http;
 
-import '../../../../framework/core/exceptions/api_exception.dart';
-import '../../../transactions/data/models/checkout_models.dart';
-import '../../domain/entities/admin_shift_detail.dart';
-import '../models/active_shift_model.dart';
+// Project imports:
+import 'package:kawula_pos/features/shifts/data/models/active_shift_model.dart';
+import 'package:kawula_pos/features/shifts/domain/entities/admin_shift_detail.dart';
+import 'package:kawula_pos/features/transactions/data/models/checkout_models.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class ShiftsRemoteDataSource {
   ShiftsRemoteDataSource(this._client, this._baseUrl, this._readToken);

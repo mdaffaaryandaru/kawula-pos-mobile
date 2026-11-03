@@ -1,8 +1,10 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/entities/active_shift.dart';
-import '../../domain/entities/admin_shift_detail.dart';
-import '../../domain/repositories/admin_shifts_repository.dart';
+// Project imports:
+import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
+import 'package:kawula_pos/features/shifts/domain/entities/admin_shift_detail.dart';
+import 'package:kawula_pos/features/shifts/domain/repositories/admin_shifts_repository.dart';
 
 sealed class AdminShiftsState {
   const AdminShiftsState();

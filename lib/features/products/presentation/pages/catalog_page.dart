@@ -1,21 +1,25 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../config/api_config.dart';
-import '../../../../theme/app_colors.dart';
-import '../../../auth/domain/entities/auth_user.dart';
-import '../../../shifts/domain/entities/active_shift.dart';
-import '../../../transactions/domain/repositories/checkout_repository.dart';
-import '../../../transactions/domain/entities/checkout.dart';
-import '../../../transactions/presentation/widgets/cashier_open_bill_dialogs.dart';
-import '../../domain/entities/catalog_product.dart';
-import '../bloc/cart_cubit.dart';
-import '../bloc/catalog_cubit.dart';
-import '../bloc/catalog_state.dart';
-import 'product_cart_sheet.dart';
-import 'product_formatters.dart';
-import 'product_variant_dialog.dart';
+// Package imports:
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+// Project imports:
+import 'package:kawula_pos/config/api_config.dart';
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
+import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
+import 'package:kawula_pos/features/products/presentation/bloc/catalog_cubit.dart';
+import 'package:kawula_pos/features/products/presentation/bloc/catalog_state.dart';
+import 'package:kawula_pos/features/products/presentation/pages/product_cart_sheet.dart';
+import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
+import 'package:kawula_pos/features/products/presentation/pages/product_variant_dialog.dart';
+import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/cashier_open_bill_dialogs.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
 
 class CatalogPage extends StatefulWidget {
   const CatalogPage({
@@ -431,144 +435,158 @@ class _CatalogPageState extends State<CatalogPage> {
 
   Widget _catalog(BuildContext context, CatalogLoaded state) {
     final products = state.visibleProducts;
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: TextField(
-            controller: _searchController,
-            onChanged: context.read<CatalogCubit>().search,
-            decoration: InputDecoration(
-              hintText: 'Cari nama produk atau kategori',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 160),
-                transitionBuilder: (child, animation) =>
-                    ScaleTransition(scale: animation, child: child),
-                child: _searchController.text.isEmpty
-                    ? const SizedBox.shrink(key: ValueKey('no-search'))
-                    : IconButton(
-                        key: const ValueKey('clear-search'),
-                        tooltip: 'Hapus pencarian',
-                        onPressed: () {
-                          _searchController.clear();
-                          context.read<CatalogCubit>().search('');
-                        },
-                        icon: const Icon(Icons.close),
-                      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxHeight < 180;
+        return Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                compact ? 4 : 8,
+                16,
+                compact ? 6 : 12,
               ),
-              filled: true,
-              fillColor: AppColors.surface,
-              contentPadding: const EdgeInsets.symmetric(vertical: 16),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
-                  width: 1.5,
+              child: TextField(
+                controller: _searchController,
+                onChanged: context.read<CatalogCubit>().search,
+                decoration: InputDecoration(
+                  hintText: 'Cari nama produk atau kategori',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 160),
+                    transitionBuilder: (child, animation) =>
+                        ScaleTransition(scale: animation, child: child),
+                    child: _searchController.text.isEmpty
+                        ? const SizedBox.shrink(key: ValueKey('no-search'))
+                        : IconButton(
+                            key: const ValueKey('clear-search'),
+                            tooltip: 'Hapus pencarian',
+                            onPressed: () {
+                              _searchController.clear();
+                              context.read<CatalogCubit>().search('');
+                            },
+                            icon: const Icon(Icons.close),
+                          ),
+                  ),
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: compact ? 10 : 16,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(
+                      color: AppColors.primary,
+                      width: 1.5,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
-        SizedBox(
-          height: 48,
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            scrollDirection: Axis.horizontal,
-            children: [
-              _CategoryChip(
-                label: 'Semua',
-                selected: state.selectedCategoryId == null,
-                onSelected: () =>
-                    context.read<CatalogCubit>().selectCategory(null),
-              ),
-              for (final category in state.categories)
-                _CategoryChip(
-                  label: category.name,
-                  selected: state.selectedCategoryId == category.id,
-                  onSelected: () =>
-                      context.read<CatalogCubit>().selectCategory(category.id),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: products.isEmpty
-              ? const Center(child: Text('Produk tidak ditemukan.'))
-              : AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, .025),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
-                    ),
+            SizedBox(
+              height: compact ? 40 : 48,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _CategoryChip(
+                    label: 'Semua',
+                    selected: state.selectedCategoryId == null,
+                    onSelected: () =>
+                        context.read<CatalogCubit>().selectCategory(null),
                   ),
-                  child: LayoutBuilder(
-                    key: ValueKey(
-                      '${state.selectedCategoryId}-${state.searchQuery}',
+                  for (final category in state.categories)
+                    _CategoryChip(
+                      label: category.name,
+                      selected: state.selectedCategoryId == category.id,
+                      onSelected: () => context
+                          .read<CatalogCubit>()
+                          .selectCategory(category.id),
                     ),
-                    builder: (context, constraints) {
-                      final columns = constraints.maxWidth >= 900
-                          ? 4
-                          : constraints.maxWidth >= 600
-                          ? 3
-                          : 2;
-                      return GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: columns,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: constraints.maxWidth >= 900
-                              ? 0.84
-                              : constraints.maxWidth >= 600
-                              ? 0.78
-                              : 0.70,
+                ],
+              ),
+            ),
+            SizedBox(height: compact ? 4 : 8),
+            Expanded(
+              child: products.isEmpty
+                  ? const Center(child: Text('Produk tidak ditemukan.'))
+                  : AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, .025),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
                         ),
-                        itemCount: products.length,
-                        itemBuilder: (context, index) {
-                          final product = products[index];
-                          return TweenAnimationBuilder<double>(
-                            key: ValueKey(product.id),
-                            tween: Tween(begin: 0, end: 1),
-                            duration: Duration(
-                              milliseconds: 280 + index.clamp(0, 8) * 35,
-                            ),
-                            curve: Curves.easeOutCubic,
-                            builder: (context, progress, child) => Opacity(
-                              opacity: progress,
-                              child: Transform.translate(
-                                offset: Offset(0, 14 * (1 - progress)),
-                                child: child,
-                              ),
-                            ),
-                            child: _ProductCard(
-                              product: product,
-                              onTap: () => _addToCart(context, product),
-                            ),
+                      ),
+                      child: LayoutBuilder(
+                        key: ValueKey(
+                          '${state.selectedCategoryId}-${state.searchQuery}',
+                        ),
+                        builder: (context, constraints) {
+                          final columns = constraints.maxWidth >= 900
+                              ? 4
+                              : constraints.maxWidth >= 600
+                              ? 3
+                              : 2;
+                          return GridView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: columns,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  childAspectRatio: constraints.maxWidth >= 900
+                                      ? 0.84
+                                      : constraints.maxWidth >= 600
+                                      ? 0.78
+                                      : 0.70,
+                                ),
+                            itemCount: products.length,
+                            itemBuilder: (context, index) {
+                              final product = products[index];
+                              return TweenAnimationBuilder<double>(
+                                key: ValueKey(product.id),
+                                tween: Tween(begin: 0, end: 1),
+                                duration: Duration(
+                                  milliseconds: 280 + index.clamp(0, 8) * 35,
+                                ),
+                                curve: Curves.easeOutCubic,
+                                builder: (context, progress, child) => Opacity(
+                                  opacity: progress,
+                                  child: Transform.translate(
+                                    offset: Offset(0, 14 * (1 - progress)),
+                                    child: child,
+                                  ),
+                                ),
+                                child: _ProductCard(
+                                  product: product,
+                                  onTap: () => _addToCart(context, product),
+                                ),
+                              );
+                            },
                           );
                         },
-                      );
-                    },
-                  ),
-                ),
-        ),
-      ],
+                      ),
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 

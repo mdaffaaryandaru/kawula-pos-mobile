@@ -1,4 +1,5 @@
-import '../entities/table_area.dart';
+// Project imports:
+import 'package:kawula_pos/features/table_areas/domain/entities/table_area.dart';
 
 abstract interface class TableAreasRepository {
   Future<List<TableArea>> getTableAreas();

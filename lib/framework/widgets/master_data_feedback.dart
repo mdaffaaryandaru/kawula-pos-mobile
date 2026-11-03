@@ -1,10 +1,8 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 
 class MasterDataLoadingState extends StatelessWidget {
-  const MasterDataLoadingState({
-    super.key,
-    this.message = 'Memuat data...',
-  });
+  const MasterDataLoadingState({super.key, this.message = 'Memuat data...'});
 
   final String message;
 
@@ -97,7 +95,9 @@ class MasterDataErrorState extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

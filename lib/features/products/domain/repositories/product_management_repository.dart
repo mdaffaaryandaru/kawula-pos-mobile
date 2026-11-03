@@ -1,10 +1,12 @@
+// Package imports:
 import 'package:image_picker/image_picker.dart';
 
-import '../../../categories/domain/entities/managed_category.dart';
-import '../../../products/domain/entities/catalog_product.dart';
-import '../../../inventories/domain/entities/inventory_item.dart';
-import '../../../product_units/domain/entities/product_unit.dart';
-import '../entities/product_management.dart';
+// Project imports:
+import 'package:kawula_pos/features/categories/domain/entities/managed_category.dart';
+import 'package:kawula_pos/features/inventories/domain/entities/inventory_item.dart';
+import 'package:kawula_pos/features/product_units/domain/entities/product_unit.dart';
+import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
+import 'package:kawula_pos/features/products/domain/entities/product_management.dart';
 
 abstract interface class ProductManagementRepository {
   Future<List<ManagedProduct>> getProducts();

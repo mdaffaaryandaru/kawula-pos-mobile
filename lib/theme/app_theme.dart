@@ -1,6 +1,8 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
+// Project imports:
+import 'package:kawula_pos/theme/app_colors.dart';
 
 abstract final class AppTheme {
   static ThemeData get light {

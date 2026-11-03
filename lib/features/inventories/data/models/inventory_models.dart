@@ -1,5 +1,6 @@
-import '../../domain/entities/inventory_item.dart';
-import '../../../product_units/data/models/product_unit_model.dart';
+// Project imports:
+import 'package:kawula_pos/features/inventories/domain/entities/inventory_item.dart';
+import 'package:kawula_pos/features/product_units/data/models/product_unit_model.dart';
 
 class InventoryMutationModel extends InventoryMutation {
   const InventoryMutationModel({

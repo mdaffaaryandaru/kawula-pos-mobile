@@ -1,4 +1,5 @@
-import '../entities/product_unit.dart';
+// Project imports:
+import 'package:kawula_pos/features/product_units/domain/entities/product_unit.dart';
 
 abstract interface class ProductUnitsRepository {
   Future<List<ProductUnit>> getProductUnits();

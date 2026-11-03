@@ -1,6 +1,8 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 
-import '../../domain/entities/outlet.dart';
+// Project imports:
+import 'package:kawula_pos/features/outlets/domain/entities/outlet.dart';
 
 class OutletDialog extends StatefulWidget {
   const OutletDialog({super.key, this.outlet});

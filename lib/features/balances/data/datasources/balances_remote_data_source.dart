@@ -1,9 +1,12 @@
+// Dart imports:
 import 'dart:convert';
 
+// Package imports:
 import 'package:http/http.dart' as http;
 
-import '../../../../framework/core/exceptions/api_exception.dart';
-import '../models/balance_models.dart';
+// Project imports:
+import 'package:kawula_pos/features/balances/data/models/balance_models.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class BalancesRemoteDataSource {
   const BalancesRemoteDataSource(this._client, this._baseUrl, this._readToken);
@@ -101,10 +104,7 @@ class BalancesRemoteDataSource {
         'Sesi login tidak ditemukan. Silakan masuk lagi.',
       );
     }
-    return {
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
-    };
+    return {'Authorization': 'Bearer $token', 'Accept': 'application/json'};
   }
 
   Future<Map<String, String>> _authorizedJsonHeaders() async => {

@@ -1,23 +1,34 @@
-part of '../pages/variant_groups_management_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-class _VariantGroupDialog extends StatefulWidget {
-  const _VariantGroupDialog({this.group, required this.references});
+// Project imports:
+import 'package:kawula_pos/features/variant_groups/domain/entities/variant_group_definition.dart';
+import 'package:kawula_pos/features/variant_groups/presentation/widgets/variant_group_option_editors.dart';
+
+class VariantGroupDialog extends StatefulWidget {
+  const VariantGroupDialog({super.key, this.group, required this.references});
 
   final VariantGroupDefinition? group;
   final VariantRecipeReferences references;
 
   @override
-  State<_VariantGroupDialog> createState() => _VariantGroupDialogState();
+  State<VariantGroupDialog> createState() => VariantGroupDialogState();
 }
 
-class _VariantGroupDialogState extends State<_VariantGroupDialog> {
+class VariantGroupDialogState extends State<VariantGroupDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _minSelectionController;
   late final TextEditingController _maxSelectionController;
   late bool _isRequired;
-  late final List<_VariantOptionForm> _options;
+  late final List<VariantOptionForm> options;
   String? _formError;
+
+  void updateState(VoidCallback update) {
+    if (!mounted) return;
+    setState(update);
+  }
 
   @override
   void initState() {
@@ -31,11 +42,11 @@ class _VariantGroupDialogState extends State<_VariantGroupDialog> {
       text: '${group?.maxSelection ?? 1}',
     );
     _isRequired = group?.isRequired ?? false;
-    _options = group == null || group.options.isEmpty
-        ? [_VariantOptionForm(references: widget.references)]
+    options = group == null || group.options.isEmpty
+        ? [VariantOptionForm(references: widget.references)]
         : group.options
               .map(
-                (option) => _VariantOptionForm(
+                (option) => VariantOptionForm(
                   references: widget.references,
                   option: option,
                 ),
@@ -48,7 +59,7 @@ class _VariantGroupDialogState extends State<_VariantGroupDialog> {
     _nameController.dispose();
     _minSelectionController.dispose();
     _maxSelectionController.dispose();
-    for (final option in _options) {
+    for (final option in options) {
       option.dispose();
     }
     super.dispose();
@@ -151,8 +162,8 @@ class _VariantGroupDialogState extends State<_VariantGroupDialog> {
                     ),
                     TextButton.icon(
                       onPressed: () => setState(
-                        () => _options.add(
-                          _VariantOptionForm(references: widget.references),
+                        () => options.add(
+                          VariantOptionForm(references: widget.references),
                         ),
                       ),
                       icon: const Icon(Icons.add),
@@ -160,8 +171,8 @@ class _VariantGroupDialogState extends State<_VariantGroupDialog> {
                     ),
                   ],
                 ),
-                for (var index = 0; index < _options.length; index++)
-                  _optionEditor(index),
+                for (var index = 0; index < options.length; index++)
+                  optionEditor(index),
                 if (_formError != null) ...[
                   const SizedBox(height: 8),
                   Text(
@@ -199,18 +210,18 @@ class _VariantGroupDialogState extends State<_VariantGroupDialog> {
     if (!_formKey.currentState!.validate()) return;
     final minSelection = int.parse(_minSelectionController.text);
     final maxSelection = int.parse(_maxSelectionController.text);
-    if (_options.isEmpty) {
+    if (options.isEmpty) {
       setState(() => _formError = 'Grup harus memiliki minimal satu opsi.');
       return;
     }
     Navigator.pop(
       context,
-      _VariantGroupDraft(
+      VariantGroupDraft(
         name: _nameController.text.trim(),
         isRequired: _isRequired,
         minSelection: minSelection,
         maxSelection: maxSelection,
-        options: _options
+        options: options
             .map(
               (option) => VariantOptionDefinition(
                 name: option.nameController.text.trim(),
@@ -243,8 +254,8 @@ class _VariantGroupDialogState extends State<_VariantGroupDialog> {
   }
 }
 
-class _VariantOptionForm {
-  _VariantOptionForm({
+class VariantOptionForm {
+  VariantOptionForm({
     required VariantRecipeReferences references,
     VariantOptionDefinition? option,
   }) : nameController = TextEditingController(text: option?.name ?? ''),
@@ -255,14 +266,14 @@ class _VariantOptionForm {
            option?.recipes
                .map(
                  (recipe) =>
-                     _VariantRecipeForm(references: references, recipe: recipe),
+                     VariantRecipeForm(references: references, recipe: recipe),
                )
                .toList() ??
            [];
 
   final TextEditingController nameController;
   final TextEditingController priceController;
-  final List<_VariantRecipeForm> recipes;
+  final List<VariantRecipeForm> recipes;
 
   void dispose() {
     nameController.dispose();
@@ -273,8 +284,8 @@ class _VariantOptionForm {
   }
 }
 
-class _VariantRecipeForm {
-  _VariantRecipeForm({
+class VariantRecipeForm {
+  VariantRecipeForm({
     required VariantRecipeReferences references,
     VariantRecipeDefinition? recipe,
   }) : inventoryId =
@@ -298,8 +309,8 @@ class _VariantRecipeForm {
   }
 }
 
-class _VariantGroupDraft {
-  const _VariantGroupDraft({
+class VariantGroupDraft {
+  const VariantGroupDraft({
     required this.name,
     required this.isRequired,
     required this.minSelection,

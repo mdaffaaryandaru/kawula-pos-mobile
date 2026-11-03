@@ -1,7 +1,13 @@
-part of '../pages/admin_transaction_report_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
 
-class _ReportFilters extends StatelessWidget {
-  const _ReportFilters({
+// Project imports:
+import 'package:kawula_pos/features/transactions/presentation/pages/admin_transaction_report_page.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
+
+class ReportFilters extends StatelessWidget {
+  const ReportFilters({
+    super.key,
     required this.startDate,
     required this.endDate,
     required this.query,
@@ -64,7 +70,7 @@ class _ReportFilters extends StatelessWidget {
           onPressed: onChooseRange,
           icon: const Icon(Icons.calendar_today_outlined, size: 16),
           label: Text(
-            '${_formatDate(startDate)} – ${_formatDate(endDate)}',
+            '${formatDate(startDate)} – ${formatDate(endDate)}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

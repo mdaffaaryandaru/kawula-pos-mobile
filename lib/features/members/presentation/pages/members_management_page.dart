@@ -1,18 +1,22 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../framework/widgets/master_data_feedback.dart';
-import '../../../../framework/widgets/master_data_header.dart';
-import '../../../../framework/widgets/master_data_row_actions.dart';
-import '../../../../framework/widgets/master_data_search_panel.dart';
-import '../../../../framework/widgets/master_data_status_badge.dart';
-import '../../../../framework/widgets/responsive_data_table.dart';
-import '../../domain/entities/member.dart';
-import '../../domain/repositories/members_repository.dart';
-import '../../../membership_programs/domain/entities/membership_program.dart';
-import '../../../membership_programs/domain/repositories/membership_programs_repository.dart';
-import '../bloc/members_cubit.dart';
-import '../widgets/member_dialog.dart';
+// Project imports:
+import 'package:kawula_pos/features/members/domain/entities/member.dart';
+import 'package:kawula_pos/features/members/domain/repositories/members_repository.dart';
+import 'package:kawula_pos/features/members/presentation/bloc/members_cubit.dart';
+import 'package:kawula_pos/features/members/presentation/widgets/member_dialog.dart';
+import 'package:kawula_pos/features/membership_programs/domain/entities/membership_program.dart';
+import 'package:kawula_pos/features/membership_programs/domain/repositories/membership_programs_repository.dart';
+import 'package:kawula_pos/framework/widgets/master_data_feedback.dart';
+import 'package:kawula_pos/framework/widgets/master_data_header.dart';
+import 'package:kawula_pos/framework/widgets/master_data_row_actions.dart';
+import 'package:kawula_pos/framework/widgets/master_data_search_panel.dart';
+import 'package:kawula_pos/framework/widgets/master_data_status_badge.dart';
+import 'package:kawula_pos/framework/widgets/responsive_data_table.dart';
 
 class MembersManagementPage extends StatelessWidget {
   const MembersManagementPage({

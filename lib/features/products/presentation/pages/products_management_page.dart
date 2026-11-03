@@ -1,18 +1,22 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../framework/widgets/master_data_row_actions.dart';
-import '../../../discounts/domain/entities/discount_definition.dart';
-import '../../../discounts/domain/repositories/discounts_repository.dart';
-import '../../../products/domain/entities/catalog_product.dart';
-import '../../domain/entities/product_management.dart';
-import '../../domain/repositories/product_management_repository.dart';
-import '../../../variant_groups/domain/repositories/variant_groups_repository.dart';
-import '../bloc/product_management_cubit.dart';
-import '../dialogs/product_dialog.dart';
-import '../dialogs/product_recipes_dialog.dart';
-import '../widgets/product_management_widgets.dart';
-import '../widgets/product_table.dart';
+// Project imports:
+import 'package:kawula_pos/features/discounts/domain/entities/discount_definition.dart';
+import 'package:kawula_pos/features/discounts/domain/repositories/discounts_repository.dart';
+import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
+import 'package:kawula_pos/features/products/domain/entities/product_management.dart';
+import 'package:kawula_pos/features/products/domain/repositories/product_management_repository.dart';
+import 'package:kawula_pos/features/products/presentation/bloc/product_management_cubit.dart';
+import 'package:kawula_pos/features/products/presentation/dialogs/product_dialog.dart';
+import 'package:kawula_pos/features/products/presentation/dialogs/product_recipes_dialog.dart';
+import 'package:kawula_pos/features/products/presentation/widgets/product_management_widgets.dart';
+import 'package:kawula_pos/features/products/presentation/widgets/product_table.dart';
+import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
+import 'package:kawula_pos/framework/widgets/master_data_row_actions.dart';
 
 class ProductsManagementPage extends StatelessWidget {
   const ProductsManagementPage({

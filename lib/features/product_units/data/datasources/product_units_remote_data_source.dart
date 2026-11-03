@@ -1,10 +1,15 @@
+// Dart imports:
 import 'dart:convert';
 
+// Flutter imports:
 import 'package:flutter/foundation.dart';
+
+// Package imports:
 import 'package:http/http.dart' as http;
 
-import '../../../../framework/core/exceptions/api_exception.dart';
-import '../models/product_unit_model.dart';
+// Project imports:
+import 'package:kawula_pos/features/product_units/data/models/product_unit_model.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class ProductUnitsRemoteDataSource {
   ProductUnitsRemoteDataSource(this._client, this._baseUrl, this._readToken);

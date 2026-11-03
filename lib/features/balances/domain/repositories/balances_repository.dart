@@ -1,4 +1,5 @@
-import '../entities/balance.dart';
+// Project imports:
+import 'package:kawula_pos/features/balances/domain/entities/balance.dart';
 
 abstract interface class BalancesRepository {
   Future<List<BalanceAccount>> getBalances();

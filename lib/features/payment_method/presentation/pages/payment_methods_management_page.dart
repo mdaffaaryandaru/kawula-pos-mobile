@@ -1,16 +1,20 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../framework/widgets/master_data_feedback.dart';
-import '../../../../framework/widgets/master_data_header.dart';
-import '../../../../framework/widgets/master_data_row_actions.dart';
-import '../../../../framework/widgets/master_data_search_panel.dart';
-import '../../../../framework/widgets/master_data_status_badge.dart';
-import '../../../../framework/widgets/responsive_data_table.dart';
-import '../../domain/entities/payment_method.dart';
-import '../../domain/repositories/payment_methods_repository.dart';
-import '../bloc/payment_methods_cubit.dart';
-import '../widgets/payment_method_dialog.dart';
+// Project imports:
+import 'package:kawula_pos/features/payment_method/domain/entities/payment_method.dart';
+import 'package:kawula_pos/features/payment_method/domain/repositories/payment_methods_repository.dart';
+import 'package:kawula_pos/features/payment_method/presentation/bloc/payment_methods_cubit.dart';
+import 'package:kawula_pos/features/payment_method/presentation/widgets/payment_method_dialog.dart';
+import 'package:kawula_pos/framework/widgets/master_data_feedback.dart';
+import 'package:kawula_pos/framework/widgets/master_data_header.dart';
+import 'package:kawula_pos/framework/widgets/master_data_row_actions.dart';
+import 'package:kawula_pos/framework/widgets/master_data_search_panel.dart';
+import 'package:kawula_pos/framework/widgets/master_data_status_badge.dart';
+import 'package:kawula_pos/framework/widgets/responsive_data_table.dart';
 
 class PaymentMethodsManagementPage extends StatelessWidget {
   const PaymentMethodsManagementPage({super.key, required this.repository});

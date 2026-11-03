@@ -1,6 +1,7 @@
-import '../../domain/entities/inventory_item.dart';
-import '../../domain/repositories/inventory_repository.dart';
-import '../datasources/inventory_remote_data_source.dart';
+// Project imports:
+import 'package:kawula_pos/features/inventories/data/datasources/inventory_remote_data_source.dart';
+import 'package:kawula_pos/features/inventories/domain/entities/inventory_item.dart';
+import 'package:kawula_pos/features/inventories/domain/repositories/inventory_repository.dart';
 
 class InventoryRepositoryImpl implements InventoryRepository {
   const InventoryRepositoryImpl(this._remoteDataSource);

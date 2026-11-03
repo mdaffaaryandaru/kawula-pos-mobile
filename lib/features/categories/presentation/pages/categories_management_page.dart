@@ -1,16 +1,20 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../framework/widgets/master_data_header.dart';
-import '../../../../framework/widgets/master_data_search_panel.dart';
-import '../../../../framework/widgets/master_data_status_badge.dart';
-import '../../../../framework/widgets/master_data_feedback.dart';
-import '../../../../framework/widgets/master_data_row_actions.dart';
-import '../../../../framework/widgets/responsive_data_table.dart';
-import '../../domain/entities/managed_category.dart';
-import '../../domain/repositories/categories_repository.dart';
-import '../bloc/categories_cubit.dart';
-import '../widgets/category_dialog.dart';
+// Project imports:
+import 'package:kawula_pos/features/categories/domain/entities/managed_category.dart';
+import 'package:kawula_pos/features/categories/domain/repositories/categories_repository.dart';
+import 'package:kawula_pos/features/categories/presentation/bloc/categories_cubit.dart';
+import 'package:kawula_pos/features/categories/presentation/widgets/category_dialog.dart';
+import 'package:kawula_pos/framework/widgets/master_data_feedback.dart';
+import 'package:kawula_pos/framework/widgets/master_data_header.dart';
+import 'package:kawula_pos/framework/widgets/master_data_row_actions.dart';
+import 'package:kawula_pos/framework/widgets/master_data_search_panel.dart';
+import 'package:kawula_pos/framework/widgets/master_data_status_badge.dart';
+import 'package:kawula_pos/framework/widgets/responsive_data_table.dart';
 
 class CategoriesManagementPage extends StatelessWidget {
   const CategoriesManagementPage({super.key, required this.repository});
@@ -28,7 +32,6 @@ class CategoriesManagementPage extends StatelessWidget {
 
 class _CategoriesView extends StatefulWidget {
   const _CategoriesView();
-
   @override
   State<_CategoriesView> createState() => _CategoriesViewState();
 }

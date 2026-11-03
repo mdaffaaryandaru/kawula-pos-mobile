@@ -1,22 +1,22 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../theme/app_colors.dart';
-import '../../../auth/domain/entities/auth_user.dart';
-import '../../../auth/presentation/bloc/auth_cubit.dart';
-import '../../../shifts/domain/entities/active_shift.dart';
-import '../../../shifts/presentation/bloc/shifts_cubit.dart';
-import '../../../shifts/presentation/bloc/shifts_state.dart';
-import '../../../shifts/presentation/widgets/shift_action_dialog.dart';
-import '../../../transactions/domain/entities/checkout.dart';
-import '../../../transactions/domain/repositories/checkout_repository.dart';
-
-part '../widgets/admin_dashboard_summary_widgets.dart';
-part '../widgets/admin_dashboard_shift_widgets.dart';
-part '../widgets/admin_dashboard_action_widgets.dart';
-part '../widgets/admin_dashboard_transaction_widgets.dart';
-part '../widgets/admin_dashboard_state_widgets.dart';
-part '../widgets/admin_dashboard_models.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:kawula_pos/features/dashboard/presentation/widgets/admin_dashboard_action_widgets.dart';
+import 'package:kawula_pos/features/dashboard/presentation/widgets/admin_dashboard_models.dart';
+import 'package:kawula_pos/features/dashboard/presentation/widgets/admin_dashboard_shift_widgets.dart';
+import 'package:kawula_pos/features/dashboard/presentation/widgets/admin_dashboard_state_widgets.dart';
+import 'package:kawula_pos/features/dashboard/presentation/widgets/admin_dashboard_summary_widgets.dart';
+import 'package:kawula_pos/features/dashboard/presentation/widgets/admin_dashboard_transaction_widgets.dart';
+import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({
@@ -198,13 +198,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     vertical: 24,
                   ),
                   children: [
-                    _DashboardHeading(admin: widget.admin),
+                    DashboardHeading(admin: widget.admin),
                     const SizedBox(height: 22),
                     FutureBuilder<List<TransactionRecord>>(
                       future: _transactions,
                       builder: (context, snapshot) {
                         if (snapshot.hasError) {
-                          return _DashboardLoadError(
+                          return DashboardLoadError(
                             message:
                                 'Data transaksi gagal dimuat: '
                                 '${snapshot.error}',
@@ -213,29 +213,27 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                         }
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
-                          return const _MetricsLoading();
+                          return const MetricsLoading();
                         }
                         final records = snapshot.data ?? const [];
                         final today = _todayTransactions(records);
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _MetricsGrid(
+                            MetricsGrid(
                               metrics: _metricsFor(today, records),
                               availableWidth: constraints.maxWidth,
                             ),
                             const SizedBox(height: 20),
-                            _ShiftStatusBanner(
-                              user: widget.admin,
-                            ),
+                            ShiftStatusBanner(user: widget.admin),
                             const SizedBox(height: 20),
-                            _DashboardActions(
+                            DashboardActions(
                               user: widget.admin,
                               onNewTransaction: widget.onOpenCashier,
                               onOpenReport: widget.onOpenReport,
                             ),
                             const SizedBox(height: 28),
-                            _RecentTransactions(
+                            RecentTransactions(
                               transactions: today.take(5).toList(),
                               availableWidth: constraints.maxWidth,
                               onOpenReport: widget.onOpenReport,
@@ -273,7 +271,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     return today;
   }
 
-  List<_DashboardMetric> _metricsFor(
+  List<DashboardMetric> _metricsFor(
     List<TransactionRecord> todayTransactions,
     List<TransactionRecord> allTransactions,
   ) {
@@ -298,15 +296,15 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         .length;
 
     return [
-      _DashboardMetric(
+      DashboardMetric(
         label: 'Pendapatan Hari Ini',
-        value: _formatRupiah(totalSales),
+        value: formatDashboardRupiah(totalSales),
         icon: Icons.attach_money_rounded,
         color: AppColors.primary,
         tint: const Color(0xFFEAF1FF),
         detail: '${completed.length} transaksi selesai',
       ),
-      _DashboardMetric(
+      DashboardMetric(
         label: 'Transaksi Selesai',
         value: '${completed.length}',
         icon: Icons.shopping_cart_outlined,
@@ -314,7 +312,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         tint: const Color(0xFFE8FBF3),
         detail: 'Hari ini',
       ),
-      _DashboardMetric(
+      DashboardMetric(
         label: 'Open Bill Aktif',
         value: '$pending',
         icon: Icons.receipt_long_outlined,
@@ -322,7 +320,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         tint: const Color(0xFFFFF6E5),
         detail: 'Menunggu pembayaran',
       ),
-      _DashboardMetric(
+      DashboardMetric(
         label: 'Item Terjual',
         value: '$itemsSold',
         icon: Icons.inventory_2_outlined,
@@ -378,52 +376,3 @@ String _initials(String name) {
       .where((part) => part.isNotEmpty);
   return parts.take(2).map((part) => part[0].toUpperCase()).join();
 }
-
-String _formatRupiah(num amount) {
-  final digits = amount.round().abs().toString();
-  final grouped = digits.replaceAllMapped(
-    RegExp(r'\B(?=(\d{3})+(?!\d))'),
-    (_) => '.',
-  );
-  return '${amount < 0 ? '- ' : ''}Rp $grouped';
-}
-
-String _formatTime(DateTime? time) {
-  if (time == null) return '--:--';
-  final localTime = time.toLocal();
-  return '${localTime.hour.toString().padLeft(2, '0')}:'
-      '${localTime.minute.toString().padLeft(2, '0')}';
-}
-
-String _formatDate(DateTime date) {
-  const months = [
-    'Januari',
-    'Februari',
-    'Maret',
-    'April',
-    'Mei',
-    'Juni',
-    'Juli',
-    'Agustus',
-    'September',
-    'Oktober',
-    'November',
-    'Desember',
-  ];
-  return '${date.day} ${months[date.month - 1]} ${date.year}';
-}
-
-String _shortId(String id) => id.length > 6
-    ? id.substring(id.length - 6).toUpperCase()
-    : id.toUpperCase();
-
-int _itemCount(TransactionRecord transaction) =>
-    transaction.items.fold<int>(0, (total, item) => total + item.quantity);
-
-String _statusLabel(String status) => switch (status) {
-  'completed' => 'Selesai',
-  'pending' => 'Open bill',
-  'refunded' => 'Refund',
-  'cancelled' => 'Dibatalkan',
-  _ => status,
-};

@@ -1,8 +1,10 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 
-import '../../../../theme/app_colors.dart';
-import '../../domain/entities/balance.dart';
-import 'balance_formatters.dart';
+// Project imports:
+import 'package:kawula_pos/features/balances/domain/entities/balance.dart';
+import 'package:kawula_pos/features/balances/presentation/widgets/balance_formatters.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
 
 class BalanceHistorySection extends StatefulWidget {
   const BalanceHistorySection({super.key, required this.history});

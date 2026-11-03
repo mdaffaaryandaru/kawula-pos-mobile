@@ -1,8 +1,10 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 
-import '../../../table_areas/domain/entities/table_area.dart';
-import '../../data/models/managed_table_model.dart';
-import '../../domain/entities/managed_table.dart';
+// Project imports:
+import 'package:kawula_pos/features/table_areas/domain/entities/table_area.dart';
+import 'package:kawula_pos/features/tables/data/models/managed_table_model.dart';
+import 'package:kawula_pos/features/tables/domain/entities/managed_table.dart';
 
 class TableDialog extends StatefulWidget {
   const TableDialog({super.key, required this.areas, this.table});

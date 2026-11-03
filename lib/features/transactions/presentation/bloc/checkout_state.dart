@@ -1,4 +1,5 @@
-import '../../domain/entities/checkout.dart';
+// Project imports:
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 
 sealed class CheckoutState {
   const CheckoutState();

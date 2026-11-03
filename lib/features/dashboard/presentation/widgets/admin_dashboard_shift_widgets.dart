@@ -1,7 +1,21 @@
-part of '../pages/admin_dashboard_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
 
-class _ShiftStatusBanner extends StatelessWidget {
-  const _ShiftStatusBanner({required this.user});
+// Package imports:
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/dashboard/presentation/widgets/admin_dashboard_models.dart';
+import 'package:kawula_pos/features/dashboard/presentation/widgets/admin_dashboard_state_widgets.dart';
+import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
+import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
+import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
+import 'package:kawula_pos/features/shifts/presentation/widgets/shift_action_dialog.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
+
+class ShiftStatusBanner extends StatelessWidget {
+  const ShiftStatusBanner({super.key, required this.user});
 
   final AuthUser user;
 
@@ -9,7 +23,7 @@ class _ShiftStatusBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<ShiftsCubit, ShiftsState>(
       builder: (context, state) => switch (state) {
-        ShiftsLoading() => const _BannerShell(
+        ShiftsLoading() => const DashboardBannerShell(
           child: Row(
             children: [
               SizedBox(
@@ -22,14 +36,11 @@ class _ShiftStatusBanner extends StatelessWidget {
             ],
           ),
         ),
-        ShiftsActive() => _ActiveShiftBanner(
-          user: user,
-          shift: state.shift,
-        ),
-        ShiftsNeedsOpening() => _BannerShell(
+        ShiftsActive() => _ActiveShiftBanner(user: user, shift: state.shift),
+        ShiftsNeedsOpening() => DashboardBannerShell(
           child: Row(
             children: [
-              const _StatusDot(color: AppColors.warning),
+              const DashboardStatusDot(color: AppColors.warning),
               const SizedBox(width: 10),
               const Expanded(
                 child: Column(
@@ -58,7 +69,7 @@ class _ShiftStatusBanner extends StatelessWidget {
             ],
           ),
         ),
-        ShiftsOpening() => const _BannerShell(
+        ShiftsOpening() => const DashboardBannerShell(
           child: ListTile(
             contentPadding: EdgeInsets.zero,
             leading: SizedBox(
@@ -69,7 +80,7 @@ class _ShiftStatusBanner extends StatelessWidget {
             title: Text('Shift sedang dibuka'),
           ),
         ),
-        ShiftsClosing() => const _BannerShell(
+        ShiftsClosing() => const DashboardBannerShell(
           child: ListTile(
             contentPadding: EdgeInsets.zero,
             leading: SizedBox(
@@ -80,10 +91,10 @@ class _ShiftStatusBanner extends StatelessWidget {
             title: Text('Shift sedang ditutup'),
           ),
         ),
-        ShiftsClosed() => _BannerShell(
+        ShiftsClosed() => DashboardBannerShell(
           child: Row(
             children: [
-              const _StatusDot(color: AppColors.textSecondary),
+              const DashboardStatusDot(color: AppColors.textSecondary),
               const SizedBox(width: 10),
               const Expanded(
                 child: Text(
@@ -98,7 +109,7 @@ class _ShiftStatusBanner extends StatelessWidget {
             ],
           ),
         ),
-        ShiftsFailure() => _BannerShell(
+        ShiftsFailure() => DashboardBannerShell(
           child: Row(
             children: [
               const Icon(Icons.cloud_off_outlined, color: AppColors.danger),
@@ -124,23 +135,20 @@ class _ShiftStatusBanner extends StatelessWidget {
 }
 
 class _ActiveShiftBanner extends StatelessWidget {
-  const _ActiveShiftBanner({
-    required this.user,
-    required this.shift,
-  });
+  const _ActiveShiftBanner({required this.user, required this.shift});
 
   final AuthUser user;
   final ActiveShift shift;
 
   @override
   Widget build(BuildContext context) {
-    return _BannerShell(
+    return DashboardBannerShell(
       child: Wrap(
         spacing: 12,
         runSpacing: 10,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          const _StatusDot(color: AppColors.success),
+          const DashboardStatusDot(color: AppColors.success),
           const Text(
             'Shift Aktif',
             style: TextStyle(
@@ -150,7 +158,7 @@ class _ActiveShiftBanner extends StatelessWidget {
           ),
           Text(
             '${shift.outletName ?? 'Outlet'} · '
-            'Modal awal ${_formatRupiah(shift.startingCash)} · '
+            'Modal awal ${formatDashboardRupiah(shift.startingCash)} · '
             '${shift.totalTransactions} transaksi',
             style: const TextStyle(color: AppColors.textSecondary),
           ),

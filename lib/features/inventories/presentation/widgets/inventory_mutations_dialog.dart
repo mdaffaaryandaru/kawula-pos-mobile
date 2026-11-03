@@ -1,7 +1,9 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 
-import '../../domain/entities/inventory_item.dart';
-import '../../domain/repositories/inventory_repository.dart';
+// Project imports:
+import 'package:kawula_pos/features/inventories/domain/entities/inventory_item.dart';
+import 'package:kawula_pos/features/inventories/domain/repositories/inventory_repository.dart';
 
 class InventoryMutationsDialog extends StatefulWidget {
   const InventoryMutationsDialog({

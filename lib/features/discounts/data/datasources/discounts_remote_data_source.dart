@@ -1,10 +1,13 @@
+// Dart imports:
 import 'dart:convert';
 
+// Package imports:
 import 'package:http/http.dart' as http;
 
-import '../../../../framework/core/exceptions/api_exception.dart';
-import '../../domain/entities/discount_definition.dart';
-import '../models/discount_model.dart';
+// Project imports:
+import 'package:kawula_pos/features/discounts/data/models/discount_model.dart';
+import 'package:kawula_pos/features/discounts/domain/entities/discount_definition.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class DiscountsRemoteDataSource {
   const DiscountsRemoteDataSource(this._client, this._baseUrl, this._readToken);
@@ -88,10 +91,7 @@ class DiscountsRemoteDataSource {
         'Sesi login tidak ditemukan. Silakan masuk lagi.',
       );
     }
-    return {
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/json',
-    };
+    return {'Authorization': 'Bearer $token', 'Accept': 'application/json'};
   }
 
   Future<Map<String, String>> _authorizedJsonHeaders() async => {

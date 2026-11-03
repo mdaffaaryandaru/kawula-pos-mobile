@@ -1,10 +1,13 @@
+// Dart imports:
 import 'dart:convert';
 
+// Package imports:
 import 'package:http/http.dart' as http;
 
-import '../../../../framework/core/exceptions/api_exception.dart';
-import '../../domain/entities/variant_group_definition.dart';
-import '../models/variant_group_models.dart';
+// Project imports:
+import 'package:kawula_pos/features/variant_groups/data/models/variant_group_models.dart';
+import 'package:kawula_pos/features/variant_groups/domain/entities/variant_group_definition.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class VariantGroupsRemoteDataSource {
   VariantGroupsRemoteDataSource(this._client, this._baseUrl, this._readToken);
@@ -40,10 +43,7 @@ class VariantGroupsRemoteDataSource {
       _uri('inventories'),
       headers: await _authorizedHeaders(),
     );
-    final body = _decodeResponse(
-      response,
-      endpoint: 'GET /api/inventories',
-    );
+    final body = _decodeResponse(response, endpoint: 'GET /api/inventories');
     if (body is! List) {
       throw const ApiException('Respons referensi bahan varian tidak valid.');
     }
@@ -52,9 +52,7 @@ class VariantGroupsRemoteDataSource {
         .map(VariantRecipeReferenceModel.fromJson)
         .toList(growable: false);
     if (inventories.length != body.length) {
-      throw const ApiException(
-        'Data referensi bahan dari server tidak valid.',
-      );
+      throw const ApiException('Data referensi bahan dari server tidak valid.');
     }
     return inventories;
   }

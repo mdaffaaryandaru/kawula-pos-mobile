@@ -1,11 +1,11 @@
-import '../../domain/entities/active_shift.dart';
-import '../../domain/entities/admin_shift_detail.dart';
-import '../../domain/repositories/admin_shifts_repository.dart';
-import '../../domain/repositories/shifts_repository.dart';
-import '../datasources/shifts_remote_data_source.dart';
+// Project imports:
+import 'package:kawula_pos/features/shifts/data/datasources/shifts_remote_data_source.dart';
+import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
+import 'package:kawula_pos/features/shifts/domain/entities/admin_shift_detail.dart';
+import 'package:kawula_pos/features/shifts/domain/repositories/admin_shifts_repository.dart';
+import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
 
-class ShiftsRepositoryImpl
-    implements ShiftsRepository, AdminShiftsRepository {
+class ShiftsRepositoryImpl implements ShiftsRepository, AdminShiftsRepository {
   const ShiftsRepositoryImpl(this._remoteDataSource);
 
   final ShiftsRemoteDataSource _remoteDataSource;

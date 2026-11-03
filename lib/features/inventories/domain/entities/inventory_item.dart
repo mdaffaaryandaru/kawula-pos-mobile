@@ -1,4 +1,5 @@
-import '../../../product_units/domain/entities/product_unit.dart';
+// Project imports:
+import 'package:kawula_pos/features/product_units/domain/entities/product_unit.dart';
 
 class InventoryItem {
   const InventoryItem({

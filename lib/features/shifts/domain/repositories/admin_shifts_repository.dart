@@ -1,5 +1,6 @@
-import '../entities/active_shift.dart';
-import '../entities/admin_shift_detail.dart';
+// Project imports:
+import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
+import 'package:kawula_pos/features/shifts/domain/entities/admin_shift_detail.dart';
 
 abstract interface class AdminShiftsRepository {
   Future<List<ActiveShift>> getShifts({String? status});

@@ -1,14 +1,18 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+// Package imports:
 import 'package:image_picker/image_picker.dart';
 
-import '../../../../theme/app_colors.dart';
-import '../../../categories/domain/entities/managed_category.dart';
-import '../../../discounts/domain/entities/discount_definition.dart';
-import '../../../products/domain/entities/catalog_product.dart';
-import '../../../products/domain/entities/product_management.dart';
-import '../pages/product_formatters.dart';
-import '../widgets/product_management_helpers.dart';
+// Project imports:
+import 'package:kawula_pos/features/categories/domain/entities/managed_category.dart';
+import 'package:kawula_pos/features/discounts/domain/entities/discount_definition.dart';
+import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
+import 'package:kawula_pos/features/products/domain/entities/product_management.dart';
+import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
+import 'package:kawula_pos/features/products/presentation/widgets/product_management_helpers.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
 
 class ProductDialog extends StatefulWidget {
   const ProductDialog({

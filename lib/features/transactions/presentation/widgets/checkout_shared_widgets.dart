@@ -1,7 +1,12 @@
-part of '../pages/checkout_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
 
-class _ReceiptInfoRow extends StatelessWidget {
-  const _ReceiptInfoRow({
+// Project imports:
+import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
+
+class CheckoutReceiptInfoRow extends StatelessWidget {
+  const CheckoutReceiptInfoRow({
+    super.key,
     required this.label,
     required this.value,
     this.emphasized = false,
@@ -33,8 +38,9 @@ class _ReceiptInfoRow extends StatelessWidget {
   }
 }
 
-class _AmountRow extends StatelessWidget {
-  const _AmountRow({
+class CheckoutAmountRow extends StatelessWidget {
+  const CheckoutAmountRow({
+    super.key,
     required this.label,
     required this.amount,
     this.isEmphasized = false,
@@ -69,8 +75,8 @@ class _AmountRow extends StatelessWidget {
   }
 }
 
-class _InlineError extends StatelessWidget {
-  const _InlineError({required this.message});
+class CheckoutInlineError extends StatelessWidget {
+  const CheckoutInlineError({super.key, required this.message});
 
   final String message;
 

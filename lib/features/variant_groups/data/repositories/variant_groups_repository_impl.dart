@@ -1,7 +1,8 @@
-import '../../domain/entities/variant_group_definition.dart';
-import '../../domain/repositories/variant_groups_repository.dart';
-import '../../../product_units/domain/repositories/product_units_repository.dart';
-import '../datasources/variant_groups_remote_data_source.dart';
+// Project imports:
+import 'package:kawula_pos/features/product_units/domain/repositories/product_units_repository.dart';
+import 'package:kawula_pos/features/variant_groups/data/datasources/variant_groups_remote_data_source.dart';
+import 'package:kawula_pos/features/variant_groups/domain/entities/variant_group_definition.dart';
+import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
 
 class VariantGroupsRepositoryImpl implements VariantGroupsRepository {
   const VariantGroupsRepositoryImpl(
@@ -24,9 +25,7 @@ class VariantGroupsRepositoryImpl implements VariantGroupsRepository {
     final inventories = await inventoriesFuture;
     final productUnits = await unitsFuture;
     final units = productUnits
-        .map(
-          (unit) => VariantRecipeReference(id: unit.id, name: unit.name),
-        )
+        .map((unit) => VariantRecipeReference(id: unit.id, name: unit.name))
         .toList(growable: false);
     return VariantRecipeReferences(inventories: inventories, units: units);
   }

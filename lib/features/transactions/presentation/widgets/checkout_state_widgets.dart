@@ -1,7 +1,15 @@
-part of '../pages/checkout_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
 
-extension _CheckoutStateWidgets on _CheckoutPageState {
-  Widget _failure(BuildContext context, String message) {
+// Package imports:
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+// Project imports:
+import 'package:kawula_pos/features/transactions/presentation/bloc/checkout_cubit.dart';
+import 'package:kawula_pos/features/transactions/presentation/pages/checkout_page.dart';
+
+extension CheckoutStateWidgets on CheckoutPageState {
+  Widget failure(BuildContext context, String message) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),

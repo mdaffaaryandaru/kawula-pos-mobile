@@ -1,43 +1,47 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../auth/domain/entities/auth_user.dart';
-import '../../../auth/presentation/bloc/auth_cubit.dart';
-import '../../../balances/domain/repositories/balances_repository.dart';
-import '../../../balances/presentation/pages/balances_admin_page.dart';
-import '../../../categories/domain/repositories/categories_repository.dart';
-import '../../../discounts/domain/repositories/discounts_repository.dart';
-import '../../../discounts/presentation/pages/discounts_management_page.dart';
-import '../../../categories/presentation/pages/categories_management_page.dart';
-import '../../../products/domain/repositories/product_management_repository.dart';
-import '../../../products/domain/repositories/catalog_repository.dart';
-import '../../../products/presentation/pages/products_management_page.dart';
-import '../../../shifts/domain/repositories/admin_shifts_repository.dart';
-import '../../../shifts/presentation/pages/admin_shifts_page.dart';
-import '../../../store_settings/domain/repositories/store_settings_repository.dart';
-import '../../../store_settings/presentation/pages/store_settings_page.dart';
-import '../../../transactions/domain/repositories/checkout_repository.dart';
-import '../../../transactions/presentation/pages/admin_transaction_report_page.dart';
-import '../../../users/domain/repositories/user_management_repository.dart';
-import '../../../users/presentation/pages/admin_users_page.dart';
-import '../../../variant_groups/domain/repositories/variant_groups_repository.dart';
-import '../../../variant_groups/presentation/pages/variant_groups_management_page.dart';
-import '../../../inventories/domain/repositories/inventory_repository.dart';
-import '../../../inventories/presentation/pages/inventories_management_page.dart';
-import '../../../product_units/domain/repositories/product_units_repository.dart';
-import '../../../product_units/presentation/pages/product_units_management_page.dart';
-import '../../../payment_method/domain/repositories/payment_methods_repository.dart';
-import '../../../payment_method/presentation/pages/payment_methods_management_page.dart';
-import '../../../outlets/domain/repositories/outlets_repository.dart';
-import '../../../outlets/presentation/pages/outlets_management_page.dart';
-import '../../../table_areas/domain/repositories/table_areas_repository.dart';
-import '../../../table_areas/presentation/pages/table_areas_management_page.dart';
-import '../../../tables/domain/repositories/tables_repository.dart';
-import '../../../tables/presentation/pages/tables_management_page.dart';
-import '../../../members/domain/repositories/members_repository.dart';
-import '../../../members/presentation/pages/members_management_page.dart';
-import '../../../membership_programs/domain/repositories/membership_programs_repository.dart';
-import '../../../membership_programs/presentation/pages/membership_program_page.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:kawula_pos/features/balances/domain/repositories/balances_repository.dart';
+import 'package:kawula_pos/features/balances/presentation/pages/balances_admin_page.dart';
+import 'package:kawula_pos/features/categories/domain/repositories/categories_repository.dart';
+import 'package:kawula_pos/features/categories/presentation/pages/categories_management_page.dart';
+import 'package:kawula_pos/features/discounts/domain/repositories/discounts_repository.dart';
+import 'package:kawula_pos/features/discounts/presentation/pages/discounts_management_page.dart';
+import 'package:kawula_pos/features/inventories/domain/repositories/inventory_repository.dart';
+import 'package:kawula_pos/features/inventories/presentation/pages/inventories_management_page.dart';
+import 'package:kawula_pos/features/members/domain/repositories/members_repository.dart';
+import 'package:kawula_pos/features/members/presentation/pages/members_management_page.dart';
+import 'package:kawula_pos/features/membership_programs/domain/repositories/membership_programs_repository.dart';
+import 'package:kawula_pos/features/membership_programs/presentation/pages/membership_program_page.dart';
+import 'package:kawula_pos/features/outlets/domain/repositories/outlets_repository.dart';
+import 'package:kawula_pos/features/outlets/presentation/pages/outlets_management_page.dart';
+import 'package:kawula_pos/features/payment_method/domain/repositories/payment_methods_repository.dart';
+import 'package:kawula_pos/features/payment_method/presentation/pages/payment_methods_management_page.dart';
+import 'package:kawula_pos/features/product_units/domain/repositories/product_units_repository.dart';
+import 'package:kawula_pos/features/product_units/presentation/pages/product_units_management_page.dart';
+import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
+import 'package:kawula_pos/features/products/domain/repositories/product_management_repository.dart';
+import 'package:kawula_pos/features/products/presentation/pages/products_management_page.dart';
+import 'package:kawula_pos/features/shifts/domain/repositories/admin_shifts_repository.dart';
+import 'package:kawula_pos/features/shifts/presentation/pages/admin_shifts_page.dart';
+import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
+import 'package:kawula_pos/features/store_settings/presentation/pages/store_settings_page.dart';
+import 'package:kawula_pos/features/table_areas/domain/repositories/table_areas_repository.dart';
+import 'package:kawula_pos/features/table_areas/presentation/pages/table_areas_management_page.dart';
+import 'package:kawula_pos/features/tables/domain/repositories/tables_repository.dart';
+import 'package:kawula_pos/features/tables/presentation/pages/tables_management_page.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/presentation/pages/admin_transaction_report_page.dart';
+import 'package:kawula_pos/features/users/domain/repositories/user_management_repository.dart';
+import 'package:kawula_pos/features/users/presentation/pages/admin_users_page.dart';
+import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
+import 'package:kawula_pos/features/variant_groups/presentation/pages/variant_groups_management_page.dart';
 
 class AdminManagementPage extends StatelessWidget {
   const AdminManagementPage({
@@ -278,8 +282,7 @@ class AdminManagementPage extends StatelessWidget {
                   context,
                   MembersManagementPage(
                     repository: membersRepository!,
-                    membershipProgramsRepository:
-                        membershipProgramsRepository!,
+                    membershipProgramsRepository: membershipProgramsRepository!,
                   ),
                 ),
               ),
@@ -304,8 +307,7 @@ class AdminManagementPage extends StatelessWidget {
                 onTap: () => _open(
                   context,
                   MembershipProgramPage(
-                    membershipProgramsRepository:
-                        membershipProgramsRepository!,
+                    membershipProgramsRepository: membershipProgramsRepository!,
                     catalogRepository: catalogRepository,
                     discountsRepository: discountsRepository!,
                   ),

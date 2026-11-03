@@ -1,11 +1,14 @@
+// Dart imports:
 import 'dart:convert';
 
-import 'package:image_picker/image_picker.dart';
+// Package imports:
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
-import '../../../../framework/core/exceptions/api_exception.dart';
-import '../../../products/domain/entities/catalog_product.dart';
-import '../models/product_management_models.dart';
+// Project imports:
+import 'package:kawula_pos/features/products/data/models/product_management_models.dart';
+import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class ProductManagementRemoteDataSource {
   ProductManagementRemoteDataSource(

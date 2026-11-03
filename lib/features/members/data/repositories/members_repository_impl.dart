@@ -1,7 +1,8 @@
-import '../../domain/entities/member.dart';
-import '../../domain/entities/member_reward_claim.dart';
-import '../../domain/repositories/members_repository.dart';
-import '../datasources/members_remote_data_source.dart';
+// Project imports:
+import 'package:kawula_pos/features/members/data/datasources/members_remote_data_source.dart';
+import 'package:kawula_pos/features/members/domain/entities/member.dart';
+import 'package:kawula_pos/features/members/domain/entities/member_reward_claim.dart';
+import 'package:kawula_pos/features/members/domain/repositories/members_repository.dart';
 
 class MembersRepositoryImpl implements MembersRepository {
   const MembersRepositoryImpl(this._remoteDataSource);

@@ -1,6 +1,7 @@
-import '../../domain/entities/managed_table.dart';
-import '../../domain/repositories/tables_repository.dart';
-import '../datasources/tables_remote_data_source.dart';
+// Project imports:
+import 'package:kawula_pos/features/tables/data/datasources/tables_remote_data_source.dart';
+import 'package:kawula_pos/features/tables/domain/entities/managed_table.dart';
+import 'package:kawula_pos/features/tables/domain/repositories/tables_repository.dart';
 
 class TablesRepositoryImpl implements TablesRepository {
   const TablesRepositoryImpl(this._remoteDataSource);

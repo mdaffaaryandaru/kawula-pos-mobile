@@ -1,4 +1,5 @@
-import '../entities/payment_method.dart';
+// Project imports:
+import 'package:kawula_pos/features/payment_method/domain/entities/payment_method.dart';
 
 abstract interface class PaymentMethodsRepository {
   Future<List<PaymentMethod>> getPaymentMethods();

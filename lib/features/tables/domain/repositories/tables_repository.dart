@@ -1,4 +1,5 @@
-import '../entities/managed_table.dart';
+// Project imports:
+import 'package:kawula_pos/features/tables/domain/entities/managed_table.dart';
 
 abstract interface class TablesRepository {
   Future<List<ManagedTable>> getTables();

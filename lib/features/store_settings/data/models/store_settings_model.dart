@@ -1,4 +1,5 @@
-import '../../domain/entities/store_settings.dart';
+// Project imports:
+import 'package:kawula_pos/features/store_settings/domain/entities/store_settings.dart';
 
 class StoreSettingsModel extends StoreSettings {
   const StoreSettingsModel({

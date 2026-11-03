@@ -1,9 +1,13 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../bloc/auth_cubit.dart';
-import '../bloc/auth_state.dart';
-import '../widgets/login_form.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:kawula_pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:kawula_pos/features/auth/presentation/widgets/login_form.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key, this.errorMessage});

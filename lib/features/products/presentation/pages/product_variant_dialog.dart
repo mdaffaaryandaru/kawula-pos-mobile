@@ -1,7 +1,9 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 
-import '../../domain/entities/catalog_product.dart';
-import 'product_formatters.dart';
+// Project imports:
+import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
+import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
 
 Future<List<SelectedProductVariant>?> showProductVariantDialog(
   BuildContext context,

@@ -1,9 +1,12 @@
+// Dart imports:
 import 'dart:convert';
 
+// Package imports:
 import 'package:http/http.dart' as http;
 
-import '../../../../framework/core/exceptions/api_exception.dart';
-import '../models/table_area_model.dart';
+// Project imports:
+import 'package:kawula_pos/features/table_areas/data/models/table_area_model.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class TableAreasRemoteDataSource {
   const TableAreasRemoteDataSource(

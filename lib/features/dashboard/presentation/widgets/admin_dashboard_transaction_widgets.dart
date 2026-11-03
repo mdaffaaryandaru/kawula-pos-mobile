@@ -1,7 +1,15 @@
-part of '../pages/admin_dashboard_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
 
-class _RecentTransactions extends StatelessWidget {
-  const _RecentTransactions({
+// Project imports:
+import 'package:kawula_pos/features/dashboard/presentation/widgets/admin_dashboard_models.dart';
+import 'package:kawula_pos/features/dashboard/presentation/widgets/admin_dashboard_state_widgets.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
+
+class RecentTransactions extends StatelessWidget {
+  const RecentTransactions({
+    super.key,
     required this.transactions,
     required this.availableWidth,
     required this.onOpenReport,
@@ -36,7 +44,7 @@ class _RecentTransactions extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         if (transactions.isEmpty)
-          const _EmptyTransactions()
+          const EmptyTransactions()
         else
           Container(
             clipBehavior: Clip.antiAlias,
@@ -100,10 +108,10 @@ class _TransactionTable extends StatelessWidget {
         for (final transaction in transactions)
           TableRow(
             children: [
-              _TableCell(_shortId(transaction.id)),
-              _TableCell('${_itemCount(transaction)} item'),
+              _TableCell(dashboardShortId(transaction.id)),
+              _TableCell('${dashboardItemCount(transaction)} item'),
               _TableCell(
-                _formatRupiah(transaction.totalAmount),
+                formatDashboardRupiah(transaction.totalAmount),
                 style: const TextStyle(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -121,7 +129,7 @@ class _TransactionTable extends StatelessWidget {
                       color: AppColors.textSecondary,
                     ),
                     const SizedBox(width: 5),
-                    Text(_formatTime(transaction.createdAt)),
+                    Text(formatDashboardTime(transaction.createdAt)),
                   ],
                 ),
               ),
@@ -140,7 +148,6 @@ class _TableCell extends StatelessWidget {
   final String? text;
   final TextStyle? style;
   final Widget? child;
-
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
@@ -188,7 +195,7 @@ class _TransactionCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        _shortId(transaction.id),
+                        dashboardShortId(transaction.id),
                         style: const TextStyle(
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.w700,
@@ -200,8 +207,8 @@ class _TransactionCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${_itemCount(transaction)} item · '
-                  '${_formatTime(transaction.createdAt)}',
+                  '${dashboardItemCount(transaction)} item · '
+                  '${formatDashboardTime(transaction.createdAt)}',
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,
@@ -212,7 +219,7 @@ class _TransactionCard extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            _formatRupiah(transaction.totalAmount),
+            formatDashboardRupiah(transaction.totalAmount),
             style: const TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w700,
@@ -246,7 +253,7 @@ class _TransactionStatus extends StatelessWidget {
         borderRadius: BorderRadius.circular(30),
       ),
       child: Text(
-        _statusLabel(normalizedStatus),
+        dashboardStatusLabel(normalizedStatus),
         style: TextStyle(
           color: color,
           fontSize: 11,

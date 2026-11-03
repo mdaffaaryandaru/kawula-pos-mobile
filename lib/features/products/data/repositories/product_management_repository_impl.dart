@@ -1,16 +1,18 @@
+// Package imports:
 import 'package:image_picker/image_picker.dart';
 
-import '../../../categories/domain/entities/managed_category.dart';
-import '../../../categories/domain/repositories/categories_repository.dart';
-import '../../../products/domain/entities/catalog_product.dart';
-import '../../../inventories/domain/entities/inventory_item.dart';
-import '../../../inventories/domain/repositories/inventory_repository.dart';
-import '../../../product_units/domain/entities/product_unit.dart';
-import '../../../product_units/domain/repositories/product_units_repository.dart';
-import '../../../variant_groups/domain/repositories/variant_groups_repository.dart';
-import '../../domain/entities/product_management.dart';
-import '../../domain/repositories/product_management_repository.dart';
-import '../datasources/product_management_remote_data_source.dart';
+// Project imports:
+import 'package:kawula_pos/features/categories/domain/entities/managed_category.dart';
+import 'package:kawula_pos/features/categories/domain/repositories/categories_repository.dart';
+import 'package:kawula_pos/features/inventories/domain/entities/inventory_item.dart';
+import 'package:kawula_pos/features/inventories/domain/repositories/inventory_repository.dart';
+import 'package:kawula_pos/features/product_units/domain/entities/product_unit.dart';
+import 'package:kawula_pos/features/product_units/domain/repositories/product_units_repository.dart';
+import 'package:kawula_pos/features/products/data/datasources/product_management_remote_data_source.dart';
+import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
+import 'package:kawula_pos/features/products/domain/entities/product_management.dart';
+import 'package:kawula_pos/features/products/domain/repositories/product_management_repository.dart';
+import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
 
 class ProductManagementRepositoryImpl implements ProductManagementRepository {
   const ProductManagementRepositoryImpl(

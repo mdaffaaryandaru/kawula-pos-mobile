@@ -1,7 +1,8 @@
-import '../../../products/presentation/bloc/cart_cubit.dart';
-import '../../../members/domain/entities/member.dart';
-import '../../../members/domain/entities/member_reward_claim.dart';
-import '../entities/checkout.dart';
+// Project imports:
+import 'package:kawula_pos/features/members/domain/entities/member.dart';
+import 'package:kawula_pos/features/members/domain/entities/member_reward_claim.dart';
+import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 
 abstract interface class CheckoutRepository {
   Future<List<CheckoutPaymentMethod>> getPaymentMethods();

@@ -1,6 +1,7 @@
-import '../../../auth/domain/entities/auth_user.dart';
-import '../../domain/repositories/user_management_repository.dart';
-import '../datasources/users_remote_data_source.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/users/data/datasources/users_remote_data_source.dart';
+import 'package:kawula_pos/features/users/domain/repositories/user_management_repository.dart';
 
 class UserManagementRepositoryImpl implements UserManagementRepository {
   const UserManagementRepositoryImpl(this._remoteDataSource);

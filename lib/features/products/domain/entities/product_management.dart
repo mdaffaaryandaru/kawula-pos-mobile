@@ -1,5 +1,6 @@
-import '../../../products/domain/entities/catalog_product.dart';
-import '../../../inventories/domain/entities/inventory_item.dart';
+// Project imports:
+import 'package:kawula_pos/features/inventories/domain/entities/inventory_item.dart';
+import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 
 class ManagedProduct {
   const ManagedProduct({

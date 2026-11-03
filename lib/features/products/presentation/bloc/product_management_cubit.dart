@@ -1,12 +1,14 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../categories/domain/entities/managed_category.dart';
-import '../../../inventories/domain/entities/inventory_item.dart';
-import '../../../product_units/domain/entities/product_unit.dart';
-import '../../../products/domain/entities/catalog_product.dart';
-import '../../domain/entities/product_management.dart';
-import '../../domain/repositories/product_management_repository.dart';
+// Project imports:
+import 'package:kawula_pos/features/categories/domain/entities/managed_category.dart';
+import 'package:kawula_pos/features/inventories/domain/entities/inventory_item.dart';
+import 'package:kawula_pos/features/product_units/domain/entities/product_unit.dart';
+import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
+import 'package:kawula_pos/features/products/domain/entities/product_management.dart';
+import 'package:kawula_pos/features/products/domain/repositories/product_management_repository.dart';
 
 sealed class ProductManagementState {
   const ProductManagementState();

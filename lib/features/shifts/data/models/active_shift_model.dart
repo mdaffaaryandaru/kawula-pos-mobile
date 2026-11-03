@@ -1,4 +1,5 @@
-import '../../domain/entities/active_shift.dart';
+// Project imports:
+import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 
 class ActiveShiftModel extends ActiveShift {
   const ActiveShiftModel({

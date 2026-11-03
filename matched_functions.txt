@@ -1,0 +1,549 @@
+﻿FILE: auth\data\datasources\auth_local_data_source.dart
+  10: Future<String?> readToken
+  12: Future<void> saveToken
+  15: Future<void> deleteToken
+
+FILE: auth\data\datasources\auth_remote_data_source.dart
+  14: Future<String> login
+  31: Future<AuthUserModel> getProfile
+  39: Uri _uri
+  46: Map<String, dynamic> _decodeResponse
+  75: String? _errorMessage
+
+FILE: auth\data\models\auth_user_model.dart
+  4: const AuthUserModel
+  12: factory AuthUserModel.fromJson
+  22: static String _stringValue
+
+FILE: auth\data\repositories\auth_repository_impl.dart
+  14: Future<AuthUser?> restoreSession
+  20: } on ApiException catch
+  30: Future<AuthUser> login
+  41: } on ApiException catch
+  50: Future<void> logout
+
+FILE: auth\domain\entities\auth_user.dart
+  2: const AuthUser
+
+FILE: auth\domain\repositories\auth_repository.dart
+  6: Future<AuthUser> login
+
+FILE: auth\presentation\bloc\auth_cubit.dart
+  11: Future<void> restoreSession
+  18: } catch
+  23: Future<void> login
+  31: } catch
+  36: Future<void> logout
+  41: } catch
+  46: String _messageFor
+
+FILE: auth\presentation\bloc\auth_state.dart
+  16: const AuthUnauthenticated
+
+FILE: auth\presentation\pages\auth_gate.dart
+  31: const AuthGate
+  75: Widget build
+  79: AuthChecking
+  80: AuthSubmitting
+  81: AuthUnauthenticated
+  82: AuthAuthenticated
+  105: AuthAuthenticated
+  112: AuthSessionFailure
+
+FILE: auth\presentation\pages\login_page.dart
+  9: const LoginPage
+  14: Widget build
+
+FILE: auth\presentation\widgets\auth_loading_view.dart
+  4: const AuthLoadingView
+  7: Widget build
+
+FILE: auth\presentation\widgets\auth_session_failure_view.dart
+  7: const AuthSessionFailureView
+  12: Widget build
+
+FILE: auth\presentation\widgets\login_form.dart
+  9: const LoginForm
+  21: State<LoginForm> createState
+  31: void dispose
+  37: Future<void> _submit
+  46: Widget build
+  101: .hasMatch
+
+FILE: balances\data\datasources\balances_remote_data_source.dart
+  15: Future<List<BalanceAccountModel>> getBalances
+  23: .map
+  32: Future<List<BalanceHistoryEntryModel>> getHistory
+  43: .map
+  54: Future<void> recordExpense
+  72: Future<void> adjustBalance
+  90: Uri _uri
+  97: Future<Map<String, String>> _authorizedHeaders
+  110: Future<Map<String, String>> _authorizedJsonHeaders
+  115: Object? _decodeResponse
+
+FILE: balances\data\models\balance_models.dart
+  4: const BalanceAccountModel
+  10: factory BalanceAccountModel.fromJson
+  26: const BalanceHistoryEntryModel
+  38: factory BalanceHistoryEntryModel.fromJson
+
+FILE: balances\data\repositories\balances_repository_impl.dart
+  11: Future<List<BalanceAccount>> getBalances
+  15: Future<List<BalanceHistoryEntry>> getHistory
+  19: Future<void> recordExpense
+  30: Future<void> adjustBalance
+
+FILE: balances\domain\entities\balance.dart
+  2: const BalanceAccount
+  14: const BalanceHistoryEntry
+
+FILE: balances\domain\repositories\balances_repository.dart
+  8: Future<void> recordExpense
+  14: Future<void> adjustBalance
+
+FILE: balances\presentation\bloc\balances_cubit.dart
+  15: const BalancesLoaded
+  37: Future<void> load
+  50: } catch
+  55: Future<bool> recordExpense
+  68: } catch
+  74: Future<bool> adjustBalance
+  87: } catch
+  93: void _emitOperationError
+  108: String _messageFor
+
+FILE: balances\presentation\pages\balances_admin_page.dart
+  13: const BalancesAdminPage
+  23: State<BalancesAdminPage> createState
+  30: void initState
+  36: Widget build
+  42: BalancesLoading
+  46: BalancesFailure
+  50: BalancesLoaded
+  57: Widget _loadFailure
+  84: Widget _loadedPage
+  114: .where
+  128: } catch
+  211: Widget build
+  214: void _showMessage
+
+FILE: balances\presentation\widgets\balance_edit_dialog.dart
+  7: const BalanceEditDialog
+  21: State<BalanceEditDialog> createState
+  31: void initState
+  40: void dispose
+  46: num? _balanceFor
+  55: Widget build
+  80: setState
+  138: void _submit
+  152: const BalanceDraft
+
+FILE: balances\presentation\widgets\balance_formatters.dart
+  3: String historyTypeLabel
+  12: String paymentMethodLabel
+  21: IconData paymentMethodIcon
+  27: String signedBalanceAmount
+  34: String formatBalanceRupiah
+  49: String formatBalanceDateTime
+  51: String twoDigits
+  53: '${twoDigits
+  54: '${twoDigits
+
+FILE: balances\presentation\widgets\balance_history_widgets.dart
+  8: const BalanceHistorySection
+  13: State<BalanceHistorySection> createState
+  21: void dispose
+  27: Widget build
+  29: Widget _buildHistory
+  32: .where
+  100: setState
+  273: const HistoryTypeBadge
+  278: Widget build
+  306: const BalanceHistoryCard
+  311: Widget build
+  420: const FinanceEmptyState
+  430: Widget build
+
+FILE: balances\presentation\widgets\balance_summary_widgets.dart
+  8: const TotalBalanceCard
+  13: Widget build
+  64: const PaymentBalanceCard
+  74: Widget build
+  102: '${paymentMethodLabel
+
+FILE: balances\presentation\widgets\balances_overview.dart
+  10: const BalancesOverview
+  30: Widget build
+  75: Widget _pageHeader
+  87: Widget _balanceCards
+
+FILE: categories\data\datasources\categories_remote_data_source.dart
+  19: Future<List<ManagedCategoryModel>> getCategories
+  29: .map
+  38: Future<ManagedCategoryModel> saveCategory
+  63: Future<void> deleteCategory
+  71: Uri _uri
+  78: Future<Map<String, String>> _authorizedHeaders
+  88: Future<Map<String, String>> _authorizedJsonHeaders
+  93: Object? _decodeResponse
+
+FILE: categories\data\models\managed_category_model.dart
+  4: const ManagedCategoryModel
+  11: factory ManagedCategoryModel.fromJson
+
+FILE: categories\data\repositories\categories_repository_impl.dart
+  11: Future<List<ManagedCategory>> getCategories
+  15: Future<ManagedCategory> saveCategory
+  30: Future<void> deleteCategory
+
+FILE: categories\domain\entities\managed_category.dart
+  2: const ManagedCategory
+
+FILE: categories\domain\repositories\categories_repository.dart
+  6: Future<ManagedCategory> saveCategory
+
+FILE: categories\presentation\bloc\categories_cubit.dart
+  15: const CategoriesLoaded
+  32: Future<void> load
+  36: } catch
+  41: Future<bool> saveCategory
+  56: } catch
+  62: Future<bool> deleteCategory
+  67: } catch
+  73: void _emitOperationError
+  87: String _messageFor
+
+FILE: categories\presentation\pages\categories_management_page.dart
+  16: const CategoriesManagementPage
+  21: Widget build
+  33: State<_CategoriesView> createState
+  41: void dispose
+  47: Widget build
+  51: CategoriesLoaded
+  52: CategoriesFailure
+  66: CategoriesLoading
+  67: CategoriesFailure
+  72: CategoriesLoaded
+  83: Widget _buildLoaded
+  126: Widget _header
+  136: Widget _searchPanel
+  160: DataRow _categoryRow
+
+FILE: categories\presentation\widgets\category_dialog.dart
+  6: const CategoryDialog
+  11: State<CategoryDialog> createState
+  21: void initState
+  31: void dispose
+  38: Widget build
+  80: void _submit
+  94: const CategoryDraft
+
+FILE: dashboard\presentation\pages\admin_dashboard_page.dart
+  22: const AdminDashboardPage
+  40: State<AdminDashboardPage> createState
+  47: void initState
+  52: Future<void> _refresh
+  53: setState
+  61: Widget build
+  257: List<TransactionRecord> _todayTransactions
+  266: today.sort
+  281: .where
+  284: .where
+  294: transaction.items.fold<int>
+  297: .where
+  336: void _showAccountDetails
+  374: String _initials
+  378: .where
+  382: String _formatRupiah
+  385: RegExp
+  391: String _formatTime
+  395: '${localTime.minute.toString
+  398: String _formatDate
+  416: String _shortId
+  420: int _itemCount
+  421: transaction.items.fold<int>
+  423: String _statusLabel
+
+FILE: dashboard\presentation\pages\admin_management_page.dart
+  43: const AdminManagementPage
+  89: Widget build
+  356: void _open
+  357: Navigator.of
+  362: const _ManagementTile
+  375: Widget build
+
+FILE: dashboard\presentation\pages\admin_navigation_page.dart
+  30: const AdminNavigationPage
+  76: State<AdminNavigationPage> createState
+  84: void initState
+  91: Widget build
+  127: void _selectDestination
+  128: setState
+  134: Widget _pageAt
+
+FILE: dashboard\presentation\pages\cashier_navigation_page.dart
+  15: const CashierNavigationPage
+  31: State<CashierNavigationPage> createState
+  40: void initState
+  48: void dispose
+  53: Widget _pageAt
+  78: Widget build
+  114: void _selectDestination
+  115: setState
+
+FILE: dashboard\presentation\widgets\admin_dashboard_action_widgets.dart
+  4: const _DashboardActions
+  15: Widget build
+  18: ShiftsNeedsOpening
+  28: ShiftsActive
+  38: ShiftsFailure
+  47: ShiftsClosed
+  49: ShiftsOpening
+  50: ShiftsClosing
+  51: ShiftsClosed
+  104: const _ActionCard
+  109: Widget build
+
+FILE: dashboard\presentation\widgets\admin_dashboard_models.dart
+  4: const _DashboardMetric
+  22: const _DashboardAction
+
+FILE: dashboard\presentation\widgets\admin_dashboard_shift_widgets.dart
+  4: const _ShiftStatusBanner
+  9: Widget build
+  12: ShiftsLoading
+  25: ShiftsActive
+  29: ShiftsNeedsOpening
+  61: ShiftsOpening
+  72: ShiftsClosing
+  83: ShiftsClosed
+  101: ShiftsFailure
+  127: const _ActiveShiftBanner
+  136: Widget build
+  153: 'Modal awal ${_formatRupiah
+
+FILE: dashboard\presentation\widgets\admin_dashboard_state_widgets.dart
+  7: Widget build
+  14: const _DashboardLoadError
+  20: Widget build
+  39: Widget build
+  68: const _BannerShell
+  73: Widget build
+  86: const _StatusDot
+  91: Widget build
+
+FILE: dashboard\presentation\widgets\admin_dashboard_summary_widgets.dart
+  4: const _DashboardHeading
+  9: Widget build
+  71: const _MetricsGrid
+  77: Widget build
+  104: const _MetricCard
+  109: Widget build
+
+FILE: dashboard\presentation\widgets\admin_dashboard_transaction_widgets.dart
+  4: const _RecentTransactions
+  15: Widget build
+  70: const _TransactionTable
+  75: Widget build
+  104: _TableCell
+  136: const _TableCell
+  138: const _TableCell.child
+  145: Widget build
+  159: const _TransactionCard
+  164: Widget build
+  203: '${_itemCount
+  204: '${_formatTime
+  229: const _TransactionStatus
+  234: Widget build
+
+FILE: dashboard\presentation\widgets\cashier_tab.dart
+  15: const CashierTab
+  27: Widget build
+  30: ShiftsLoading
+  34: ShiftsNeedsOpening
+  85: ShiftsOpening
+  91: ShiftsActive
+  96: BlocProvider
+  110: ShiftsClosing
+  116: ShiftsClosed
+  137: ShiftsFailure
+  169: const CashierAppBar
+  175: Widget build
+
+FILE: discounts\data\datasources\discounts_remote_data_source.dart
+  16: Future<List<DiscountModel>> getDiscounts
+  26: .map
+  35: Future<DiscountModel> saveDiscount
+  69: Future<void> deleteDiscount
+  77: Uri _uri
+  84: Future<Map<String, String>> _authorizedHeaders
+  97: Future<Map<String, String>> _authorizedJsonHeaders
+  102: Object? _decodeResponse
+
+FILE: discounts\data\models\discount_model.dart
+  4: const DiscountModel
+  13: factory DiscountModel.fromJson
+
+FILE: discounts\data\repositories\discounts_repository_impl.dart
+  11: Future<List<DiscountDefinition>> getDiscounts
+  15: Future<DiscountDefinition> saveDiscount
+  32: Future<void> deleteDiscount
+
+FILE: discounts\domain\entities\discount_definition.dart
+  14: static DiscountType fromApiValue
+  22: const DiscountDefinition
+
+FILE: discounts\domain\repositories\discounts_repository.dart
+  6: Future<DiscountDefinition> saveDiscount
+
+FILE: discounts\presentation\bloc\discounts_cubit.dart
+  15: const DiscountsLoaded
+  32: Future<void> load
+  36: } catch
+  41: Future<bool> save
+  60: } catch
+  66: Future<bool> delete
+  71: } catch
+  77: void _emitOperationError
+  91: String _messageFor
+
+FILE: discounts\presentation\pages\discounts_management_page.dart
+  17: const DiscountsManagementPage
+  22: Widget build
+  32: State<_DiscountsView> createState
+  41: void dispose
+  47: Widget build
+  50: DiscountsLoaded
+  51: DiscountsFailure
+  65: DiscountsLoading
+  66: DiscountsFailure
+  71: DiscountsLoaded
+  86: .where
+  177: DataRow _discountRow
+  190: ? '${formatProductNumber
+
+FILE: discounts\presentation\widgets\discount_dialog.dart
+  7: const DiscountDialog
+  12: State<DiscountDialog> createState
+  24: void initState
+  39: void dispose
+  47: Widget build
+  128: void _submit
+  144: const DiscountDraft
+
+FILE: inventories\data\datasources\inventory_remote_data_source.dart
+  16: Future<List<InventoryItemModel>> getInventories
+  23: .map
+  32: Future<void> saveInventory
+  63: Future<void> deleteInventory
+  68: Future<void> adjustStock
+  82: Future<List<InventoryMutationModel>> getMutations
+  89: .map
+  115: '${_responseMessage
+  119: } catch
+  127: Future<http.Response> _get
+  135: '
+  136: '-> ${response.statusCode}${_responseMessage
+  140: } catch
+  148: String _responseMessage
+  161: Uri _uri
+  168: Future<Map<String, String>> _authorizedHeaders
+  178: Object? _decodeResponse
+
+FILE: inventories\data\models\inventory_models.dart
+  5: const InventoryMutationModel
+  16: factory InventoryMutationModel.fromJson
+  45: const InventoryItemModel
+  58: factory InventoryItemModel.fromJson
+  86: String? _inventoryReferenceName
+  95: const ProductRecipeModel
+  105: factory ProductRecipeModel.fromJson
+
+FILE: inventories\data\repositories\inventory_repository_impl.dart
+  11: Future<List<InventoryItem>> getInventories
+  15: Future<void> saveInventory
+  40: Future<void> deleteInventory
+  44: Future<void> adjustStock
+  57: Future<List<InventoryMutation>> getMutations
+
+FILE: inventories\domain\entities\inventory_item.dart
+  4: const InventoryItem
+  30: const InventoryMutation
+  52: const ProductRecipe
+  71: '${_formatQuantity
+  73: static String _formatQuantity
+
+FILE: inventories\domain\repositories\inventory_repository.dart
+  6: Future<void> saveInventory
+  21: Future<void> adjustStock
+
+FILE: inventories\presentation\bloc\inventories_cubit.dart
+  15: const InventoriesLoaded
+  32: Future<void> load
+  36: } catch
+  41: Future<bool> save
+  68: } catch
+  74: Future<bool> adjust
+  89: } catch
+  95: Future<bool> delete
+  100: } catch
+  106: void _emitOperationError
+  116: String _messageFor
+
+FILE: inventories\presentation\pages\inventories_management_page.dart
+  20: const InventoriesManagementPage
+  30: State<InventoriesManagementPage> createState
+  40: void initState
+  46: void dispose
+  52: Widget build
+  58: InventoriesLoaded
+  59: InventoriesFailure
+  81: setState
+  89: InventoriesLoading
+  90: InventoriesFailure
+  96: InventoriesLoaded
+  112: Widget _buildHeader
+  120: Widget _buildInventoryList
+  122: .where
+  167: DataRow _buildRow
+  193: '${_formatQuantity
+  233: Future<void> _openForm
+  238: .where
+  277: } catch
+  286: Future<void> _adjustStock
+  305: Future<void> _confirmDelete
+  321: String _formatQuantity
+  324: String _currency
+  327: RegExp
+
+FILE: inventories\presentation\widgets\inventory_dialogs.dart
+  8: const InventoryFormDialog
+  14: State<InventoryFormDialog> createState
+  30: void initState
+  47: void dispose
+  59: Widget build
+  104: .where
+  207: void _submit
+  229: const InventoryDraft
+  253: const StockAdjustmentDialog
+  258: State<StockAdjustmentDialog> createState
+  268: void dispose
+  275: Widget build
+  348: const StockAdjustmentDraft
+  359: String _quantityLabel
+
+FILE: inventories\presentation\widgets\inventory_mutations_dialog.dart
+  7: const InventoryMutationsDialog
+  17: State<InventoryMutationsDialog> createState
+  25: void initState
+  31: Widget build
+  89: const _MutationTile
+  95: Widget build
+  96: final
+  105: ? '+${_format
+  130: String _format
+  133: String _formatDate
+  134: '${value.day.toString
+  135: '${value.hour.toString
+

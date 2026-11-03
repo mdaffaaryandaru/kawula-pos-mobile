@@ -1,10 +1,21 @@
-part of '../pages/checkout_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-// Extensions keep checkout rendering close to its page-owned state.
-// ignore_for_file: invalid_use_of_protected_member
+// Package imports:
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-extension _CheckoutFormWidgets on _CheckoutPageState {
-  Widget _checkoutForm(
+// Project imports:
+import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
+import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
+import 'package:kawula_pos/features/transactions/presentation/bloc/checkout_cubit.dart';
+import 'package:kawula_pos/features/transactions/presentation/pages/checkout_page.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/checkout_member_widgets.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/checkout_shared_widgets.dart';
+
+extension CheckoutFormWidgets on CheckoutPageState {
+  Widget checkoutForm(
     BuildContext context,
     List<CheckoutPaymentMethod> paymentMethods,
     CheckoutSettings settings, {
@@ -21,7 +32,7 @@ extension _CheckoutFormWidgets on _CheckoutPageState {
         .toList(growable: false);
     CheckoutPaymentMethod? selectedMethod;
     for (final method in methods) {
-      if (method.code == _selectedMethodCode) {
+      if (method.code == selectedMethodCode) {
         selectedMethod = method;
         break;
       }
@@ -32,12 +43,12 @@ extension _CheckoutFormWidgets on _CheckoutPageState {
       padding: const EdgeInsets.all(20),
       children: [
         if (widget.outletId == null || widget.outletId!.isEmpty)
-          const _InlineError(
+          const CheckoutInlineError(
             message: 'ID outlet pada shift aktif tidak tersedia. Muat ulang shift sebelum membuat transaksi.',
           ),
-        if (errorMessage != null) _InlineError(message: errorMessage),
-        if (_validationMessage != null)
-          _InlineError(message: _validationMessage!),
+        if (errorMessage != null) CheckoutInlineError(message: errorMessage),
+        if (validationMessage != null)
+          CheckoutInlineError(message: validationMessage!),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -79,20 +90,20 @@ extension _CheckoutFormWidgets on _CheckoutPageState {
                     ),
                   ),
                 const Divider(height: 28),
-                _AmountRow(
+                CheckoutAmountRow(
                   label: 'Subtotal estimasi',
                   amount: cart.estimatedSubtotal.round(),
                 ),
-                _AmountRow(
+                CheckoutAmountRow(
                   label: 'Pajak (${settings.taxPercentage}%)',
                   amount: taxAmount,
                 ),
-                _AmountRow(
+                CheckoutAmountRow(
                   label: 'Biaya layanan',
                   amount: settings.serviceCharge,
                 ),
                 const Divider(height: 24),
-                _AmountRow(
+                CheckoutAmountRow(
                   label: 'Total estimasi',
                   amount: totalAmount,
                   isEmphasized: true,
@@ -102,13 +113,13 @@ extension _CheckoutFormWidgets on _CheckoutPageState {
           ),
         ),
         const SizedBox(height: 16),
-        _memberSelector(context, isSubmitting),
+        memberSelector(context, isSubmitting),
         const SizedBox(height: 16),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
-              controller: _tableNumberController,
+              controller: tableNumberController,
               enabled: !isSubmitting,
               textCapitalization: TextCapitalization.characters,
               decoration: const InputDecoration(
@@ -136,18 +147,18 @@ extension _CheckoutFormWidgets on _CheckoutPageState {
                   subtitle: const Text(
                     'Transaksi dibuat sebagai pending dan belum dianggap lunas.',
                   ),
-                  value: _openBill,
+                  value: openBill,
                   onChanged: isSubmitting
                       ? null
-                      : (value) => setState(() {
-                          _openBill = value;
-                          _validationMessage = null;
+                      : (value) => updateState(() {
+                          openBill = value;
+                          validationMessage = null;
                         }),
                 ),
-                if (!_openBill) ...[
+                if (!openBill) ...[
                   const SizedBox(height: 12),
                   if (methods.isEmpty)
-                    const _InlineError(
+                    const CheckoutInlineError(
                       message: 'Tidak ada metode pembayaran aktif. Open bill masih dapat digunakan.',
                     )
                   else
@@ -165,15 +176,15 @@ extension _CheckoutFormWidgets on _CheckoutPageState {
                       ],
                       onChanged: isSubmitting
                           ? null
-                          : (value) => setState(() {
-                              _selectedMethodCode = value;
-                              _validationMessage = null;
+                          : (value) => updateState(() {
+                              selectedMethodCode = value;
+                              validationMessage = null;
                             }),
                     ),
                   if (selectedMethod?.isCash == true) ...[
                     const SizedBox(height: 12),
                     TextField(
-                      controller: _cashController,
+                      controller: cashController,
                       enabled: !isSubmitting,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -181,10 +192,10 @@ extension _CheckoutFormWidgets on _CheckoutPageState {
                         labelText: 'Uang diterima',
                         prefixText: 'Rp ',
                       ),
-                      onChanged: (_) => setState(() {}),
+                      onChanged: (_) => updateState(() {}),
                     ),
                     const SizedBox(height: 8),
-                    _AmountRow(
+                    CheckoutAmountRow(
                       label: 'Kembalian estimasi',
                       amount: (_parseCashAmount() - totalAmount).clamp(
                         0,
@@ -195,7 +206,7 @@ extension _CheckoutFormWidgets on _CheckoutPageState {
                   if (methods.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     TextField(
-                      controller: _pinController,
+                      controller: pinController,
                       enabled: !isSubmitting,
                       keyboardType: TextInputType.number,
                       obscureText: true,
@@ -235,7 +246,7 @@ extension _CheckoutFormWidgets on _CheckoutPageState {
                   cart.isEmpty ||
                   widget.outletId == null ||
                   widget.outletId!.isEmpty ||
-                  (!_openBill && selectedMethod == null)
+                  (!openBill && selectedMethod == null)
               ? null
               : () => _submit(context, selectedMethod, totalAmount, cart.items),
           child: Padding(
@@ -247,7 +258,7 @@ extension _CheckoutFormWidgets on _CheckoutPageState {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : Text(
-                    _openBill
+                    openBill
                         ? 'Buat open bill'
                         : 'Bayar ${formatRupiah(totalAmount)}',
                   ),
@@ -263,23 +274,23 @@ extension _CheckoutFormWidgets on _CheckoutPageState {
     num totalAmount,
     List<CartItem> items,
   ) async {
-    final openBill = _openBill;
+    final openBill = this.openBill;
     final cashAmount = method?.isCash == true
         ? _parseCashAmount()
         : totalAmount;
-    final pin = _pinController.text.trim();
+    final pin = pinController.text.trim();
     if (!openBill && pin.length != 4) {
-      setState(() => _validationMessage = 'PIN harus terdiri dari 4 digit.');
+      updateState(() => validationMessage = 'PIN harus terdiri dari 4 digit.');
       return;
     }
     if (!openBill && method?.isCash == true && cashAmount < totalAmount) {
-      setState(
-        () => _validationMessage =
+      updateState(
+        () => validationMessage =
             'Uang diterima tidak boleh kurang dari total estimasi.',
       );
       return;
     }
-    setState(() => _validationMessage = null);
+    updateState(() => validationMessage = null);
     await context.read<CheckoutCubit>().submit(
       outletId: widget.outletId!,
       items: items,
@@ -288,10 +299,10 @@ extension _CheckoutFormWidgets on _CheckoutPageState {
       paidAmount: cashAmount,
       pin: openBill ? null : pin,
       openBill: openBill,
-      memberId: _selectedMember?.id,
-      tableNumber: _tableNumberController.text.trim(),
+      memberId: selectedMember?.id,
+      tableNumber: tableNumberController.text.trim(),
     );
   }
 
-  num _parseCashAmount() => num.tryParse(_cashController.text.trim()) ?? 0;
+  num _parseCashAmount() => num.tryParse(cashController.text.trim()) ?? 0;
 }

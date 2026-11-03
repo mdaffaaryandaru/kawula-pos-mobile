@@ -1,9 +1,12 @@
+// Dart imports:
 import 'dart:convert';
 
+// Package imports:
 import 'package:http/http.dart' as http;
 
-import '../../../../framework/core/exceptions/api_exception.dart';
-import '../models/auth_user_model.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/data/models/auth_user_model.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class AuthRemoteDataSource {
   AuthRemoteDataSource(this._client, this._baseUrl);

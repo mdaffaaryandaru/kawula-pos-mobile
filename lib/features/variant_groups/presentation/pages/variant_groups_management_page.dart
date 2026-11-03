@@ -1,17 +1,15 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
-import '../../../../framework/widgets/master_data_feedback.dart';
-import '../../../../framework/widgets/master_data_header.dart';
-import '../../../products/domain/entities/product_management.dart';
-import '../../../products/domain/repositories/product_management_repository.dart';
-import '../../domain/entities/variant_group_definition.dart';
-import '../../domain/repositories/variant_groups_repository.dart';
-import '../../../products/presentation/pages/product_formatters.dart';
-
-part '../widgets/variant_groups_list_widgets.dart';
-part '../widgets/variant_group_dialog.dart';
-part '../widgets/variant_group_option_editors.dart';
+// Project imports:
+import 'package:kawula_pos/features/products/domain/entities/product_management.dart';
+import 'package:kawula_pos/features/products/domain/repositories/product_management_repository.dart';
+import 'package:kawula_pos/features/variant_groups/domain/entities/variant_group_definition.dart';
+import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
+import 'package:kawula_pos/features/variant_groups/presentation/widgets/variant_group_dialog.dart';
+import 'package:kawula_pos/features/variant_groups/presentation/widgets/variant_groups_list_widgets.dart';
+import 'package:kawula_pos/framework/widgets/master_data_feedback.dart';
+import 'package:kawula_pos/framework/widgets/master_data_header.dart';
 
 class VariantGroupsManagementPage extends StatefulWidget {
   const VariantGroupsManagementPage({
@@ -135,9 +133,9 @@ class _VariantGroupsManagementPageState
       return;
     }
     if (!mounted) return;
-    final draft = await showDialog<_VariantGroupDraft>(
+    final draft = await showDialog<VariantGroupDraft>(
       context: context,
-      builder: (_) => _VariantGroupDialog(group: group, references: references),
+      builder: (_) => VariantGroupDialog(group: group, references: references),
     );
     if (draft == null || !mounted) return;
     try {

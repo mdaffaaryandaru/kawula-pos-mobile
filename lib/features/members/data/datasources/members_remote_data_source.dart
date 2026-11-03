@@ -1,10 +1,13 @@
+// Dart imports:
 import 'dart:convert';
 
+// Package imports:
 import 'package:http/http.dart' as http;
 
-import '../../../../framework/core/exceptions/api_exception.dart';
-import '../models/member_model.dart';
-import '../models/member_reward_claim_model.dart';
+// Project imports:
+import 'package:kawula_pos/features/members/data/models/member_model.dart';
+import 'package:kawula_pos/features/members/data/models/member_reward_claim_model.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class MembersRemoteDataSource {
   MembersRemoteDataSource(this._client, this._baseUrl, this._readToken);

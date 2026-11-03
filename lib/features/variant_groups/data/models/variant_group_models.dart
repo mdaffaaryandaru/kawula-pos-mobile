@@ -1,4 +1,5 @@
-import '../../domain/entities/variant_group_definition.dart';
+// Project imports:
+import 'package:kawula_pos/features/variant_groups/domain/entities/variant_group_definition.dart';
 
 class VariantGroupDefinitionModel extends VariantGroupDefinition {
   const VariantGroupDefinitionModel({

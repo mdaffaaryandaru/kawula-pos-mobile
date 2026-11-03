@@ -1,9 +1,12 @@
+// Dart imports:
 import 'dart:convert';
 
+// Package imports:
 import 'package:http/http.dart' as http;
 
-import '../../../../framework/core/exceptions/api_exception.dart';
-import '../models/catalog_models.dart';
+// Project imports:
+import 'package:kawula_pos/features/products/data/models/catalog_models.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class CatalogRemoteDataSource {
   CatalogRemoteDataSource(this._client, this._baseUrl, this._readToken);

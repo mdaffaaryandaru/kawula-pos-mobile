@@ -1,12 +1,16 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../theme/app_colors.dart';
-import '../../../transactions/domain/repositories/checkout_repository.dart';
-import '../../../transactions/presentation/bloc/checkout_cubit.dart';
-import '../../../transactions/presentation/pages/checkout_page.dart';
-import '../bloc/cart_cubit.dart';
-import 'product_formatters.dart';
+// Project imports:
+import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
+import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/presentation/bloc/checkout_cubit.dart';
+import 'package:kawula_pos/features/transactions/presentation/pages/checkout_page.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
 
 class ProductCartSheet extends StatelessWidget {
   const ProductCartSheet({

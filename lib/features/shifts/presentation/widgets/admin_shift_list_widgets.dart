@@ -1,19 +1,27 @@
-part of '../pages/admin_shifts_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
 
-class _AdminShiftsAppBar extends StatelessWidget
-    implements PreferredSizeWidget {
-  const _AdminShiftsAppBar();
+// Project imports:
+import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
+import 'package:kawula_pos/framework/widgets/responsive_data_table.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
+
+import 'package:kawula_pos/features/shifts/presentation/pages/admin_shifts_page.dart'
+    show adminShiftInitials, formatAdminShiftDateTime, formatAdminShiftRupiah;
+
+class AdminShiftsAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const AdminShiftsAppBar({super.key});
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
   Widget build(BuildContext context) =>
-      AppBar(title: const _ShiftLogoTitle(title: 'Shift kasir'));
+      AppBar(title: const ShiftLogoTitle(title: 'Shift kasir'));
 }
 
-class _ShiftLogoTitle extends StatelessWidget {
-  const _ShiftLogoTitle({required this.title});
+class ShiftLogoTitle extends StatelessWidget {
+  const ShiftLogoTitle({super.key, required this.title});
 
   final String title;
 
@@ -37,8 +45,8 @@ class _ShiftLogoTitle extends StatelessWidget {
   }
 }
 
-class _ShiftHistoryHeader extends StatelessWidget {
-  const _ShiftHistoryHeader({required this.onRefresh});
+class ShiftHistoryHeader extends StatelessWidget {
+  const ShiftHistoryHeader({super.key, required this.onRefresh});
 
   final VoidCallback onRefresh;
 
@@ -109,8 +117,9 @@ class _ShiftHistoryHeader extends StatelessWidget {
   }
 }
 
-class _ShiftHistorySearch extends StatelessWidget {
-  const _ShiftHistorySearch({
+class ShiftHistorySearch extends StatelessWidget {
+  const ShiftHistorySearch({
+    super.key,
     required this.controller,
     required this.onChanged,
     required this.selectedStatus,
@@ -198,8 +207,8 @@ class _ShiftHistorySearch extends StatelessWidget {
   );
 }
 
-class _ShiftHistoryEmpty extends StatelessWidget {
-  const _ShiftHistoryEmpty();
+class ShiftHistoryEmpty extends StatelessWidget {
+  const ShiftHistoryEmpty({super.key});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -215,8 +224,9 @@ class _ShiftHistoryEmpty extends StatelessWidget {
   );
 }
 
-class _ShiftHistoryTable extends StatelessWidget {
-  const _ShiftHistoryTable({
+class ShiftHistoryTable extends StatelessWidget {
+  const ShiftHistoryTable({
+    super.key,
     required this.shifts,
     required this.minWidth,
     required this.onDetails,
@@ -378,7 +388,7 @@ class _ShiftHistoryTable extends StatelessWidget {
                     ),
                   ),
                 ),
-                DataCell(_ShiftStatusChip(status: shift.status)),
+                DataCell(ShiftStatusChip(status: shift.status)),
                 DataCell(
                   SizedBox(
                     width: shift.status == 'open' ? 185 : 92,
@@ -422,8 +432,8 @@ class _ShiftHistoryTable extends StatelessWidget {
   }
 }
 
-class _ShiftCard extends StatelessWidget {
-  const _ShiftCard({required this.shift, required this.onTap});
+class ShiftCard extends StatelessWidget {
+  const ShiftCard({super.key, required this.shift, required this.onTap});
 
   final ActiveShift shift;
   final VoidCallback onTap;
@@ -469,7 +479,7 @@ class _ShiftCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  _ShiftStatusChip(status: shift.status),
+                  ShiftStatusChip(status: shift.status),
                 ],
               ),
               const SizedBox(height: 14),
@@ -561,8 +571,8 @@ class _ShiftCardMetric extends StatelessWidget {
   }
 }
 
-class _ShiftStatusChip extends StatelessWidget {
-  const _ShiftStatusChip({required this.status});
+class ShiftStatusChip extends StatelessWidget {
+  const ShiftStatusChip({super.key, required this.status});
 
   final String status;
 

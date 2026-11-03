@@ -1,4 +1,5 @@
-import '../../domain/entities/payment_method.dart';
+// Project imports:
+import 'package:kawula_pos/features/payment_method/domain/entities/payment_method.dart';
 
 class PaymentMethodModel extends PaymentMethod {
   const PaymentMethodModel({

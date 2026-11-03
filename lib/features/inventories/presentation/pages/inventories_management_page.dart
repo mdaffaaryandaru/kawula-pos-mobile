@@ -1,20 +1,24 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
+
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../framework/widgets/master_data_feedback.dart';
-import '../../../../framework/widgets/master_data_header.dart';
-import '../../../../framework/widgets/master_data_row_actions.dart';
-import '../../../../framework/widgets/master_data_search_panel.dart';
-import '../../../../framework/widgets/master_data_status_badge.dart';
-import '../../../../framework/widgets/responsive_data_table.dart';
-import '../../../../theme/app_colors.dart';
-import '../../../product_units/domain/entities/product_unit.dart';
-import '../../../product_units/domain/repositories/product_units_repository.dart';
-import '../../domain/entities/inventory_item.dart';
-import '../../domain/repositories/inventory_repository.dart';
-import '../bloc/inventories_cubit.dart';
-import '../widgets/inventory_dialogs.dart';
-import '../widgets/inventory_mutations_dialog.dart';
+// Project imports:
+import 'package:kawula_pos/features/inventories/domain/entities/inventory_item.dart';
+import 'package:kawula_pos/features/inventories/domain/repositories/inventory_repository.dart';
+import 'package:kawula_pos/features/inventories/presentation/bloc/inventories_cubit.dart';
+import 'package:kawula_pos/features/inventories/presentation/widgets/inventory_dialogs.dart';
+import 'package:kawula_pos/features/inventories/presentation/widgets/inventory_mutations_dialog.dart';
+import 'package:kawula_pos/features/product_units/domain/entities/product_unit.dart';
+import 'package:kawula_pos/features/product_units/domain/repositories/product_units_repository.dart';
+import 'package:kawula_pos/framework/widgets/master_data_feedback.dart';
+import 'package:kawula_pos/framework/widgets/master_data_header.dart';
+import 'package:kawula_pos/framework/widgets/master_data_row_actions.dart';
+import 'package:kawula_pos/framework/widgets/master_data_search_panel.dart';
+import 'package:kawula_pos/framework/widgets/master_data_status_badge.dart';
+import 'package:kawula_pos/framework/widgets/responsive_data_table.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
 
 class InventoriesManagementPage extends StatefulWidget {
   const InventoriesManagementPage({
@@ -68,12 +72,17 @@ class _InventoriesManagementPageState extends State<InventoriesManagementPage> {
         child: Scaffold(
           appBar: AppBar(title: const Text('Inventory')),
           body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildHeader(context),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final shortScreen = constraints.maxHeight < 480;
+                final inventoryContent = _buildInventoryContent(
+                  context,
+                  verticalScroll: !shortScreen,
+                );
+                final content = [
+                  Builder(
+                    builder: (providerContext) => _buildHeader(providerContext),
+                  ),
                   const SizedBox(height: 20),
                   MasterDataSearchPanel(
                     controller: _searchController,
@@ -83,25 +92,26 @@ class _InventoriesManagementPageState extends State<InventoriesManagementPage> {
                     hintText: 'Cari nama bahan, kategori, atau deskripsi...',
                   ),
                   const SizedBox(height: 16),
-                  Expanded(
-                    child: BlocBuilder<InventoriesCubit, InventoriesState>(
-                      builder: (context, state) => switch (state) {
-                        InventoriesLoading() => const MasterDataLoadingState(),
-                        InventoriesFailure(:final message) =>
-                          MasterDataErrorState(
-                            title: 'Data inventory belum dapat dimuat.',
-                            message: message,
-                            onRetry: context.read<InventoriesCubit>().load,
+                ];
+
+                return Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: shortScreen
+                      ? SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [...content, inventoryContent],
                           ),
-                        InventoriesLoaded(:final items) => _buildInventoryList(
-                          context,
-                          items,
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            ...content,
+                            Expanded(child: inventoryContent),
+                          ],
                         ),
-                      },
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ),
@@ -117,7 +127,30 @@ class _InventoriesManagementPageState extends State<InventoriesManagementPage> {
     onAdd: () => _openForm(context),
   );
 
-  Widget _buildInventoryList(BuildContext context, List<InventoryItem> items) {
+  Widget _buildInventoryContent(
+    BuildContext context, {
+    required bool verticalScroll,
+  }) => BlocBuilder<InventoriesCubit, InventoriesState>(
+    builder: (context, state) => switch (state) {
+      InventoriesLoading() => const MasterDataLoadingState(),
+      InventoriesFailure(:final message) => MasterDataErrorState(
+        title: 'Data inventory belum dapat dimuat.',
+        message: message,
+        onRetry: context.read<InventoriesCubit>().load,
+      ),
+      InventoriesLoaded(:final items) => _buildInventoryList(
+        context,
+        items,
+        verticalScroll: verticalScroll,
+      ),
+    },
+  );
+
+  Widget _buildInventoryList(
+    BuildContext context,
+    List<InventoryItem> items, {
+    required bool verticalScroll,
+  }) {
     final visible = items
         .where((item) {
           final haystack = '${item.name} ${item.category} ${item.description}'
@@ -145,7 +178,7 @@ class _InventoriesManagementPageState extends State<InventoriesManagementPage> {
       builder: (context, constraints) {
         return ResponsiveDataTable(
           minWidth: constraints.maxWidth,
-          verticalScroll: true,
+          verticalScroll: verticalScroll,
           headingRowColor: WidgetStatePropertyAll(
             Theme.of(context).colorScheme.surfaceContainerHighest
                 .withValues(alpha: .45),

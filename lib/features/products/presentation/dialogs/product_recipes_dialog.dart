@@ -1,11 +1,13 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../theme/app_colors.dart';
-import '../../../inventories/domain/entities/inventory_item.dart';
-import '../../../product_units/domain/entities/product_unit.dart';
-import '../../../products/domain/entities/product_management.dart';
-import '../widgets/product_management_helpers.dart';
+// Project imports:
+import 'package:kawula_pos/features/inventories/domain/entities/inventory_item.dart';
+import 'package:kawula_pos/features/product_units/domain/entities/product_unit.dart';
+import 'package:kawula_pos/features/products/domain/entities/product_management.dart';
+import 'package:kawula_pos/features/products/presentation/widgets/product_management_helpers.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
 
 typedef RecipeAdder = Future<bool> Function({
   required String inventoryId,

@@ -1,7 +1,9 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../auth/domain/entities/auth_user.dart';
+// Project imports:
+import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
 
 class UserFormDialog extends StatefulWidget {
   const UserFormDialog({super.key, this.user});

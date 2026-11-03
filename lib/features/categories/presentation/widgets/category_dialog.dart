@@ -1,6 +1,8 @@
+// Flutter imports:
 import 'package:flutter/material.dart';
 
-import '../../domain/entities/managed_category.dart';
+// Project imports:
+import 'package:kawula_pos/features/categories/domain/entities/managed_category.dart';
 
 class CategoryDialog extends StatefulWidget {
   const CategoryDialog({super.key, this.category});

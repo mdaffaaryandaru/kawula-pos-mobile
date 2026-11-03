@@ -1,4 +1,5 @@
-import '../entities/discount_definition.dart';
+// Project imports:
+import 'package:kawula_pos/features/discounts/domain/entities/discount_definition.dart';
 
 abstract interface class DiscountsRepository {
   Future<List<DiscountDefinition>> getDiscounts();

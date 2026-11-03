@@ -1,7 +1,9 @@
+// Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/entities/product_unit.dart';
-import '../../domain/repositories/product_units_repository.dart';
+// Project imports:
+import 'package:kawula_pos/features/product_units/domain/entities/product_unit.dart';
+import 'package:kawula_pos/features/product_units/domain/repositories/product_units_repository.dart';
 
 sealed class ProductUnitsState {
   const ProductUnitsState();

@@ -1,7 +1,19 @@
-part of '../pages/admin_transaction_report_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
 
-class _TransactionsTable extends StatelessWidget {
-  const _TransactionsTable({required this.transactions, required this.onTap});
+// Project imports:
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
+import 'package:kawula_pos/features/transactions/presentation/pages/admin_transaction_report_page.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/admin_report_status_badge.dart';
+import 'package:kawula_pos/framework/widgets/responsive_data_table.dart';
+import 'package:kawula_pos/theme/app_colors.dart';
+
+class TransactionsTable extends StatelessWidget {
+  const TransactionsTable({
+    super.key,
+    required this.transactions,
+    required this.onTap,
+  });
 
   final List<TransactionRecord> transactions;
   final ValueChanged<TransactionRecord> onTap;
@@ -54,7 +66,7 @@ class _TransactionsTable extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _formatDateTime(transaction.createdAt),
+                            formatDateTime(transaction.createdAt),
                             style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 12,
@@ -109,7 +121,7 @@ class _TransactionsTable extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _formatRupiah(transaction.totalAmount),
+                            formatRupiah(transaction.totalAmount),
                             style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                           Text(
@@ -123,7 +135,7 @@ class _TransactionsTable extends StatelessWidget {
                       ),
                     ),
                   ),
-                  DataCell(_StatusBadge(status: transaction.status)),
+                  DataCell(StatusBadge(status: transaction.status)),
                   DataCell(
                     OutlinedButton.icon(
                       onPressed: () => onTap(transaction),
@@ -165,14 +177,14 @@ class _TransactionsTable extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    _formatDateTime(transaction.createdAt),
+                    formatDateTime(transaction.createdAt),
                     style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,
                     ),
                   ),
                 ),
-                _StatusBadge(status: transaction.status),
+                StatusBadge(status: transaction.status),
               ],
             ),
             const SizedBox(height: 8),
@@ -191,7 +203,7 @@ class _TransactionsTable extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  _formatRupiah(transaction.totalAmount),
+                  formatRupiah(transaction.totalAmount),
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w800,

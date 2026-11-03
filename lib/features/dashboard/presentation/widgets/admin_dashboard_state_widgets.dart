@@ -1,7 +1,11 @@
-part of '../pages/admin_dashboard_page.dart';
+// Flutter imports:
+import 'package:flutter/material.dart';
 
-class _MetricsLoading extends StatelessWidget {
-  const _MetricsLoading();
+// Project imports:
+import 'package:kawula_pos/theme/app_colors.dart';
+
+class MetricsLoading extends StatelessWidget {
+  const MetricsLoading({super.key});
 
   @override
   Widget build(BuildContext context) => const Padding(
@@ -10,8 +14,12 @@ class _MetricsLoading extends StatelessWidget {
   );
 }
 
-class _DashboardLoadError extends StatelessWidget {
-  const _DashboardLoadError({required this.message, required this.onRetry});
+class DashboardLoadError extends StatelessWidget {
+  const DashboardLoadError({
+    super.key,
+    required this.message,
+    required this.onRetry,
+  });
 
   final String message;
   final VoidCallback onRetry;
@@ -32,9 +40,8 @@ class _DashboardLoadError extends StatelessWidget {
   );
 }
 
-class _EmptyTransactions extends StatelessWidget {
-  const _EmptyTransactions();
-
+class EmptyTransactions extends StatelessWidget {
+  const EmptyTransactions({super.key});
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
@@ -64,11 +71,10 @@ class _EmptyTransactions extends StatelessWidget {
   );
 }
 
-class _BannerShell extends StatelessWidget {
-  const _BannerShell({required this.child});
+class DashboardBannerShell extends StatelessWidget {
+  const DashboardBannerShell({super.key, required this.child});
 
   final Widget child;
-
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
@@ -82,8 +88,8 @@ class _BannerShell extends StatelessWidget {
   );
 }
 
-class _StatusDot extends StatelessWidget {
-  const _StatusDot({required this.color});
+class DashboardStatusDot extends StatelessWidget {
+  const DashboardStatusDot({super.key, required this.color});
 
   final Color color;
 
