@@ -52,4 +52,12 @@ app.*.map.json
 # Widget Preview related
 .widget_preview/
 
+# Keamanan Keystore & Rilis Android
+key.jks
+android/key.properties
+
 test/
+
+# FVM Version Cache
+.fvm/
+.fvm/flutter_sdk/
