@@ -9,6 +9,7 @@ class ShiftsCubit extends Cubit<ShiftsState> {
   ShiftsCubit(this._repository) : super(const ShiftsLoading());
 
   final ShiftsRepository _repository;
+  Future<void>? _activeRefreshInProgress;
 
   Future<void> loadActive() async {
     emit(const ShiftsLoading());
@@ -22,6 +23,45 @@ class ShiftsCubit extends Cubit<ShiftsState> {
       emit(ShiftsNeedsOpening(availability));
     } catch (error) {
       emit(ShiftsFailure(_messageFor(error)));
+    }
+  }
+
+  Future<void> refreshActive() {
+    final inProgress = _activeRefreshInProgress;
+    if (inProgress != null) return inProgress;
+    final future = _refreshActive();
+    _activeRefreshInProgress = future;
+    return future.whenComplete(() {
+      if (identical(_activeRefreshInProgress, future)) {
+        _activeRefreshInProgress = null;
+      }
+    });
+  }
+
+  Future<void> _refreshActive() async {
+    try {
+      final shift = await _repository.getActive();
+      if (shift != null) {
+        emit(ShiftsActive(shift));
+        return;
+      }
+      final availability = await _repository.getCashAvailability();
+      emit(ShiftsNeedsOpening(availability));
+    } catch (error) {
+      final message = _messageFor(error);
+      final currentState = state;
+      if (currentState is ShiftsActive) {
+        emit(ShiftsActive(currentState.shift, errorMessage: message));
+      } else if (currentState is ShiftsNeedsOpening) {
+        emit(
+          ShiftsNeedsOpening(
+            currentState.cashAvailability,
+            errorMessage: message,
+          ),
+        );
+      } else {
+        emit(ShiftsFailure(message));
+      }
     }
   }
 

@@ -18,11 +18,13 @@ class ProductCartSheet extends StatelessWidget {
     required this.checkoutRepository,
     required this.outletId,
     this.onCheckoutReturn,
+    this.onTransactionSuccess,
   });
 
   final CheckoutRepository checkoutRepository;
   final String? outletId;
   final VoidCallback? onCheckoutReturn;
+  final VoidCallback? onTransactionSuccess;
 
   @override
   Widget build(BuildContext context) {
@@ -208,9 +210,19 @@ class ProductCartSheet extends StatelessWidget {
                                         IconButton.filledTonal(
                                           tooltip: 'Tambah jumlah',
                                           visualDensity: VisualDensity.compact,
-                                          onPressed: () => context
-                                              .read<CartCubit>()
-                                              .increment(item.selectionKey),
+                                          onPressed: () {
+                                            final message = context
+                                                .read<CartCubit>()
+                                                .increment(item.selectionKey);
+                                            if (message != null) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(message),
+                                                    ),
+                                                  );
+                                            }
+                                          },
                                           icon: const Icon(
                                             Icons.add_rounded,
                                             size: 18,
@@ -360,7 +372,10 @@ class ProductCartSheet extends StatelessWidget {
               value: cartCubit,
               child: BlocProvider(
                 create: (_) => CheckoutCubit(checkoutRepository)..load(),
-                child: CheckoutPage(outletId: outletId),
+                child: CheckoutPage(
+                  outletId: outletId,
+                  onTransactionSuccess: onTransactionSuccess,
+                ),
               ),
             ),
           ),

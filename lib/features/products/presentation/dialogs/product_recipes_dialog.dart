@@ -1,12 +1,13 @@
 // Flutter imports:
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 // Project imports:
 import 'package:kawula_pos/features/inventories/domain/entities/inventory_item.dart';
 import 'package:kawula_pos/features/product_units/domain/entities/product_unit.dart';
 import 'package:kawula_pos/features/products/domain/entities/product_management.dart';
 import 'package:kawula_pos/features/products/presentation/widgets/product_management_helpers.dart';
+import 'package:kawula_pos/features/products/presentation/widgets/product_recipe_entry_form.dart';
+import 'package:kawula_pos/features/products/presentation/widgets/product_recipe_list.dart';
 import 'package:kawula_pos/theme/app_colors.dart';
 
 typedef RecipeAdder = Future<bool> Function({
@@ -159,7 +160,18 @@ class _ProductRecipesDialogState extends State<ProductRecipesDialog> {
                   message: 'Data satuan tidak tersedia. Refresh daftar produk.',
                 )
               else
-                _recipeEntry(inventory, units),
+                ProductRecipeEntryForm(
+                  inventories: _activeInventories,
+                  inventory: inventory,
+                  inventoryId: _inventoryId,
+                  units: units,
+                  unitId: _unitId,
+                  quantityController: _quantityController,
+                  isBusy: _busy,
+                  onInventoryChanged: _selectInventory,
+                  onUnitChanged: (value) => setState(() => _unitId = value),
+                  onAdd: _addRecipe,
+                ),
               if (_errorMessage != null) ...[
                 const SizedBox(height: 10),
                 Align(
@@ -202,77 +214,11 @@ class _ProductRecipesDialogState extends State<ProductRecipesDialog> {
               ),
               const SizedBox(height: 12),
               Flexible(
-                child: _recipes.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'Belum ada bahan untuk produk ini.',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                      )
-                    : ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: _recipes.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 8),
-                        itemBuilder: (context, index) {
-                          final recipe = _recipes[index];
-                          return Container(
-                            padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              border: Border.all(color: AppColors.border),
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE8FBF3),
-                                    borderRadius: BorderRadius.circular(11),
-                                  ),
-                                  child: const Icon(
-                                    Icons.science_outlined,
-                                    color: AppColors.success,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        recipe.inventoryName,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        '${recipe.quantityLabel} per produk',
-                                        style: const TextStyle(
-                                          color: AppColors.textSecondary,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                IconButton(
-                                  tooltip: 'Hapus bahan',
-                                  onPressed: _busy
-                                      ? null
-                                      : () => _removeRecipe(index),
-                                  color: AppColors.danger,
-                                  icon: const Icon(Icons.delete_outline),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
+                child: ProductRecipeList(
+                  recipes: _recipes,
+                  isBusy: _busy,
+                  onRemove: _removeRecipe,
+                ),
               ),
             ],
           ),
@@ -336,147 +282,15 @@ class _ProductRecipesDialogState extends State<ProductRecipesDialog> {
     ),
   );
 
-  Widget _recipeEntry(InventoryItem? inventory, List<ProductUnit> units) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.dashboardBackground,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(17),
-      ),
-      child: Column(
-        children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth >= 620) {
-                return Row(
-                  children: [
-                    Expanded(flex: 2, child: _inventoryField()),
-                    const SizedBox(width: 10),
-                    Expanded(child: _quantityField()),
-                    const SizedBox(width: 10),
-                    Expanded(child: _unitField(units)),
-                  ],
-                );
-              }
-              return Column(
-                children: [
-                  _inventoryField(),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      SizedBox(width: 120, child: _quantityField()),
-                      const SizedBox(width: 10),
-                      Expanded(child: _unitField(units)),
-                    ],
-                  ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Text(
-                  inventory == null
-                      ? 'Pilih bahan untuk melihat satuan stok.'
-                      : 'Konversi otomatis ke satuan stok: '
-                            '${inventory.unit.label}.',
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              FilledButton(
-                onPressed: _busy || inventory == null || _unitId == null
-                    ? null
-                    : _addRecipe,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                ),
-                child: _busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Tambah Bahan'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+  void _selectInventory(String? value) {
+    final item = _activeInventories
+        .where((inventory) => inventory.id == value)
+        .firstOrNull;
+    setState(() {
+      _inventoryId = value;
+      _unitId = item?.unit.id;
+    });
   }
-
-  Widget _inventoryField() => DropdownButtonFormField<String>(
-    initialValue: _inventoryId,
-    isExpanded: true,
-    decoration: const InputDecoration(
-      labelText: 'Bahan Inventory',
-      filled: true,
-      fillColor: AppColors.surface,
-    ),
-    items: _activeInventories
-        .map(
-          (item) => DropdownMenuItem(
-            value: item.id,
-            child: Text(
-              '${item.name} (${formatProductNumber(item.stock)} '
-              '${item.unit.abbreviation})',
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        )
-        .toList(),
-    onChanged: _busy
-        ? null
-        : (value) {
-            final item = _activeInventories
-                .where((inventory) => inventory.id == value)
-                .firstOrNull;
-            setState(() {
-              _inventoryId = value;
-              _unitId = item?.unit.id;
-            });
-          },
-  );
-
-  Widget _quantityField() => TextField(
-    controller: _quantityController,
-    enabled: !_busy,
-    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-    decoration: const InputDecoration(
-      labelText: 'Jumlah Recipe',
-      hintText: 'Mis. 15',
-      filled: true,
-      fillColor: AppColors.surface,
-    ),
-  );
-
-  Widget _unitField(List<ProductUnit> units) => DropdownButtonFormField<String>(
-    initialValue: _unitId,
-    isExpanded: true,
-    decoration: const InputDecoration(
-      labelText: 'Satuan Recipe',
-      filled: true,
-      fillColor: AppColors.surface,
-    ),
-    items: units
-        .map(
-          (unit) => DropdownMenuItem(
-            value: unit.id,
-            child: Text(unit.label, overflow: TextOverflow.ellipsis),
-          ),
-        )
-        .toList(),
-    onChanged: _busy ? null : (value) => setState(() => _unitId = value),
-  );
 
   Future<void> _addRecipe() async {
     final inventory = _selectedInventory;

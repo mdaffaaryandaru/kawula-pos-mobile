@@ -8,9 +8,11 @@ import 'package:http/http.dart' as http;
 import 'package:kawula_pos/features/members/data/datasources/members_remote_data_source.dart';
 import 'package:kawula_pos/features/members/domain/entities/member.dart';
 import 'package:kawula_pos/features/members/domain/entities/member_reward_claim.dart';
-import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
+import 'package:kawula_pos/features/products/domain/entities/cart_item.dart';
 import 'package:kawula_pos/features/transactions/data/models/checkout_models.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
+import 'package:kawula_pos/framework/core/network/api_header_builder.dart';
+import 'package:kawula_pos/framework/core/network/api_url_builder.dart';
 
 class CheckoutRemoteDataSource {
   CheckoutRemoteDataSource(
@@ -155,6 +157,7 @@ class CheckoutRemoteDataSource {
     required String outletId,
     required List<CartItem> items,
     required num estimatedTotal,
+    required num serviceCharge,
     required String paymentMethod,
     required num paidAmount,
     required String? pin,
@@ -184,6 +187,7 @@ class CheckoutRemoteDataSource {
           )
           .toList(),
       'total_amount': estimatedTotal.round(),
+      'service_charge': serviceCharge,
       'payment_method': openBill ? 'OPEN_BILL' : paymentMethod,
       if (memberId != null && memberId.isNotEmpty) 'member_id': memberId,
       if (tableNumber != null && tableNumber.trim().isNotEmpty)
@@ -204,22 +208,12 @@ class CheckoutRemoteDataSource {
     return CheckoutResultModel.fromJson(decoded);
   }
 
-  Uri _uri(String path) {
-    final baseUrl = _baseUrl.endsWith('/')
-        ? _baseUrl.substring(0, _baseUrl.length - 1)
-        : _baseUrl;
-    return Uri.parse('$baseUrl/$path');
-  }
+  Uri _uri(String path) => buildApiUri(_baseUrl, path);
 
   Future<Map<String, String>> _authorizedHeaders() async {
     final token = await _readToken();
-    if (token == null || token.isEmpty) {
-      throw const ApiException(
-        'Sesi login tidak ditemukan. Silakan masuk lagi.',
-      );
-    }
     return {
-      'Authorization': 'Bearer $token',
+      ...buildAuthorizationHeaders(token),
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };

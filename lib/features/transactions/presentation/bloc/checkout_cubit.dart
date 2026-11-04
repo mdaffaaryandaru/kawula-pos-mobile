@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 // Project imports:
 import 'package:kawula_pos/features/members/domain/entities/member.dart';
 import 'package:kawula_pos/features/members/domain/entities/member_reward_claim.dart';
+import 'package:kawula_pos/features/products/domain/entities/cart_item.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/presentation/bloc/checkout_state.dart';
@@ -34,6 +35,7 @@ class CheckoutCubit extends Cubit<CheckoutState> {
     required String outletId,
     required List<CartItem> items,
     required num estimatedTotal,
+    required num serviceCharge,
     required String paymentMethod,
     required num paidAmount,
     required String? pin,
@@ -54,6 +56,18 @@ class CheckoutCubit extends Cubit<CheckoutState> {
       return;
     }
 
+    final stockIssues = CartState(items).stockIssues;
+    if (stockIssues.isNotEmpty) {
+      emit(
+        CheckoutReady(
+          paymentMethods: currentState.paymentMethods,
+          settings: currentState.settings,
+          errorMessage: stockIssues.map((issue) => issue.message).join('\n'),
+        ),
+      );
+      return;
+    }
+
     emit(
       CheckoutSubmitting(
         paymentMethods: currentState.paymentMethods,
@@ -65,6 +79,7 @@ class CheckoutCubit extends Cubit<CheckoutState> {
         outletId: outletId,
         items: items,
         estimatedTotal: estimatedTotal,
+        serviceCharge: serviceCharge,
         paymentMethod: paymentMethod,
         paidAmount: paidAmount,
         pin: pin,

@@ -20,6 +20,7 @@ import 'package:kawula_pos/features/payment_method/domain/repositories/payment_m
 import 'package:kawula_pos/features/product_units/domain/repositories/product_units_repository.dart';
 import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
 import 'package:kawula_pos/features/products/domain/repositories/product_management_repository.dart';
+import 'package:kawula_pos/features/products/presentation/pages/catalog_page.dart';
 import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
 import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
@@ -83,6 +84,8 @@ class AdminNavigationPage extends StatefulWidget {
 class _AdminNavigationPageState extends State<AdminNavigationPage> {
   int _selectedIndex = 0;
   late final List<Widget?> _pages;
+  final _dashboardKey = GlobalKey<AdminDashboardPageState>();
+  final _catalogPageKey = GlobalKey<CatalogPageState>();
 
   @override
   void initState() {
@@ -129,15 +132,19 @@ class _AdminNavigationPageState extends State<AdminNavigationPage> {
   }
 
   void _selectDestination(int index) {
+    if (index == _selectedIndex) return;
     setState(() {
       _selectedIndex = index;
       _pages[index] ??= _pageAt(index);
     });
+    if (index == 0) _dashboardKey.currentState?.refresh();
+    if (index == 1) _catalogPageKey.currentState?.refreshCatalog();
   }
 
   Widget _pageAt(int index) {
     return switch (index) {
       0 => AdminDashboardPage(
+        key: _dashboardKey,
         admin: widget.admin,
         checkoutRepository: widget.checkoutRepository,
         onOpenCashier: () => _selectDestination(1),
@@ -157,6 +164,7 @@ class _AdminNavigationPageState extends State<AdminNavigationPage> {
         admin: widget.admin,
         catalogRepository: widget.catalogRepository,
         checkoutRepository: widget.checkoutRepository,
+        catalogPageKey: _catalogPageKey,
       ),
       2 => AdminManagementPage(
         admin: widget.admin,

@@ -4,12 +4,18 @@ import 'package:kawula_pos/features/auth/data/datasources/auth_remote_data_sourc
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
 import 'package:kawula_pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
+import 'package:kawula_pos/framework/core/network/auth_session_expiry_handler.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
-  AuthRepositoryImpl(this._remoteDataSource, this._localDataSource);
+  AuthRepositoryImpl(
+    this._remoteDataSource,
+    this._localDataSource, {
+    this.sessionExpiryHandler,
+  });
 
   final AuthRemoteDataSource _remoteDataSource;
   final AuthLocalDataSource _localDataSource;
+  final AuthSessionExpiryHandler? sessionExpiryHandler;
 
   @override
   Future<AuthUser?> restoreSession() async {
@@ -17,10 +23,13 @@ class AuthRepositoryImpl implements AuthRepository {
     if (token == null || token.isEmpty) return null;
 
     try {
-      return await _remoteDataSource.getProfile(token);
+      final user = await _remoteDataSource.getProfile(token);
+      sessionExpiryHandler?.markSessionActive(token);
+      return user;
     } on ApiException catch (error) {
       if (error.statusCode == 401) {
         await _localDataSource.deleteToken();
+        sessionExpiryHandler?.markSessionEnded(token);
         return null;
       }
       rethrow;
@@ -32,21 +41,28 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
   }) async {
+    sessionExpiryHandler?.markSessionEnded();
     final token = await _remoteDataSource.login(
       email: email,
       password: password,
     );
     await _localDataSource.saveToken(token);
     try {
-      return await _remoteDataSource.getProfile(token);
+      final user = await _remoteDataSource.getProfile(token);
+      sessionExpiryHandler?.markSessionActive(token);
+      return user;
     } on ApiException catch (error) {
       if (error.statusCode == 401) {
         await _localDataSource.deleteToken();
+        sessionExpiryHandler?.markSessionEnded(token);
       }
       rethrow;
     }
   }
 
   @override
-  Future<void> logout() => _localDataSource.deleteToken();
+  Future<void> logout() {
+    sessionExpiryHandler?.markSessionEnded();
+    return _localDataSource.deleteToken();
+  }
 }

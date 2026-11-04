@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Project imports:
-import 'package:kawula_pos/config/api_config.dart';
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
@@ -15,6 +14,8 @@ import 'package:kawula_pos/features/products/presentation/bloc/catalog_state.dar
 import 'package:kawula_pos/features/products/presentation/pages/product_cart_sheet.dart';
 import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
 import 'package:kawula_pos/features/products/presentation/pages/product_variant_dialog.dart';
+import 'package:kawula_pos/features/products/presentation/widgets/catalog_open_bills_panel.dart';
+import 'package:kawula_pos/features/products/presentation/widgets/catalog_product_grid.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
@@ -38,10 +39,10 @@ class CatalogPage extends StatefulWidget {
   final VoidCallback onManageShift;
 
   @override
-  State<CatalogPage> createState() => _CatalogPageState();
+  State<CatalogPage> createState() => CatalogPageState();
 }
 
-class _CatalogPageState extends State<CatalogPage> {
+class CatalogPageState extends State<CatalogPage> {
   final _searchController = TextEditingController();
   List<TransactionRecord> _openBills = const [];
   bool _isLoadingOpenBills = false;
@@ -57,6 +58,16 @@ class _CatalogPageState extends State<CatalogPage> {
   void initState() {
     super.initState();
     _loadOpenBills();
+  }
+
+  Future<void> refreshCatalog() async {
+    final catalogCubit = context.read<CatalogCubit>();
+    await catalogCubit.refresh();
+    if (!mounted) return;
+    final catalogState = catalogCubit.state;
+    if (catalogState is CatalogLoaded) {
+      context.read<CartCubit>().updateStockFromProducts(catalogState.products);
+    }
   }
 
   @override
@@ -109,7 +120,13 @@ class _CatalogPageState extends State<CatalogPage> {
       body: Column(
         children: [
           _activeShiftBanner(context),
-          _openBillBanner(context),
+          CatalogOpenBillsPanel(
+            billCount: _openBills.length,
+            isLoading: _isLoadingOpenBills,
+            errorMessage: _openBillsError,
+            onRetry: _loadOpenBills,
+            onViewBills: () => _showOpenBills(context),
+          ),
           Expanded(
             child: BlocBuilder<CatalogCubit, CatalogState>(
               builder: (context, state) {
@@ -184,83 +201,6 @@ class _CatalogPageState extends State<CatalogPage> {
     );
   }
 
-  Widget _openBillBanner(BuildContext context) {
-    if (_openBills.isEmpty && _openBillsError == null) {
-      return const SizedBox.shrink();
-    }
-    final hasError = _openBillsError != null;
-    final foreground = hasError
-        ? Theme.of(context).colorScheme.error
-        : const Color(0xFFB45309);
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: hasError
-            ? Theme.of(context).colorScheme.errorContainer
-            : const Color(0xFFFFFBEB),
-        border: Border.all(
-          color: hasError
-              ? Theme.of(context).colorScheme.error.withValues(alpha: .35)
-              : const Color(0xFFFBBF24),
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            hasError ? Icons.error_outline : Icons.schedule_outlined,
-            color: foreground,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  hasError
-                      ? 'Open Bill tidak dapat dimuat'
-                      : 'Open Bill (${_openBills.length})',
-                  style: TextStyle(
-                    color: foreground,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  hasError
-                      ? _openBillsError!
-                      : 'Ada tagihan tertunda yang belum dilunasi',
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: foreground),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          TextButton(
-            onPressed: _isLoadingOpenBills
-                ? null
-                : hasError
-                ? _loadOpenBills
-                : () => _showOpenBills(context),
-            style: TextButton.styleFrom(
-              foregroundColor: foreground,
-              visualDensity: VisualDensity.compact,
-            ),
-            child: Text(
-              _isLoadingOpenBills
-                  ? 'Memuat...'
-                  : hasError
-                  ? 'Coba Lagi'
-                  : 'Lihat Tagihan',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _loadOpenBills() async {
     if (!mounted) return;
     setState(() {
@@ -282,6 +222,11 @@ class _CatalogPageState extends State<CatalogPage> {
     } finally {
       if (mounted) setState(() => _isLoadingOpenBills = false);
     }
+  }
+
+  void _refreshCatalogProducts() {
+    if (!mounted) return;
+    context.read<CatalogCubit>().refreshProducts();
   }
 
   Future<void> _showOpenBills(BuildContext context) async {
@@ -517,72 +462,11 @@ class _CatalogPageState extends State<CatalogPage> {
             ),
             SizedBox(height: compact ? 4 : 8),
             Expanded(
-              child: products.isEmpty
-                  ? const Center(child: Text('Produk tidak ditemukan.'))
-                  : AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 220),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      transitionBuilder: (child, animation) => FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(0, .025),
-                            end: Offset.zero,
-                          ).animate(animation),
-                          child: child,
-                        ),
-                      ),
-                      child: LayoutBuilder(
-                        key: ValueKey(
-                          '${state.selectedCategoryId}-${state.searchQuery}',
-                        ),
-                        builder: (context, constraints) {
-                          final columns = constraints.maxWidth >= 900
-                              ? 4
-                              : constraints.maxWidth >= 600
-                              ? 3
-                              : 2;
-                          return GridView.builder(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: columns,
-                                  crossAxisSpacing: 12,
-                                  mainAxisSpacing: 12,
-                                  childAspectRatio: constraints.maxWidth >= 900
-                                      ? 0.84
-                                      : constraints.maxWidth >= 600
-                                      ? 0.78
-                                      : 0.70,
-                                ),
-                            itemCount: products.length,
-                            itemBuilder: (context, index) {
-                              final product = products[index];
-                              return TweenAnimationBuilder<double>(
-                                key: ValueKey(product.id),
-                                tween: Tween(begin: 0, end: 1),
-                                duration: Duration(
-                                  milliseconds: 280 + index.clamp(0, 8) * 35,
-                                ),
-                                curve: Curves.easeOutCubic,
-                                builder: (context, progress, child) => Opacity(
-                                  opacity: progress,
-                                  child: Transform.translate(
-                                    offset: Offset(0, 14 * (1 - progress)),
-                                    child: child,
-                                  ),
-                                ),
-                                child: _ProductCard(
-                                  product: product,
-                                  onTap: () => _addToCart(context, product),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ),
+              child: CatalogProductGrid(
+                products: products,
+                contentKey: '${state.selectedCategoryId}-${state.searchQuery}',
+                onProductTap: (product) => _addToCart(context, product),
+              ),
             ),
           ],
         );
@@ -591,11 +475,24 @@ class _CatalogPageState extends State<CatalogPage> {
   }
 
   Future<void> _addToCart(BuildContext context, CatalogProduct product) async {
+    final cartCubit = context.read<CartCubit>();
+    final issue = cartCubit.state.validateProductQuantity(product, quantity: 1);
+    if (issue != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(issue.message)));
+      return;
+    }
+
     final selected = product.variantGroups.isEmpty
         ? const <SelectedProductVariant>[]
         : await showProductVariantDialog(context, product);
     if (selected == null || !context.mounted) return;
-    context.read<CartCubit>().addProduct(product, selectedVariants: selected);
+    final message = cartCubit.addProduct(product, selectedVariants: selected);
+    if (message != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
+      return;
+    }
     HapticFeedback.selectionClick();
   }
 
@@ -616,6 +513,7 @@ class _CatalogPageState extends State<CatalogPage> {
           checkoutRepository: widget.checkoutRepository,
           outletId: widget.outletId,
           onCheckoutReturn: _loadOpenBills,
+          onTransactionSuccess: _refreshCatalogProducts,
         ),
       ),
     );
@@ -676,231 +574,6 @@ class _CategoryChip extends StatelessWidget {
   }
 }
 
-class _ProductCard extends StatelessWidget {
-  const _ProductCard({required this.product, required this.onTap});
-
-  final CatalogProduct product;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final imageUri = product.imageUrl.isEmpty
-        ? null
-        : resolveProductImageUri(ApiConfig.baseUrl, product.imageUrl);
-    final discounted = product.discountedPrice < product.price;
-    return _AnimatedProductCard(
-      product: product,
-      imageUri: imageUri?.toString(),
-      discounted: discounted,
-      onTap: onTap,
-    );
-  }
-}
-
-class _AnimatedProductCard extends StatefulWidget {
-  const _AnimatedProductCard({
-    required this.product,
-    required this.imageUri,
-    required this.discounted,
-    required this.onTap,
-  });
-
-  final CatalogProduct product;
-  final String? imageUri;
-  final bool discounted;
-  final VoidCallback onTap;
-
-  @override
-  State<_AnimatedProductCard> createState() => _AnimatedProductCardState();
-}
-
-class _AnimatedProductCardState extends State<_AnimatedProductCard> {
-  var _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final product = widget.product;
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedScale(
-        scale: _hovered ? 1.025 : 1,
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOut,
-        child: Card(
-          color: AppColors.surface,
-          elevation: _hovered ? 5 : 1,
-          shadowColor: AppColors.primary.withValues(alpha: .14),
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: const BorderSide(color: AppColors.border),
-          ),
-          child: InkWell(
-            onTap: widget.onTap,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      widget.imageUri == null
-                          ? ColoredBox(
-                              color: const Color(0xFFF0F4FA),
-                              child: Icon(
-                                Icons.fastfood_outlined,
-                                size: 42,
-                                color: AppColors.textSecondary.withValues(
-                                  alpha: .6,
-                                ),
-                              ),
-                            )
-                          : Image.network(
-                              widget.imageUri!,
-                              fit: BoxFit.cover,
-                              frameBuilder:
-                                  (
-                                    context,
-                                    child,
-                                    frame,
-                                    wasSynchronouslyLoaded,
-                                  ) {
-                                    if (wasSynchronouslyLoaded) return child;
-                                    return AnimatedOpacity(
-                                      opacity: frame == null ? 0 : 1,
-                                      duration: const Duration(
-                                        milliseconds: 260,
-                                      ),
-                                      curve: Curves.easeOut,
-                                      child: child,
-                                    );
-                                  },
-                              errorBuilder: (_, _, _) => const ColoredBox(
-                                color: Color(0xFFF0F4FA),
-                                child: Icon(
-                                  Icons.broken_image_outlined,
-                                  size: 42,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ),
-                      if (widget.discounted)
-                        Positioned(
-                          top: 10,
-                          left: 10,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 9,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.danger,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Text(
-                              'PROMO',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: .4,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(11, 10, 9, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        product.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              formatRupiah(product.discountedPrice),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                          if (widget.discounted) ...[
-                            const SizedBox(width: 5),
-                            Flexible(
-                              child: Text(
-                                formatRupiah(product.price),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(
-                                      color: AppColors.textSecondary,
-                                      decoration: TextDecoration.lineThrough,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 5),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              product.category?.name ??
-                                  (product.variantGroups.isNotEmpty
-                                      ? 'Pilih varian'
-                                      : 'Produk'),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: AppColors.textSecondary),
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                          IconButton.filled(
-                            visualDensity: VisualDensity.compact,
-                            constraints: const BoxConstraints.tightFor(
-                              width: 36,
-                              height: 36,
-                            ),
-                            tooltip: 'Tambah ${product.name} ke keranjang',
-                            onPressed: widget.onTap,
-                            style: IconButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                            ),
-                            icon: const Icon(Icons.add_rounded, size: 20),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _LiveStatusDot extends StatelessWidget {
   const _LiveStatusDot();
 
@@ -946,16 +619,4 @@ class _CatalogFailure extends StatelessWidget {
       ),
     );
   }
-}
-
-Uri resolveProductImageUri(String apiBaseUrl, String imageUrl) {
-  final imageUri = Uri.parse(imageUrl);
-  if (imageUri.hasScheme) return imageUri;
-  final apiUri = Uri.parse(apiBaseUrl);
-  final pathWithoutApi = apiUri.path.replaceFirst(RegExp(r'/api/?$'), '');
-  return apiUri.replace(
-    path: '$pathWithoutApi/${imageUrl.replaceFirst(RegExp(r'^/+'), '')}',
-    query: null,
-    fragment: null,
-  );
 }

@@ -9,6 +9,8 @@ import 'package:kawula_pos/features/shifts/data/models/active_shift_model.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/admin_shift_detail.dart';
 import 'package:kawula_pos/features/transactions/data/models/checkout_models.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
+import 'package:kawula_pos/framework/core/network/api_header_builder.dart';
+import 'package:kawula_pos/framework/core/network/api_url_builder.dart';
 
 class ShiftsRemoteDataSource {
   ShiftsRemoteDataSource(this._client, this._baseUrl, this._readToken);
@@ -142,23 +144,13 @@ class ShiftsRemoteDataSource {
     return ActiveShiftModel.fromJson(_decodeObject(response));
   }
 
-  Uri _uri(String path) {
-    final baseUrl = _baseUrl.endsWith('/')
-        ? _baseUrl.substring(0, _baseUrl.length - 1)
-        : _baseUrl;
-    return Uri.parse('$baseUrl/$path');
-  }
+  Uri _uri(String path) => buildApiUri(_baseUrl, path);
 
   Future<Map<String, String>> _authorizedHeaders() async {
     final token = await _readToken();
-    if (token == null || token.isEmpty) {
-      throw const ApiException(
-        'Sesi login tidak ditemukan. Silakan masuk lagi.',
-      );
-    }
     return {
+      ...buildAuthorizationHeaders(token),
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
     };
   }
 

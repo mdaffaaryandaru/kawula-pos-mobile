@@ -2,42 +2,67 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Project imports:
+import 'package:kawula_pos/features/products/domain/entities/cart_item.dart';
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
-
-class CartItem {
-  const CartItem({
-    required this.product,
-    required this.quantity,
-    required this.selectedVariants,
-    this.notes = '',
-  });
-
-  final CatalogProduct product;
-  final int quantity;
-  final List<SelectedProductVariant> selectedVariants;
-  final String notes;
-
-  num get unitPrice =>
-      product.discountedPrice +
-      selectedVariants.fold<num>(
-        0,
-        (total, variant) => total + variant.priceAdjustment,
-      );
-
-  String get selectionKey {
-    final variants = [...selectedVariants]
-      ..sort((a, b) {
-        final group = a.groupName.compareTo(b.groupName);
-        return group != 0 ? group : a.optionName.compareTo(b.optionName);
-      });
-    return '${product.id}|${variants.map((variant) => '${variant.groupName}:${variant.optionId ?? variant.optionName}').join('|')}';
-  }
-}
 
 class CartState {
   const CartState(this.items);
 
   final List<CartItem> items;
+
+  int quantityForProduct(String productId) => items
+      .where((item) => item.product.id == productId)
+      .fold(0, (total, item) => total + item.quantity);
+
+  CartStockIssue? validateProductQuantity(
+    CatalogProduct product, {
+    required int quantity,
+    String? excludingSelectionKey,
+  }) {
+    final currentQuantity = items
+        .where(
+          (item) =>
+              item.product.id == product.id &&
+              item.selectionKey != excludingSelectionKey,
+        )
+        .fold(0, (total, item) => total + item.quantity);
+
+    switch (product.stockStatus) {
+      case ProductStockStatus.available:
+        if (currentQuantity + quantity > product.stock!) {
+          return CartStockIssue(
+            productName: product.name,
+            message:
+                'Stok ${product.name} tidak mencukupi. '
+                'Tersedia ${product.stock} unit, '
+                'di keranjang $currentQuantity unit.',
+          );
+        }
+        break;
+      case ProductStockStatus.outOfStock:
+        return CartStockIssue(
+          productName: product.name,
+          message: 'Stok ${product.name} habis.',
+        );
+      case ProductStockStatus.unavailable:
+        return CartStockIssue(
+          productName: product.name,
+          message: 'Stok ${product.name} tidak tersedia.',
+        );
+    }
+    return null;
+  }
+
+  List<CartStockIssue> get stockIssues {
+    final productItems = <String, CartItem>{};
+    for (final item in items) {
+      productItems.putIfAbsent(item.product.id, () => item);
+    }
+    return [
+      for (final item in productItems.values)
+        ?validateProductQuantity(item.product, quantity: 0),
+    ];
+  }
 
   int get totalQuantity =>
       items.fold(0, (total, item) => total + item.quantity);
@@ -48,10 +73,17 @@ class CartState {
   bool get isEmpty => items.isEmpty;
 }
 
+class CartStockIssue {
+  const CartStockIssue({required this.productName, required this.message});
+
+  final String productName;
+  final String message;
+}
+
 class CartCubit extends Cubit<CartState> {
   CartCubit() : super(const CartState([]));
 
-  void addProduct(
+  String? addProduct(
     CatalogProduct product, {
     List<SelectedProductVariant> selectedVariants = const [],
   }) {
@@ -62,6 +94,14 @@ class CartCubit extends Cubit<CartState> {
     ).selectionKey;
     final items = [...state.items];
     final index = items.indexWhere((item) => item.selectionKey == key);
+    final currentQuantity = index == -1 ? 0 : items[index].quantity;
+    final issue = state.validateProductQuantity(
+      product,
+      quantity: currentQuantity + 1,
+      excludingSelectionKey: index == -1 ? null : key,
+    );
+    if (issue != null) return issue.message;
+
     if (index == -1) {
       items.add(
         CartItem(
@@ -80,10 +120,11 @@ class CartCubit extends Cubit<CartState> {
       );
     }
     emit(CartState(List.unmodifiable(items)));
+    return null;
   }
 
-  void increment(String selectionKey) {
-    _updateQuantity(selectionKey, 1);
+  String? increment(String selectionKey) {
+    return _updateQuantity(selectionKey, 1);
   }
 
   void decrement(String selectionKey) {
@@ -116,13 +157,60 @@ class CartCubit extends Cubit<CartState> {
 
   void clear() => emit(const CartState([]));
 
-  void _updateQuantity(String selectionKey, int change) {
+  void updateStockFromProducts(Iterable<CatalogProduct> products) {
+    final refreshedProducts = {
+      for (final product in products) product.id: product,
+    };
+    var changed = false;
+    final items = state.items
+        .map((item) {
+          final refreshedProduct = refreshedProducts[item.product.id];
+          if (refreshedProduct == null ||
+              item.product.stock == refreshedProduct.stock) {
+            return item;
+          }
+
+          changed = true;
+          final product = item.product;
+          return CartItem(
+            product: CatalogProduct(
+              id: product.id,
+              name: product.name,
+              price: product.price,
+              imageUrl: product.imageUrl,
+              isActive: product.isActive,
+              category: product.category,
+              variantGroups: product.variantGroups,
+              images: product.images,
+              stock: refreshedProduct.stock,
+              discount: product.discount,
+              discountId: product.discountId,
+            ),
+            quantity: item.quantity,
+            selectedVariants: item.selectedVariants,
+            notes: item.notes,
+          );
+        })
+        .toList(growable: false);
+
+    if (changed) emit(CartState(List.unmodifiable(items)));
+  }
+
+  String? _updateQuantity(String selectionKey, int change) {
     final items = [...state.items];
     final index = items.indexWhere((item) => item.selectionKey == selectionKey);
-    if (index == -1) return;
+    if (index == -1) return null;
 
     final item = items[index];
     final quantity = item.quantity + change;
+    if (change > 0) {
+      final issue = state.validateProductQuantity(
+        item.product,
+        quantity: quantity,
+        excludingSelectionKey: selectionKey,
+      );
+      if (issue != null) return issue.message;
+    }
     if (quantity <= 0) {
       items.removeAt(index);
     } else {
@@ -134,5 +222,6 @@ class CartCubit extends Cubit<CartState> {
       );
     }
     emit(CartState(List.unmodifiable(items)));
+    return null;
   }
 }

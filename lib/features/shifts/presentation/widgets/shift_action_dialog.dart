@@ -9,7 +9,10 @@ import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
+import 'package:kawula_pos/features/shifts/presentation/widgets/shift_close_form.dart';
+import 'package:kawula_pos/features/shifts/presentation/widgets/shift_dialog_components.dart';
 import 'package:kawula_pos/features/shifts/presentation/widgets/shift_formatters.dart';
+import 'package:kawula_pos/features/shifts/presentation/widgets/shift_open_form.dart';
 
 enum ShiftDialogMode { opening, closing }
 
@@ -85,15 +88,15 @@ class _ShiftActionDialogState extends State<_ShiftActionDialog> {
           children: [
             const Text('Shift akan ditutup dan tidak dapat dibuka kembali.'),
             const SizedBox(height: 16),
-            _ShiftDialogInfo(
+            ShiftDialogInfo(
               label: 'Kas yang diharapkan',
               value: formatShiftRupiah(shift.expectedCash),
             ),
-            _ShiftDialogInfo(
+            ShiftDialogInfo(
               label: 'Kas aktual',
               value: formatShiftRupiah(actualCash),
             ),
-            _ShiftDialogInfo(
+            ShiftDialogInfo(
               label: 'Perkiraan selisih',
               value: formatShiftRupiah(difference),
             ),
@@ -204,182 +207,34 @@ class _ShiftActionDialogState extends State<_ShiftActionDialog> {
     CashAvailability availability, {
     String? errorMessage,
     required bool isOpening,
-  }) {
-    final canOpen =
-        widget.user.hasPin && availability.availableCash >= 0 && !isOpening;
-
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _DialogHeader(
-            title: 'Buka Shift Kasir',
-            subtitle: 'Masukkan modal awal laci dan PIN Anda.',
-            icon: Icons.lock_open_rounded,
-            onClose: isOpening ? null : () => Navigator.of(context).pop(),
-          ),
-          const SizedBox(height: 20),
-          _AvailabilityCard(availability: availability),
-          const SizedBox(height: 16),
-          if (!widget.user.hasPin)
-            const Text(
-              'PIN belum diatur. Hubungi admin untuk mengatur PIN sebelum membuka shift.',
-            )
-          else ...[
-            TextFormField(
-              controller: _startingCashController,
-              enabled: !isOpening,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: false,
-              ),
-              decoration: const InputDecoration(
-                labelText: 'Modal awal (Rp)',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                final amount = num.tryParse(value?.trim() ?? '');
-                if (amount == null || amount < 0) {
-                  return 'Masukkan nominal yang valid.';
-                }
-                if (amount > availability.availableCash) {
-                  return 'Modal melebihi kas yang tersedia.';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _openPinController,
-              enabled: !isOpening,
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 4,
-              decoration: const InputDecoration(
-                labelText: 'PIN (4 digit)',
-                counterText: '',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || !RegExp(r'^\d{4}$').hasMatch(value)) {
-                  return 'PIN harus terdiri dari 4 angka.';
-                }
-                return null;
-              },
-            ),
-          ],
-          if (errorMessage != null) ...[
-            const SizedBox(height: 12),
-            _ErrorMessage(errorMessage),
-          ],
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: canOpen ? _openShift : null,
-            child: isOpening
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Mulai Shift'),
-          ),
-        ],
-      ),
-    );
-  }
+  }) => ShiftOpenForm(
+    formKey: _formKey,
+    user: widget.user,
+    startingCashController: _startingCashController,
+    pinController: _openPinController,
+    availability: availability,
+    isOpening: isOpening,
+    onOpen: _openShift,
+    onClose: () => Navigator.of(context).pop(),
+    errorMessage: errorMessage,
+  );
 
   Widget _closingForm(
     ActiveShift shift, {
     String? errorMessage,
     bool isClosing = false,
-  }) {
-    final requiresPin = widget.user.role != 'Admin';
-
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _DialogHeader(
-            title: 'Tutup Shift',
-            subtitle: 'Rekapitulasi penjualan shift saat ini.',
-            icon: Icons.lock_outline_rounded,
-            onClose: isClosing ? null : () => Navigator.of(context).pop(),
-          ),
-          const SizedBox(height: 20),
-          _ShiftSummaryCard(shift: shift),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _actualCashController,
-            enabled: !isClosing,
-            keyboardType: const TextInputType.numberWithOptions(decimal: false),
-            decoration: const InputDecoration(
-              labelText: 'Hitung kas fisik laci (Rp)',
-              border: OutlineInputBorder(),
-            ),
-            validator: (value) {
-              final amount = num.tryParse(value?.trim() ?? '');
-              if (amount == null || amount < 0) {
-                return 'Masukkan kas aktual yang valid.';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _notesController,
-            enabled: !isClosing,
-            minLines: 1,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              labelText: 'Catatan / alasan selisih (opsional)',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          if (requiresPin) ...[
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _closePinController,
-              enabled: !isClosing,
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 4,
-              decoration: const InputDecoration(
-                labelText: 'Otorisasi PIN (4 digit)',
-                counterText: '',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || !RegExp(r'^\d{4}$').hasMatch(value)) {
-                  return 'PIN harus terdiri dari 4 angka.';
-                }
-                return null;
-              },
-            ),
-          ],
-          if (errorMessage != null) ...[
-            const SizedBox(height: 12),
-            _ErrorMessage(errorMessage),
-          ],
-          const SizedBox(height: 16),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
-            onPressed: isClosing ? null : () => _closeShift(shift),
-            child: isClosing
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Tutup Shift Sekarang'),
-          ),
-        ],
-      ),
-    );
-  }
+  }) => ShiftCloseForm(
+    formKey: _formKey,
+    shift: shift,
+    actualCashController: _actualCashController,
+    notesController: _notesController,
+    pinController: _closePinController,
+    requiresPin: widget.user.role != 'Admin',
+    isClosing: isClosing,
+    onCloseShift: () => _closeShift(shift),
+    onCloseDialog: () => Navigator.of(context).pop(),
+    errorMessage: errorMessage,
+  );
 
   Widget _closedSummary(ActiveShift shift) {
     return Column(
@@ -394,29 +249,29 @@ class _ShiftActionDialogState extends State<_ShiftActionDialog> {
         ),
         const Divider(height: 32),
         if (shift.endTime case final endTime?)
-          _ShiftDialogInfo(
+          ShiftDialogInfo(
             label: 'Selesai',
             value: formatShiftDateTime(endTime),
           ),
-        _ShiftDialogInfo(
+        ShiftDialogInfo(
           label: 'Kas yang diharapkan',
           value: formatShiftRupiah(shift.expectedCash),
         ),
         if (shift.actualCash case final actualCash?)
-          _ShiftDialogInfo(
+          ShiftDialogInfo(
             label: 'Kas aktual',
             value: formatShiftRupiah(actualCash),
           ),
         if (shift.cashDifference case final difference?)
-          _ShiftDialogInfo(
+          ShiftDialogInfo(
             label: 'Selisih kas',
             value: formatShiftRupiah(difference),
           ),
-        _ShiftDialogInfo(
+        ShiftDialogInfo(
           label: 'Total penjualan',
           value: formatShiftRupiah(shift.totalSales),
         ),
-        _ShiftDialogInfo(
+        ShiftDialogInfo(
           label: 'Jumlah transaksi',
           value: '${shift.totalTransactions}',
         ),
@@ -437,13 +292,13 @@ class _ShiftActionDialogState extends State<_ShiftActionDialog> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _DialogHeader(
+        ShiftDialogHeader(
           title: 'Status shift belum tersedia',
           icon: Icons.cloud_off_outlined,
           onClose: () => Navigator.of(context).pop(),
         ),
         const SizedBox(height: 16),
-        _ErrorMessage(message),
+        ShiftErrorMessage(message),
         const SizedBox(height: 16),
         FilledButton(onPressed: _retry, child: const Text('Coba lagi')),
       ],
@@ -463,169 +318,4 @@ class _ShiftActionDialogState extends State<_ShiftActionDialog> {
       ),
     );
   }
-}
-
-class _DialogHeader extends StatelessWidget {
-  const _DialogHeader({
-    required this.title,
-    required this.icon,
-    required this.onClose,
-    this.subtitle,
-  });
-
-  final String title;
-  final String? subtitle;
-  final IconData icon;
-  final VoidCallback? onClose;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Icon(icon, color: Theme.of(context).colorScheme.primary),
-      const SizedBox(width: 12),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                subtitle!,
-                style: TextStyle(color: Theme.of(context).hintColor),
-              ),
-            ],
-          ],
-        ),
-      ),
-      IconButton(
-        onPressed: onClose,
-        tooltip: 'Tutup dialog',
-        icon: const Icon(Icons.close),
-        visualDensity: VisualDensity.compact,
-      ),
-    ],
-  );
-}
-
-class _AvailabilityCard extends StatelessWidget {
-  const _AvailabilityCard({required this.availability});
-
-  final CashAvailability availability;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.primaryContainer,
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Kas tersedia'),
-        const SizedBox(height: 4),
-        Text(
-          formatShiftRupiah(availability.availableCash),
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: Theme.of(context).colorScheme.primary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _ShiftSummaryCard extends StatelessWidget {
-  const _ShiftSummaryCard({required this.shift});
-
-  final ActiveShift shift;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _ShiftDialogInfo(
-                label: 'Kas awal',
-                value: formatShiftRupiah(shift.startingCash),
-              ),
-            ),
-            Expanded(
-              child: _ShiftDialogInfo(
-                label: 'Total penjualan',
-                value: formatShiftRupiah(shift.totalSales),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: _ShiftDialogInfo(
-            label: 'Kas fisik seharusnya (total tunai + awal)',
-            value: formatShiftRupiah(shift.expectedCash),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _ShiftDialogInfo extends StatelessWidget {
-  const _ShiftDialogInfo({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        label,
-        style: Theme.of(context).textTheme.bodySmall
-            ?.copyWith(color: Theme.of(context).hintColor),
-      ),
-      const SizedBox(height: 3),
-      Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
-    ],
-  );
-}
-
-class _ErrorMessage extends StatelessWidget {
-  const _ErrorMessage(this.message);
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.errorContainer,
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Text(
-      message,
-      style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
-    ),
-  );
 }

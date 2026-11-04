@@ -8,6 +8,8 @@ import 'package:http/http.dart' as http;
 import 'package:kawula_pos/features/members/data/models/member_model.dart';
 import 'package:kawula_pos/features/members/data/models/member_reward_claim_model.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
+import 'package:kawula_pos/framework/core/network/api_header_builder.dart';
+import 'package:kawula_pos/framework/core/network/api_url_builder.dart';
 
 class MembersRemoteDataSource {
   MembersRemoteDataSource(this._client, this._baseUrl, this._readToken);
@@ -107,21 +109,14 @@ class MembersRemoteDataSource {
     return MemberModel.fromJson(decoded);
   }
 
-  Uri _uri(String path) {
-    final baseUrl = _baseUrl.endsWith('/')
-        ? _baseUrl.substring(0, _baseUrl.length - 1)
-        : _baseUrl;
-    return Uri.parse('$baseUrl/$path');
-  }
+  Uri _uri(String path) => buildApiUri(_baseUrl, path);
 
   Future<Map<String, String>> _authorizedHeaders() async {
     final token = await _readToken();
-    if (token == null || token.isEmpty) {
-      throw const ApiException(
-        'Sesi login tidak ditemukan. Silakan masuk lagi.',
-      );
-    }
-    return {'Authorization': 'Bearer $token', 'Accept': 'application/json'};
+    return {
+      ...buildAuthorizationHeaders(token),
+      'Accept': 'application/json',
+    };
   }
 
   Future<Map<String, String>> _authorizedJsonHeaders() async => {

@@ -37,13 +37,15 @@ final class CatalogLoaded extends CatalogState {
   }
 
   CatalogLoaded copyWith({
+    List<CatalogProduct>? products,
+    List<ProductCategory>? categories,
     String? selectedCategoryId,
     bool clearCategory = false,
     String? searchQuery,
   }) {
     return CatalogLoaded(
-      products: products,
-      categories: categories,
+      products: products ?? this.products,
+      categories: categories ?? this.categories,
       selectedCategoryId: clearCategory
           ? null
           : selectedCategoryId ?? this.selectedCategoryId,

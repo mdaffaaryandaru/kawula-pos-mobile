@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/checkout_page.dart';
 import 'package:kawula_pos/features/transactions/presentation/widgets/checkout_receipt_actions.dart';
-import 'package:kawula_pos/features/transactions/presentation/widgets/transaction_receipt_component.dart';
+import 'package:kawula_pos/features/transactions/presentation/models/transaction_receipt_data.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/transaction_receipt_card.dart';
 
 extension CheckoutReceiptWidgets on CheckoutPageState {
   Widget completed(CheckoutResult result, CheckoutSettings settings) {
@@ -15,7 +16,6 @@ extension CheckoutReceiptWidgets on CheckoutPageState {
       result: result,
       settings: settings,
       memberName: selectedMember?.name ?? '',
-      memberPhone: selectedMember?.phoneNumber ?? '',
       tableNumber: tableNumberController.text.trim(),
     );
 

@@ -37,11 +37,12 @@ class AdminDashboardPage extends StatefulWidget {
   final bool isCashier;
 
   @override
-  State<AdminDashboardPage> createState() => _AdminDashboardPageState();
+  State<AdminDashboardPage> createState() => AdminDashboardPageState();
 }
 
-class _AdminDashboardPageState extends State<AdminDashboardPage> {
+class AdminDashboardPageState extends State<AdminDashboardPage> {
   late Future<List<TransactionRecord>> _transactions;
+  Future<void>? _refreshInProgress;
 
   @override
   void initState() {
@@ -49,12 +50,26 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     _transactions = widget.checkoutRepository.getTransactions();
   }
 
+  Future<void> refresh() {
+    final inProgress = _refreshInProgress;
+    if (inProgress != null) return inProgress;
+    final future = _refresh();
+    _refreshInProgress = future;
+    return future.whenComplete(() {
+      if (identical(_refreshInProgress, future)) {
+        _refreshInProgress = null;
+      }
+    });
+  }
+
   Future<void> _refresh() async {
     setState(() {
       _transactions = widget.checkoutRepository.getTransactions();
     });
-    context.read<ShiftsCubit>().loadActive();
-    await _transactions;
+    await Future.wait([
+      _transactions,
+      context.read<ShiftsCubit>().refreshActive(),
+    ]);
   }
 
   @override
@@ -74,7 +89,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         actions: [
           IconButton(
             tooltip: 'Muat ulang dashboard',
-            onPressed: _refresh,
+            onPressed: refresh,
             icon: const Icon(Icons.refresh_rounded),
           ),
           PopupMenuButton<String>(
@@ -180,7 +195,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _refresh,
+        onRefresh: refresh,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final maxWidth = constraints.maxWidth >= 1200
@@ -208,7 +223,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                             message:
                                 'Data transaksi gagal dimuat: '
                                 '${snapshot.error}',
-                            onRetry: _refresh,
+                            onRetry: refresh,
                           );
                         }
                         if (snapshot.connectionState ==

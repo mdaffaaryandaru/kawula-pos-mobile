@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Project imports:
+import 'package:kawula_pos/features/products/domain/entities/cart_item.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
 import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
@@ -25,8 +26,9 @@ extension CheckoutFormWidgets on CheckoutPageState {
     final cart = context.watch<CartCubit>().state;
     final taxAmount = (cart.estimatedSubtotal * settings.taxPercentage / 100)
         .round();
-    final totalAmount =
-        (cart.estimatedSubtotal + taxAmount + settings.serviceCharge).round();
+    final serviceCharge = serviceChargeEnabled ? settings.serviceCharge : 0;
+    final totalAmount = (cart.estimatedSubtotal + taxAmount + serviceCharge)
+        .round();
     final methods = paymentMethods
         .where((method) => !method.isOpenBill)
         .toList(growable: false);
@@ -98,9 +100,32 @@ extension CheckoutFormWidgets on CheckoutPageState {
                   label: 'Pajak (${settings.taxPercentage}%)',
                   amount: taxAmount,
                 ),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: CheckboxListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                    dense: true,
+                    visualDensity: VisualDensity.compact,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: const Text('Gunakan Biaya Layanan'),
+                    secondary: Text(formatRupiah(settings.serviceCharge)),
+                    value: serviceChargeEnabled,
+                    onChanged: isSubmitting
+                        ? null
+                        : (value) => updateState(() {
+                            serviceChargeEnabled = value ?? false;
+                            validationMessage = null;
+                          }),
+                  ),
+                ),
                 CheckoutAmountRow(
                   label: 'Biaya layanan',
-                  amount: settings.serviceCharge,
+                  amount: serviceCharge,
                 ),
                 const Divider(height: 24),
                 CheckoutAmountRow(
@@ -248,7 +273,13 @@ extension CheckoutFormWidgets on CheckoutPageState {
                   widget.outletId!.isEmpty ||
                   (!openBill && selectedMethod == null)
               ? null
-              : () => _submit(context, selectedMethod, totalAmount, cart.items),
+              : () => _submit(
+                  context,
+                  selectedMethod,
+                  totalAmount,
+                  serviceCharge,
+                  cart.items,
+                ),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: isSubmitting
@@ -272,6 +303,7 @@ extension CheckoutFormWidgets on CheckoutPageState {
     BuildContext context,
     CheckoutPaymentMethod? method,
     num totalAmount,
+    num serviceCharge,
     List<CartItem> items,
   ) async {
     final openBill = this.openBill;
@@ -295,6 +327,7 @@ extension CheckoutFormWidgets on CheckoutPageState {
       outletId: widget.outletId!,
       items: items,
       estimatedTotal: totalAmount,
+      serviceCharge: serviceCharge,
       paymentMethod: method?.code ?? 'OPEN_BILL',
       paidAmount: cashAmount,
       pin: openBill ? null : pin,

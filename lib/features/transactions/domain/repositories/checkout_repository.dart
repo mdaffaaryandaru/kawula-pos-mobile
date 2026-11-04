@@ -1,7 +1,7 @@
 // Project imports:
 import 'package:kawula_pos/features/members/domain/entities/member.dart';
 import 'package:kawula_pos/features/members/domain/entities/member_reward_claim.dart';
-import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
+import 'package:kawula_pos/features/products/domain/entities/cart_item.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 
 abstract interface class CheckoutRepository {
@@ -39,6 +39,7 @@ abstract interface class CheckoutRepository {
     required String outletId,
     required List<CartItem> items,
     required num estimatedTotal,
+    required num serviceCharge,
     required String paymentMethod,
     required num paidAmount,
     required String? pin,

@@ -36,13 +36,17 @@ class ShiftStatusBanner extends StatelessWidget {
             ],
           ),
         ),
-        ShiftsActive() => _ActiveShiftBanner(user: user, shift: state.shift),
+        ShiftsActive() => _ActiveShiftBanner(
+          user: user,
+          shift: state.shift,
+          errorMessage: state.errorMessage,
+        ),
         ShiftsNeedsOpening() => DashboardBannerShell(
           child: Row(
             children: [
               const DashboardStatusDot(color: AppColors.warning),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -55,6 +59,13 @@ class ShiftStatusBanner extends StatelessWidget {
                       'Buka shift untuk mulai bertransaksi.',
                       style: TextStyle(color: AppColors.textSecondary),
                     ),
+                    if (state.errorMessage != null)
+                      Text(
+                        'Pembaruan status gagal: ${state.errorMessage}',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -135,10 +146,15 @@ class ShiftStatusBanner extends StatelessWidget {
 }
 
 class _ActiveShiftBanner extends StatelessWidget {
-  const _ActiveShiftBanner({required this.user, required this.shift});
+  const _ActiveShiftBanner({
+    required this.user,
+    required this.shift,
+    this.errorMessage,
+  });
 
   final AuthUser user;
   final ActiveShift shift;
+  final String? errorMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -162,6 +178,11 @@ class _ActiveShiftBanner extends StatelessWidget {
             '${shift.totalTransactions} transaksi',
             style: const TextStyle(color: AppColors.textSecondary),
           ),
+          if (errorMessage != null)
+            Text(
+              'Pembaruan status gagal: $errorMessage',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           OutlinedButton(
             onPressed: () => showShiftActionDialog(
               context,

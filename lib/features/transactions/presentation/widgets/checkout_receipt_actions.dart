@@ -7,7 +7,8 @@ import 'package:share_plus/share_plus.dart';
 
 // Project imports:
 import 'package:kawula_pos/features/transactions/presentation/pages/checkout_page.dart';
-import 'package:kawula_pos/features/transactions/presentation/widgets/transaction_receipt_component.dart';
+import 'package:kawula_pos/features/transactions/presentation/models/transaction_receipt_data.dart';
+import 'package:kawula_pos/features/transactions/presentation/services/transaction_receipt_pdf.dart';
 
 extension CheckoutReceiptActions on CheckoutPageState {
   Future<void> shareReceipt(TransactionReceiptData receipt) async {

@@ -17,9 +17,14 @@ import 'package:kawula_pos/features/transactions/presentation/widgets/checkout_r
 import 'package:kawula_pos/features/transactions/presentation/widgets/checkout_state_widgets.dart';
 
 class CheckoutPage extends StatefulWidget {
-  const CheckoutPage({super.key, required this.outletId});
+  const CheckoutPage({
+    super.key,
+    required this.outletId,
+    this.onTransactionSuccess,
+  });
 
   final String? outletId;
+  final VoidCallback? onTransactionSuccess;
 
   @override
   State<CheckoutPage> createState() => CheckoutPageState();
@@ -39,6 +44,7 @@ class CheckoutPageState extends State<CheckoutPage> {
   String? memberSearchError;
   int memberSearchGeneration = 0;
   String? selectedMethodCode;
+  bool serviceChargeEnabled = true;
   bool openBill = false;
   String? validationMessage;
 
@@ -64,6 +70,7 @@ class CheckoutPageState extends State<CheckoutPage> {
       listener: (context, state) {
         if (state is CheckoutCompleted) {
           context.read<CartCubit>().clear();
+          widget.onTransactionSuccess?.call();
         }
       },
       builder: (context, state) {

@@ -57,6 +57,11 @@ key.jks
 android/key.properties
 
 test/
+!test/
+test/*
+!test/transaction_report_csv_test.dart
+!test/api_url_builder_test.dart
+!test/api_header_builder_test.dart
 
 # FVM Version Cache
 .fvm/

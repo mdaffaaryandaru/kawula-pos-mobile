@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 // Project imports:
 import 'package:kawula_pos/features/auth/data/models/auth_user_model.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
+import 'package:kawula_pos/framework/core/network/api_url_builder.dart';
 
 class AuthRemoteDataSource {
   AuthRemoteDataSource(this._client, this._baseUrl);
@@ -39,12 +40,7 @@ class AuthRemoteDataSource {
     return AuthUserModel.fromJson(_decodeResponse(response));
   }
 
-  Uri _uri(String path) {
-    final normalizedBaseUrl = _baseUrl.endsWith('/')
-        ? _baseUrl.substring(0, _baseUrl.length - 1)
-        : _baseUrl;
-    return Uri.parse('$normalizedBaseUrl/$path');
-  }
+  Uri _uri(String path) => buildApiUri(_baseUrl, path);
 
   Map<String, dynamic> _decodeResponse(http.Response response) {
     Object? decoded;

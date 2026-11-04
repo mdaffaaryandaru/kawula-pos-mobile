@@ -13,6 +13,7 @@ import 'package:kawula_pos/features/products/domain/repositories/product_managem
 import 'package:kawula_pos/features/products/presentation/bloc/product_management_cubit.dart';
 import 'package:kawula_pos/features/products/presentation/dialogs/product_dialog.dart';
 import 'package:kawula_pos/features/products/presentation/dialogs/product_recipes_dialog.dart';
+import 'package:kawula_pos/features/products/presentation/models/product_draft.dart';
 import 'package:kawula_pos/features/products/presentation/widgets/product_management_widgets.dart';
 import 'package:kawula_pos/features/products/presentation/widgets/product_table.dart';
 import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';

@@ -6,11 +6,9 @@ import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/admin_shift_detail.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 
-import 'package:kawula_pos/features/shifts/presentation/widgets/admin_shift_list_widgets.dart'
+import 'package:kawula_pos/features/shifts/presentation/utils/admin_shift_formatters.dart';
+import 'package:kawula_pos/features/shifts/presentation/widgets/admin_shift_history_views.dart'
     show ShiftStatusChip;
-
-import 'package:kawula_pos/features/shifts/presentation/pages/admin_shifts_page.dart'
-    show adminShiftInitials, formatAdminShiftDateTime, formatAdminShiftRupiah;
 
 class AdminShiftDetailBody extends StatelessWidget {
   const AdminShiftDetailBody({

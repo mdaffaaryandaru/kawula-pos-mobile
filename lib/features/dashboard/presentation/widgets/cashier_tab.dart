@@ -21,11 +21,13 @@ class CashierTab extends StatelessWidget {
     required this.admin,
     required this.catalogRepository,
     required this.checkoutRepository,
+    this.catalogPageKey,
   });
 
   final AuthUser admin;
   final CatalogRepository catalogRepository;
   final CheckoutRepository checkoutRepository;
+  final GlobalKey<CatalogPageState>? catalogPageKey;
 
   @override
   Widget build(BuildContext context) {
@@ -98,6 +100,7 @@ class CashierTab extends StatelessWidget {
             BlocProvider(create: (_) => CartCubit()),
           ],
           child: CatalogPage(
+            key: catalogPageKey,
             user: admin,
             checkoutRepository: checkoutRepository,
             outletId: state.shift.outletId,

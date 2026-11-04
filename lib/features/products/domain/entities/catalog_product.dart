@@ -52,6 +52,8 @@ class ProductVariantGroup {
   final List<ProductVariantOption> options;
 }
 
+enum ProductStockStatus { available, outOfStock, unavailable }
+
 class CatalogProduct {
   const CatalogProduct({
     required this.id,
@@ -78,6 +80,15 @@ class CatalogProduct {
   final num? stock;
   final ProductDiscount? discount;
   final String? discountId;
+
+  ProductStockStatus get stockStatus {
+    final currentStock = stock;
+    if (currentStock == null || !currentStock.isFinite || currentStock < 0) {
+      return ProductStockStatus.unavailable;
+    }
+    if (currentStock == 0) return ProductStockStatus.outOfStock;
+    return ProductStockStatus.available;
+  }
 
   num get discountedPrice {
     final activeDiscount = discount;

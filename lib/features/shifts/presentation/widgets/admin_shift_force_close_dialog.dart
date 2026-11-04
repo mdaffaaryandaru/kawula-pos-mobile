@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 // Project imports:
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 
-import 'package:kawula_pos/features/shifts/presentation/pages/admin_shifts_page.dart'
+import 'package:kawula_pos/features/shifts/presentation/utils/admin_shift_formatters.dart'
     show formatAdminShiftRupiah;
 
 class ForceCloseDialog extends StatefulWidget {

@@ -10,6 +10,8 @@ import 'package:http/http.dart' as http;
 // Project imports:
 import 'package:kawula_pos/features/product_units/data/models/product_unit_model.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
+import 'package:kawula_pos/framework/core/network/api_header_builder.dart';
+import 'package:kawula_pos/framework/core/network/api_url_builder.dart';
 
 class ProductUnitsRemoteDataSource {
   ProductUnitsRemoteDataSource(this._client, this._baseUrl, this._readToken);
@@ -101,21 +103,16 @@ class ProductUnitsRemoteDataSource {
   }
 
   Uri _uri([String? unitId]) {
-    final baseUrl = _baseUrl.endsWith('/')
-        ? _baseUrl.substring(0, _baseUrl.length - 1)
-        : _baseUrl;
     final path = unitId == null ? 'product-units' : 'product-units/$unitId';
-    return Uri.parse('$baseUrl/$path');
+    return buildApiUri(_baseUrl, path);
   }
 
   Future<Map<String, String>> _authorizedHeaders() async {
     final token = await _readToken();
-    if (token == null || token.isEmpty) {
-      throw const ApiException(
-        'Sesi login tidak ditemukan. Silakan masuk lagi.',
-      );
-    }
-    return {'Authorization': 'Bearer $token', 'Accept': 'application/json'};
+    return {
+      ...buildAuthorizationHeaders(token),
+      'Accept': 'application/json',
+    };
   }
 
   Future<Map<String, String>> _authorizedJsonHeaders() async => {

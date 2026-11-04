@@ -9,6 +9,7 @@ class CatalogCubit extends Cubit<CatalogState> {
   CatalogCubit(this._repository) : super(const CatalogLoading());
 
   final CatalogRepository _repository;
+  Future<void>? _refreshInProgress;
 
   Future<void> load() async {
     emit(const CatalogLoading());
@@ -16,6 +17,48 @@ class CatalogCubit extends Cubit<CatalogState> {
       final products = await _repository.getProducts();
       final categories = await _repository.getCategories();
       emit(CatalogLoaded(products: products, categories: categories));
+    } catch (error) {
+      emit(CatalogFailure(_messageFor(error)));
+    }
+  }
+
+  Future<void> refreshProducts() async {
+    if (state is! CatalogLoaded) return;
+    try {
+      final products = await _repository.getProducts();
+      final currentState = state;
+      if (currentState is CatalogLoaded) {
+        emit(currentState.copyWith(products: products));
+      }
+    } catch (error) {
+      emit(CatalogFailure(_messageFor(error)));
+    }
+  }
+
+  Future<void> refresh() {
+    final inProgress = _refreshInProgress;
+    if (inProgress != null) return inProgress;
+    if (state is! CatalogLoaded) return Future<void>.value();
+
+    final future = _refresh();
+    _refreshInProgress = future;
+    return future.whenComplete(() {
+      if (identical(_refreshInProgress, future)) {
+        _refreshInProgress = null;
+      }
+    });
+  }
+
+  Future<void> _refresh() async {
+    try {
+      final (products, categories) = await (
+        _repository.getProducts(),
+        _repository.getCategories(),
+      ).wait;
+      final currentState = state;
+      if (currentState is CatalogLoaded) {
+        emit(currentState.copyWith(products: products, categories: categories));
+      }
     } catch (error) {
       emit(CatalogFailure(_messageFor(error)));
     }
