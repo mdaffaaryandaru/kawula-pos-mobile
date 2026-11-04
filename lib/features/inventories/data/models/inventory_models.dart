@@ -52,6 +52,7 @@ class InventoryItemModel extends InventoryItem {
     super.category,
     super.description,
     super.buyPrice,
+    super.baseStock,
     super.minStock,
     super.maxStock,
   });
@@ -78,6 +79,7 @@ class InventoryItemModel extends InventoryItem {
           ? json['description'] as String
           : '',
       buyPrice: json['buy_price'] is num ? json['buy_price'] as num : 0,
+      baseStock: json['base_stock'] is num ? json['base_stock'] as num : null,
       minStock: json['min_stock'] is num ? json['min_stock'] as num : 0,
       maxStock: json['max_stock'] is num ? json['max_stock'] as num : null,
     );

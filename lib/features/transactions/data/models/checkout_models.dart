@@ -189,6 +189,7 @@ class TransactionRecordModel extends TransactionRecord {
     super.tableNumber,
     super.refundReason,
     super.refundedAt,
+    super.refundedBy,
   });
 
   factory TransactionRecordModel.fromJson(Map<String, dynamic> json) {
@@ -246,6 +247,7 @@ class TransactionRecordModel extends TransactionRecord {
               (json['refunded_at'] ?? json['refundedAt']) as String,
             )
           : null,
+      refundedBy: _referenceField(json['refunded_by'], 'name'),
       items: itemsJson
           .map((item) {
             if (item is! Map<String, dynamic>) {

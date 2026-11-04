@@ -55,8 +55,11 @@ class _ProductRecipesDialogState extends State<ProductRecipesDialog> {
         .where((item) => item.id == recipe.inventoryId)
         .firstOrNull;
     if (inventory == null) return total;
-    return total +
-        recipe.quantity * recipe.conversionFactor * inventory.buyPrice;
+    final unitCost = inventory.baseStock != null && inventory.baseStock! > 0
+        ? inventory.buyPrice / inventory.baseStock!
+        : inventory.buyPrice;
+    final recipeCost = recipe.quantity * recipe.conversionFactor * unitCost;
+    return total + recipeCost;
   });
 
   bool get _hasUnpricedRecipes => _recipes.any(

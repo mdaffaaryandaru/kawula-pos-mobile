@@ -103,17 +103,21 @@ class _TransactionDetailsDialogState extends State<TransactionDetailsDialog> {
                     receipt: TransactionReceiptData.fromTransaction(
                       transaction,
                     ),
+                    showPaymentStatus: true,
                   ),
-                  if (transaction.refundAmount > 0) ...[
+                  if (status == 'cancelled' || status == 'refunded') ...[
                     const SizedBox(height: 12),
-                    Text(
-                      'Refund: ${_formatRupiah(transaction.refundAmount)}',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    _TransactionActionInfo(
+                      title: status == 'refunded'
+                          ? 'Informasi Refund'
+                          : 'Informasi Pembatalan',
+                      reason: transaction.refundReason,
+                      processedAt: transaction.refundedAt,
+                      processedBy: transaction.refundedBy,
+                      amount: status == 'refunded'
+                          ? transaction.refundAmount
+                          : null,
                     ),
-                  ],
-                  if (transaction.refundReason.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text('Alasan: ${transaction.refundReason}'),
                   ],
                   if (_actionError != null) ...[
                     const SizedBox(height: 12),
@@ -219,6 +223,85 @@ class _TransactionDetailsDialogState extends State<TransactionDetailsDialog> {
       });
     }
   }
+}
+
+class _TransactionActionInfo extends StatelessWidget {
+  const _TransactionActionInfo({
+    required this.title,
+    required this.reason,
+    required this.processedAt,
+    required this.processedBy,
+    this.amount,
+  });
+
+  final String title;
+  final String reason;
+  final DateTime? processedAt;
+  final String processedBy;
+  final num? amount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final details = <String>[
+      if (processedAt != null)
+        'Diproses pada ${_formatActionDateTime(processedAt!)}',
+      if (processedBy.isNotEmpty) 'oleh $processedBy',
+    ];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF1F2),
+        border: Border.all(color: const Color(0xFFFFC7CE)),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Color(0xFFBE123C),
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (amount != null && amount! > 0) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Jumlah: ${_formatRupiah(amount!)}',
+              style: const TextStyle(
+                color: Color(0xFFBE123C),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          const SizedBox(height: 6),
+          Text(
+            'Alasan: ${reason.isEmpty ? 'Tidak tersedia' : reason}',
+            style: const TextStyle(color: Color(0xFFBE123C)),
+          ),
+          if (details.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              details.join(' '),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: const Color(0xFFBE123C),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+String _formatActionDateTime(DateTime date) {
+  final localDate = date.toLocal();
+  return '${localDate.day}/${localDate.month}/${localDate.year}, '
+      '${localDate.hour.toString().padLeft(2, '0')}.'
+      '${localDate.minute.toString().padLeft(2, '0')}.'
+      '${localDate.second.toString().padLeft(2, '0')}';
 }
 
 class _TransactionActionInput {

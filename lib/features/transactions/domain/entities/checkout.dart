@@ -109,6 +109,7 @@ class TransactionRecord {
     this.tableNumber = '',
     this.refundReason = '',
     this.refundedAt,
+    this.refundedBy = '',
   });
 
   final String id;
@@ -132,6 +133,7 @@ class TransactionRecord {
   final String tableNumber;
   final String refundReason;
   final DateTime? refundedAt;
+  final String refundedBy;
 
   bool get isPending => status.toLowerCase() == 'pending';
 
@@ -160,6 +162,7 @@ class TransactionRecord {
             ? fallback.refundReason
             : refundReason,
         refundedAt: refundedAt ?? fallback.refundedAt,
+        refundedBy: refundedBy.isEmpty ? fallback.refundedBy : refundedBy,
       );
 }
 

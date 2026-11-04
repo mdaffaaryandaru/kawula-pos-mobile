@@ -11,6 +11,7 @@ class InventoryItem {
     this.category = '',
     this.description = '',
     this.buyPrice = 0,
+    this.baseStock,
     this.minStock = 0,
     this.maxStock,
   });
@@ -23,6 +24,7 @@ class InventoryItem {
   final String category;
   final String description;
   final num buyPrice;
+  final num? baseStock;
   final num minStock;
   final num? maxStock;
 }

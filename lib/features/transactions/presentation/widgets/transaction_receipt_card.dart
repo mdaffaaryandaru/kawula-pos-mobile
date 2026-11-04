@@ -7,9 +7,14 @@ import 'package:kawula_pos/features/transactions/presentation/services/transacti
 import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
 
 class TransactionReceiptCard extends StatelessWidget {
-  const TransactionReceiptCard({super.key, required this.receipt});
+  const TransactionReceiptCard({
+    super.key,
+    required this.receipt,
+    this.showPaymentStatus = false,
+  });
 
   final TransactionReceiptData receipt;
+  final bool showPaymentStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -137,10 +142,16 @@ class TransactionReceiptCard extends StatelessWidget {
               emphasized: true,
             ),
             const Divider(height: 20),
-            _ReceiptInfoRow(label: 'Metode', value: receipt.paymentMethod),
-            if (receipt.isPending)
-              const _ReceiptInfoRow(label: 'Status', value: 'Belum lunas')
-            else ...[
+            if (showPaymentStatus)
+              _PaymentStatusRow(
+                paymentMethod: receipt.paymentMethod,
+                status: receipt.status,
+              )
+            else
+              _ReceiptInfoRow(label: 'Metode', value: receipt.paymentMethod),
+            if (!showPaymentStatus && receipt.isPending)
+              const _ReceiptInfoRow(label: 'Status', value: 'Belum lunas'),
+            if (!receipt.isPending) ...[
               _ReceiptInfoRow(
                 label: 'Dibayar',
                 value: formatRupiah(receipt.paidAmount),
@@ -162,6 +173,55 @@ class TransactionReceiptCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _PaymentStatusRow extends StatelessWidget {
+  const _PaymentStatusRow({required this.paymentMethod, required this.status});
+
+  final String paymentMethod;
+  final String status;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Metode & Status',
+          style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 6,
+          runSpacing: 4,
+          children: [
+            Text(
+              paymentMethod.toUpperCase(),
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const Text('·', style: TextStyle(fontWeight: FontWeight.w700)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                status.toUpperCase(),
+                style: const TextStyle(
+                  color: Color(0xFF334155),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
 }
 
 class _ReceiptInfoRow extends StatelessWidget {
