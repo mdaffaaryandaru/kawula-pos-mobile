@@ -55,8 +55,15 @@ class _ProductRecipesDialogState extends State<ProductRecipesDialog> {
         .where((item) => item.id == recipe.inventoryId)
         .firstOrNull;
     if (inventory == null) return total;
-    final unitCost = inventory.baseStock != null && inventory.baseStock! > 0
-        ? inventory.buyPrice / inventory.baseStock!
+    final unitAbbreviation = inventory.unit.abbreviation.trim().toLowerCase();
+    final isBulkUnit = const {'mg', 'g', 'kg', 'ml', 'l'}.contains(
+      unitAbbreviation,
+    );
+    final baseStock = inventory.baseStock != null && inventory.baseStock! > 0
+        ? inventory.baseStock!
+        : inventory.stock;
+    final unitCost = isBulkUnit && baseStock > 0
+        ? inventory.buyPrice / baseStock
         : inventory.buyPrice;
     final recipeCost = recipe.quantity * recipe.conversionFactor * unitCost;
     return total + recipeCost;
