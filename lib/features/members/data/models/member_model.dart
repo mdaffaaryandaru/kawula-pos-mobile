@@ -34,4 +34,20 @@ class MemberModel extends Member {
       email: email is String ? email : '',
     );
   }
+
+  factory MemberModel.fromEntity(Member member) => MemberModel(
+    id: member.id,
+    name: member.name,
+    phoneNumber: member.phoneNumber,
+    currentStamps: member.currentStamps,
+    isActive: member.isActive,
+  );
+
+  Map<String, Object> toJson() => {
+    'id': id,
+    'name': name,
+    'phone_number': phoneNumber,
+    'current_stamps': currentStamps,
+    'is_active': isActive,
+  };
 }

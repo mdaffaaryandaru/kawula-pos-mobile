@@ -12,6 +12,11 @@ class CheckoutPaymentMethodModel extends CheckoutPaymentMethod {
     }
     return CheckoutPaymentMethodModel(name: name, code: code);
   }
+
+  factory CheckoutPaymentMethodModel.fromEntity(CheckoutPaymentMethod method) =>
+      CheckoutPaymentMethodModel(name: method.name, code: method.code);
+
+  Map<String, Object> toJson() => {'name': name, 'code': code};
 }
 
 class CheckoutSettingsModel extends CheckoutSettings {
@@ -39,6 +44,23 @@ class CheckoutSettingsModel extends CheckoutSettings {
       logoUrl: json['logo_url'] is String ? json['logo_url'] as String : '',
     );
   }
+
+  factory CheckoutSettingsModel.fromEntity(CheckoutSettings settings) =>
+      CheckoutSettingsModel(
+        taxPercentage: settings.taxPercentage,
+        serviceCharge: settings.serviceCharge,
+        storeName: settings.storeName,
+        address: settings.address,
+        logoUrl: settings.logoUrl,
+      );
+
+  Map<String, Object> toJson() => {
+    'tax_percentage': taxPercentage,
+    'service_charge': serviceCharge,
+    'store_name': storeName,
+    'address': address,
+    'logo_url': logoUrl,
+  };
 }
 
 class CheckoutResultModel extends CheckoutResult {

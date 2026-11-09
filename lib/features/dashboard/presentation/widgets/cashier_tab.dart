@@ -6,14 +6,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Project imports:
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/products/data/repositories/cashier_cached_catalog_repository.dart';
 import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/catalog_cubit.dart';
 import 'package:kawula_pos/features/products/presentation/pages/catalog_page.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
+import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 import 'package:kawula_pos/features/shifts/presentation/widgets/shift_action_dialog.dart';
+import 'package:kawula_pos/features/transactions/data/repositories/cashier_cached_checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
 
 class CashierTab extends StatelessWidget {
   const CashierTab({
@@ -28,6 +32,41 @@ class CashierTab extends StatelessWidget {
   final CatalogRepository catalogRepository;
   final CheckoutRepository checkoutRepository;
   final GlobalKey<CatalogPageState>? catalogPageKey;
+
+  Widget _buildActiveShift(BuildContext context, ActiveShift shift) {
+    final scopedCache = context.read<CashierMasterDataCache>().forRole(
+      role: admin.role,
+      userId: admin.id,
+      outletId: shift.outletId,
+    );
+    final scopedCatalogRepository = scopedCache == null
+        ? catalogRepository
+        : CashierCachedCatalogRepository(catalogRepository, scopedCache);
+    final scopedCheckoutRepository = scopedCache == null
+        ? checkoutRepository
+        : CashierCachedCheckoutRepository(checkoutRepository, scopedCache);
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => CatalogCubit(scopedCatalogRepository)..load(),
+        ),
+        BlocProvider(create: (_) => CartCubit()),
+      ],
+      child: CatalogPage(
+        key: catalogPageKey,
+        user: admin,
+        checkoutRepository: scopedCheckoutRepository,
+        outletId: shift.outletId,
+        activeShift: shift,
+        onManageShift: () => showShiftActionDialog(
+          context,
+          user: admin,
+          mode: ShiftDialogMode.closing,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,26 +131,7 @@ class CashierTab extends StatelessWidget {
           appBar: const CashierAppBar(),
           body: const Center(child: CircularProgressIndicator()),
         ),
-        ShiftsActive() => MultiBlocProvider(
-          providers: [
-            BlocProvider(
-              create: (_) => CatalogCubit(catalogRepository)..load(),
-            ),
-            BlocProvider(create: (_) => CartCubit()),
-          ],
-          child: CatalogPage(
-            key: catalogPageKey,
-            user: admin,
-            checkoutRepository: checkoutRepository,
-            outletId: state.shift.outletId,
-            activeShift: state.shift,
-            onManageShift: () => showShiftActionDialog(
-              context,
-              user: admin,
-              mode: ShiftDialogMode.closing,
-            ),
-          ),
-        ),
+        ShiftsActive() => _buildActiveShift(context, state.shift),
         ShiftsClosing() => Scaffold(
           appBar: const CashierAppBar(),
           body: const Center(child: CircularProgressIndicator()),

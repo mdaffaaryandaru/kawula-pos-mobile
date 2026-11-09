@@ -19,6 +19,6 @@ class ApiConfig {
         : 'API_BASE_URL_DEFAULT';
     return dotenv.env[platformKey] ??
         dotenv.env['API_BASE_URL'] ??
-        'https://kawula-api.ignisys.site/api';
+        'https://10.0.2.2:3001/api';
   }
 }

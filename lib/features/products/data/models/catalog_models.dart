@@ -16,6 +16,12 @@ class CatalogCategoryModel extends ProductCategory {
     );
   }
 
+  Map<String, Object> toJson() => {
+    'id': id,
+    'name': name,
+    'is_active': isActive,
+  };
+
   static String _categoryStringValue(Object? value, String field) {
     if (value is String) return value;
     throw FormatException('Data katalog tidak memiliki $field yang valid.');
@@ -85,6 +91,69 @@ class CatalogProductModel extends CatalogProduct {
       stock: json['stock'] is num ? json['stock'] as num : null,
     );
   }
+
+  factory CatalogProductModel.fromEntity(CatalogProduct product) {
+    return CatalogProductModel(
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      imageUrl: product.imageUrl,
+      isActive: product.isActive,
+      category: product.category == null
+          ? null
+          : CatalogCategoryModel(
+              id: product.category!.id,
+              name: product.category!.name,
+              isActive: product.category!.isActive,
+            ),
+      variantGroups: product.variantGroups,
+      images: product.images,
+      stock: product.stock,
+      discount: product.discount,
+      discountId: product.discountId,
+    );
+  }
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'name': name,
+    'price': price,
+    'image_url': imageUrl,
+    'is_active': isActive,
+    'category_id': category == null
+        ? null
+        : CatalogCategoryModel(
+            id: category!.id,
+            name: category!.name,
+            isActive: category!.isActive,
+          ).toJson(),
+    'discount_id': discount == null
+        ? discountId
+        : {'id': discountId, 'type': discount!.type, 'value': discount!.value},
+    'variant_groups': variantGroups
+        .map(
+          (group) => {
+            'name': group.name,
+            'is_required': group.isRequired,
+            'min_selection': group.minSelection,
+            'max_selection': group.maxSelection,
+            'options': group.options
+                .map(
+                  (option) => {
+                    'id': option.id,
+                    'name': option.name,
+                    'price_adjustment': option.priceAdjustment,
+                  },
+                )
+                .toList(growable: false),
+          },
+        )
+        .toList(growable: false),
+    'images': images
+        .map((image) => {'url': image.url, 'is_main': image.isMain})
+        .toList(growable: false),
+    if (stock != null) 'stock': stock,
+  };
 
   static ProductDiscount _parseDiscount(Map<String, dynamic> json) {
     return ProductDiscount(

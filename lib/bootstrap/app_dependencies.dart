@@ -64,10 +64,14 @@ import 'package:kawula_pos/features/variant_groups/data/repositories/variant_gro
 import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
 import 'package:kawula_pos/framework/core/network/auth_session_expiry_handler.dart';
 import 'package:kawula_pos/framework/core/network/session_aware_http_client.dart';
+import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
+import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
 
 class AppDependencies {
   const AppDependencies({
     required this.apiBaseUrl,
+    this.database,
+    this.masterDataCache,
     required this.authRepository,
     this.sessionExpiryHandler,
     required this.shiftsRepository,
@@ -94,6 +98,8 @@ class AppDependencies {
     final sessionExpiryHandler = AuthSessionExpiryHandler();
     final client = SessionAwareHttpClient(http.Client(), sessionExpiryHandler);
     final apiBaseUrl = ApiConfig.baseUrl;
+    final database = AppDatabase();
+    final masterDataCache = CashierMasterDataCache(database.cachedRecordsDao);
     final remoteDataSource = AuthRemoteDataSource(client, apiBaseUrl);
     final localDataSource = AuthLocalDataSource(const FlutterSecureStorage());
     final authRepository = AuthRepositoryImpl(
@@ -137,6 +143,7 @@ class AppDependencies {
         apiBaseUrl,
         localDataSource.readToken,
       ),
+      cacheDao: database.cachedRecordsDao,
     );
     final userManagementRepository = UserManagementRepositoryImpl(
       UsersRemoteDataSource(client, apiBaseUrl, localDataSource.readToken),
@@ -195,6 +202,8 @@ class AppDependencies {
 
     return AppDependencies(
       apiBaseUrl: apiBaseUrl,
+      database: database,
+      masterDataCache: masterDataCache,
       authRepository: authRepository,
       sessionExpiryHandler: sessionExpiryHandler,
       shiftsRepository: shiftsRepository,
@@ -219,6 +228,8 @@ class AppDependencies {
   }
 
   final String apiBaseUrl;
+  final AppDatabase? database;
+  final CashierMasterDataCache? masterDataCache;
   final AuthRepository authRepository;
   final AuthSessionExpiryHandler? sessionExpiryHandler;
   final ShiftsRepository shiftsRepository;
@@ -239,4 +250,8 @@ class AppDependencies {
   final TablesRepository? tablesRepository;
   final MembersRepository? membersRepository;
   final MembershipProgramsRepository? membershipProgramsRepository;
+
+  Future<void> close() async {
+    await database?.close();
+  }
 }
