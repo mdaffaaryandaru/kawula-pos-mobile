@@ -18,9 +18,13 @@ class ActiveShiftModel extends ActiveShift {
     super.cashierName,
     super.cashierEmail,
     super.notes,
+    super.isOfflineSnapshot,
   });
 
-  factory ActiveShiftModel.fromJson(Map<String, dynamic> json) {
+  factory ActiveShiftModel.fromJson(
+    Map<String, dynamic> json, {
+    bool isOfflineSnapshot = false,
+  }) {
     final outlet = json['outlet_id'];
     final user = json['user_id'];
     return ActiveShiftModel(
@@ -56,8 +60,44 @@ class ActiveShiftModel extends ActiveShift {
           ? user['email'] as String
           : null,
       notes: json['notes'] is String ? json['notes'] as String : '',
+      isOfflineSnapshot: isOfflineSnapshot,
     );
   }
+
+  factory ActiveShiftModel.fromEntity(ActiveShift shift) => ActiveShiftModel(
+    id: shift.id,
+    status: shift.status,
+    startTime: shift.startTime,
+    startingCash: shift.startingCash,
+    expectedCash: shift.expectedCash,
+    totalSales: shift.totalSales,
+    totalTransactions: shift.totalTransactions,
+    outletName: shift.outletName,
+    outletId: shift.outletId,
+    endTime: shift.endTime,
+    actualCash: shift.actualCash,
+    cashDifference: shift.cashDifference,
+    cashierName: shift.cashierName,
+    cashierEmail: shift.cashierEmail,
+    notes: shift.notes,
+    isOfflineSnapshot: shift.isOfflineSnapshot,
+  );
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'status': status,
+    'start_time': startTime.toIso8601String(),
+    'starting_cash': startingCash,
+    'expected_cash': expectedCash,
+    'total_sales': totalSales,
+    'total_transactions': totalTransactions,
+    'outlet_id': outletId == null ? null : {'id': outletId, 'name': outletName},
+    'end_time': endTime?.toIso8601String(),
+    'actual_cash': actualCash,
+    'cash_difference': cashDifference,
+    'user_id': {'name': cashierName},
+    'notes': notes,
+  };
 
   static String _stringValue(Object? value, String field) {
     if (value is String) return value;

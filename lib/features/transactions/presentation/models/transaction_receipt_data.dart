@@ -6,6 +6,7 @@ class TransactionReceiptData {
     required this.transactionId,
     required this.status,
     required this.storeName,
+    required this.outletName,
     required this.address,
     required this.logoUrl,
     required this.createdAt,
@@ -22,6 +23,9 @@ class TransactionReceiptData {
     required this.paidAmount,
     required this.changeAmount,
     required this.notes,
+    this.isOffline = false,
+    this.isOpenBill = false,
+    this.isReconciliation = false,
   });
 
   factory TransactionReceiptData.fromCheckout({
@@ -33,10 +37,11 @@ class TransactionReceiptData {
     transactionId: result.id,
     status: result.status,
     storeName: settings.storeName.isEmpty ? 'Kawula' : settings.storeName,
+    outletName: result.outletName,
     address: settings.address,
     logoUrl: settings.logoUrl,
     createdAt: result.createdAt,
-    cashierName: '',
+    cashierName: result.cashierName,
     memberName: memberName.isEmpty ? result.memberName : memberName,
     tableNumber: result.tableNumber.isEmpty ? tableNumber : result.tableNumber,
     items: [
@@ -64,6 +69,9 @@ class TransactionReceiptData {
     paidAmount: result.paidAmount,
     changeAmount: result.changeAmount,
     notes: result.notes,
+    isOffline: result.isOffline,
+    isOpenBill: result.isOpenBill,
+    isReconciliation: result.status == 'needs_reconciliation',
   );
 
   factory TransactionReceiptData.fromTransaction(
@@ -73,6 +81,7 @@ class TransactionReceiptData {
     transactionId: record.id,
     status: record.status,
     storeName: record.outletName.isEmpty ? 'Kawula' : record.outletName,
+    outletName: record.outletName,
     address: '',
     logoUrl: logoUrl,
     createdAt: record.createdAt,
@@ -104,11 +113,16 @@ class TransactionReceiptData {
     paidAmount: record.paidAmount,
     changeAmount: record.changeAmount,
     notes: record.notes,
+    isOffline: record.id.startsWith('OFF-'),
+    isOpenBill: record.status.toLowerCase() == 'offline_open_bill',
+    isReconciliation:
+        record.status.toLowerCase() == 'needs_reconciliation',
   );
 
   final String transactionId;
   final String status;
   final String storeName;
+  final String outletName;
   final String address;
   final String logoUrl;
   final DateTime? createdAt;
@@ -125,8 +139,12 @@ class TransactionReceiptData {
   final num paidAmount;
   final num changeAmount;
   final String notes;
+  final bool isOffline;
+  final bool isOpenBill;
+  final bool isReconciliation;
 
-  bool get isPending => status.toLowerCase() == 'pending';
+  bool get isPending =>
+      isOpenBill || status.toLowerCase() == 'pending';
 }
 
 class TransactionReceiptItem {

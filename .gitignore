@@ -63,6 +63,8 @@ test/*
 !test/api_url_builder_test.dart
 !test/api_header_builder_test.dart
 !test/framework/
+!test/offline_session_restoration_test.dart
+!test/cashier_offline_checkout_repository_test.dart
 
 # FVM Version Cache
 .fvm/

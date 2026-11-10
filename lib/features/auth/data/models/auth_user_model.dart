@@ -8,6 +8,7 @@ class AuthUserModel extends AuthUser {
     required super.email,
     required super.role,
     required super.hasPin,
+    super.isOfflineSession,
   });
 
   factory AuthUserModel.fromJson(Map<String, dynamic> json) {
@@ -19,6 +20,14 @@ class AuthUserModel extends AuthUser {
       hasPin: json['has_pin'] == true,
     );
   }
+
+  Map<String, Object> toJson() => {
+    'id': id,
+    'name': name,
+    'email': email,
+    'role': role,
+    'has_pin': hasPin,
+  };
 
   static String _stringValue(Object? value, String field) {
     if (value is String) return value;

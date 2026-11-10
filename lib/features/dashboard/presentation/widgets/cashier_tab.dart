@@ -16,8 +16,10 @@ import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 import 'package:kawula_pos/features/shifts/presentation/widgets/shift_action_dialog.dart';
 import 'package:kawula_pos/features/transactions/data/repositories/cashier_cached_checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/data/repositories/cashier_offline_checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 
 class CashierTab extends StatelessWidget {
   const CashierTab({
@@ -25,12 +27,14 @@ class CashierTab extends StatelessWidget {
     required this.admin,
     required this.catalogRepository,
     required this.checkoutRepository,
+    this.offlineTransactionsDao,
     this.catalogPageKey,
   });
 
   final AuthUser admin;
   final CatalogRepository catalogRepository;
   final CheckoutRepository checkoutRepository;
+  final OfflineTransactionsDao? offlineTransactionsDao;
   final GlobalKey<CatalogPageState>? catalogPageKey;
 
   Widget _buildActiveShift(BuildContext context, ActiveShift shift) {
@@ -39,12 +43,32 @@ class CashierTab extends StatelessWidget {
       userId: admin.id,
       outletId: shift.outletId,
     );
+    final offlineTransactionsDao = this.offlineTransactionsDao;
+    if (scopedCache != null &&
+        (admin.isOfflineSession || shift.isOfflineSnapshot)) {
+      scopedCache.markOffline();
+    }
+
     final scopedCatalogRepository = scopedCache == null
         ? catalogRepository
-        : CashierCachedCatalogRepository(catalogRepository, scopedCache);
-    final scopedCheckoutRepository = scopedCache == null
+        : CashierCachedCatalogRepository(
+            catalogRepository,
+            scopedCache,
+            offlineTransactionsDao: offlineTransactionsDao,
+          );
+    final cachedCheckoutRepository = scopedCache == null
         ? checkoutRepository
         : CashierCachedCheckoutRepository(checkoutRepository, scopedCache);
+    final scopedCheckoutRepository =
+        scopedCache == null || offlineTransactionsDao == null
+        ? cachedCheckoutRepository
+        : CashierOfflineCheckoutRepository(
+            cachedCheckoutRepository,
+            scopedCache,
+            offlineTransactionsDao,
+            user: admin,
+            shift: shift,
+          );
 
     return MultiBlocProvider(
       providers: [

@@ -41,6 +41,10 @@ class CheckoutResult {
     this.notes = '',
     this.tableNumber = '',
     this.memberName = '',
+    this.isOffline = false,
+    this.isOpenBill = false,
+    this.outletName = '',
+    this.cashierName = '',
   });
 
   final String id;
@@ -58,6 +62,10 @@ class CheckoutResult {
   final String notes;
   final String tableNumber;
   final String memberName;
+  final bool isOffline;
+  final bool isOpenBill;
+  final String outletName;
+  final String cashierName;
 }
 
 class CheckoutResultItem {
@@ -135,7 +143,9 @@ class TransactionRecord {
   final DateTime? refundedAt;
   final String refundedBy;
 
-  bool get isPending => status.toLowerCase() == 'pending';
+  bool get isPending =>
+      status.toLowerCase() == 'pending' ||
+      status.toLowerCase() == 'offline_open_bill';
 
   TransactionRecord withFallbackDetails(TransactionRecord fallback) =>
       TransactionRecord(

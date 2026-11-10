@@ -15,6 +15,7 @@ class ActiveShift {
     this.cashierName,
     this.cashierEmail,
     this.notes = '',
+    this.isOfflineSnapshot = false,
   });
 
   final String id;
@@ -32,6 +33,7 @@ class ActiveShift {
   final String? cashierName;
   final String? cashierEmail;
   final String notes;
+  final bool isOfflineSnapshot;
 }
 
 class CashAvailability {

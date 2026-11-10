@@ -66,10 +66,18 @@ pw.Document buildTransactionReceiptPdf(
           pw.Center(
             child: pw.Text(receipt.address, textAlign: pw.TextAlign.center),
           ),
+        if (receipt.outletName.isNotEmpty)
+          pw.Center(child: pw.Text('Outlet: ${receipt.outletName}')),
         pw.SizedBox(height: 8),
         pw.Center(
           child: pw.Text(
-            receipt.isPending ? 'OPEN BILL - BELUM LUNAS' : 'STRUK PEMBAYARAN',
+            receipt.isOffline
+                ? receipt.isReconciliation
+                      ? 'STATUS SERVER BELUM DIPASTIKAN'
+                      : 'BELUM TERSINKRON'
+                : receipt.isPending
+                ? 'OPEN BILL - BELUM LUNAS'
+                : 'STRUK PEMBAYARAN',
             style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
           ),
         ),
@@ -124,7 +132,14 @@ pw.Document buildTransactionReceiptPdf(
         ),
         pw.Divider(),
         _receiptPdfRow('Metode', receipt.paymentMethod),
-        if (receipt.isPending)
+        if (receipt.isOffline)
+          _receiptPdfRow(
+            'Status',
+            receipt.isReconciliation
+                ? 'Status server belum dapat dipastikan'
+                : 'BELUM TERSINKRON',
+          )
+        else if (receipt.isPending)
           _receiptPdfRow('Status', 'Belum lunas')
         else ...[
           _receiptPdfRow('Dibayar', formatRupiah(receipt.paidAmount)),

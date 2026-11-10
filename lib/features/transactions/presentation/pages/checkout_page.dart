@@ -103,6 +103,7 @@ class CheckoutPageState extends State<CheckoutPage> {
               state.paymentMethods,
               state.settings,
               isSubmitting: false,
+              isOffline: state.isOffline,
               errorMessage: state.errorMessage,
             ),
             CheckoutSubmitting() => checkoutForm(
@@ -110,6 +111,7 @@ class CheckoutPageState extends State<CheckoutPage> {
               state.paymentMethods,
               state.settings,
               isSubmitting: true,
+              isOffline: state.isOffline,
             ),
           },
         );

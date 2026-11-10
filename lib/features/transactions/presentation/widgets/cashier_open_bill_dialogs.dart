@@ -90,8 +90,11 @@ class _OpenBillsDialog extends StatelessWidget {
                     0,
                     (total, item) => total + item.quantity,
                   );
+                  final isOffline = transaction.id.startsWith('OFF-');
                   return Material(
-                    color: const Color(0xFFFFFBEB),
+                    color: isOffline
+                        ? const Color(0xFFFFF7ED)
+                        : const Color(0xFFFFFBEB),
                     borderRadius: BorderRadius.circular(12),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(12),
@@ -102,7 +105,11 @@ class _OpenBillsDialog extends StatelessWidget {
                           vertical: 14,
                         ),
                         decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0xFFFBBF24)),
+                          border: Border.all(
+                            color: isOffline
+                                ? const Color(0xFFFB923C)
+                                : const Color(0xFFFBBF24),
+                          ),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -119,6 +126,18 @@ class _OpenBillsDialog extends StatelessWidget {
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
+                                  if (isOffline)
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        'LOKAL · BELUM TERSINKRON',
+                                        style: TextStyle(
+                                          color: Color(0xFFC2410C),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
                                   const SizedBox(height: 4),
                                   Text(
                                     _formatDate(transaction.createdAt),

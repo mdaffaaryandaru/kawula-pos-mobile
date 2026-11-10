@@ -36,6 +36,9 @@ class KawulaPosApp extends StatelessWidget {
             child: AuthGate(
               apiBaseUrl: dependencies.apiBaseUrl,
               shiftsRepository: dependencies.shiftsRepository,
+              masterDataCache: dependencies.masterDataCache,
+              offlineTransactionsDao:
+                  dependencies.database?.offlineTransactionsDao,
               catalogRepository: dependencies.catalogRepository,
               checkoutRepository: dependencies.checkoutRepository,
               balancesRepository: dependencies.balancesRepository,

@@ -4,13 +4,19 @@ import 'package:kawula_pos/features/products/data/models/catalog_models.dart';
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
 import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 import 'package:kawula_pos/framework/core/offline/run_with_network_cache.dart';
 
 class CashierCachedCatalogRepository implements CatalogRepository {
-  const CashierCachedCatalogRepository(this._delegate, this._cache);
+  const CashierCachedCatalogRepository(
+    this._delegate,
+    this._cache, {
+    this.offlineTransactionsDao,
+  });
 
   final CatalogRepository _delegate;
   final CashierMasterDataCache _cache;
+  final OfflineTransactionsDao? offlineTransactionsDao;
 
   @override
   Future<List<CatalogProduct>> getProducts() => runWithNetworkCache(
@@ -23,7 +29,7 @@ class CashierCachedCatalogRepository implements CatalogRepository {
             .map((product) => CatalogProductModel.fromEntity(product).toJson())
             .toList(growable: false),
       );
-      return products;
+      return _applyOfflineStockEstimate(products);
     },
     readCache: () async {
       final cached = await _cache.read(
@@ -35,7 +41,7 @@ class CashierCachedCatalogRepository implements CatalogRepository {
       if (decoded is! List) {
         throw const FormatException('Cache katalog produk tidak valid.');
       }
-      return decoded
+      final products = decoded
           .map((item) {
             if (item is! Map<String, dynamic>) {
               throw const FormatException(
@@ -45,7 +51,11 @@ class CashierCachedCatalogRepository implements CatalogRepository {
             return CatalogProductModel.fromJson(item);
           })
           .toList(growable: false);
+      return _applyOfflineStockEstimate(products);
     },
+    skipRequest: _cache.isOfflineKnown,
+    onNetworkFailure: _cache.markOffline,
+    onRequestSuccess: _cache.markOnline,
   );
 
   @override
@@ -88,5 +98,67 @@ class CashierCachedCatalogRepository implements CatalogRepository {
           })
           .toList(growable: false);
     },
+    skipRequest: _cache.isOfflineKnown,
+    onNetworkFailure: _cache.markOffline,
+    onRequestSuccess: _cache.markOnline,
   );
+
+  Future<List<CatalogProduct>> _applyOfflineStockEstimate(
+    List<CatalogProduct> products,
+  ) async {
+    final dao = offlineTransactionsDao;
+    final ownerUserId = _cache.userId;
+    final outletId = _cache.outletId;
+    if (dao == null || ownerUserId == null || outletId == null) {
+      return products;
+    }
+
+    final unresolvedSales = await dao.getUnresolvedSales(
+      ownerUserId: ownerUserId,
+      outletId: outletId,
+    );
+    if (unresolvedSales.isEmpty) return products;
+
+    final soldQuantities = <String, int>{};
+    for (final transaction in unresolvedSales) {
+      final payload = jsonDecode(transaction.payloadJson);
+      if (payload is! Map<String, dynamic> || payload['items'] is! List) {
+        continue;
+      }
+      for (final item in payload['items'] as List) {
+        if (item is! Map<String, dynamic>) continue;
+        final productId = item['product_id'];
+        final quantity = item['quantity'];
+        if (productId is! String || quantity is! num || quantity <= 0) {
+          continue;
+        }
+        soldQuantities.update(
+          productId,
+          (existing) => existing + quantity.toInt(),
+          ifAbsent: () => quantity.toInt(),
+        );
+      }
+    }
+
+    return products
+        .map((product) {
+          final stock = product.stock;
+          final sold = soldQuantities[product.id];
+          if (stock == null || sold == null) return product;
+          return CatalogProductModel(
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            imageUrl: product.imageUrl,
+            isActive: product.isActive,
+            category: product.category,
+            variantGroups: product.variantGroups,
+            images: product.images,
+            stock: (stock - sold).clamp(0, double.infinity),
+            discount: product.discount,
+            discountId: product.discountId,
+          );
+        })
+        .toList(growable: false);
+  }
 }

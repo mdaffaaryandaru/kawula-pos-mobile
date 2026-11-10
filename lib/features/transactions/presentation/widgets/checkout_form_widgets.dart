@@ -21,6 +21,7 @@ extension CheckoutFormWidgets on CheckoutPageState {
     List<CheckoutPaymentMethod> paymentMethods,
     CheckoutSettings settings, {
     required bool isSubmitting,
+    required bool isOffline,
     String? errorMessage,
   }) {
     final cart = context.watch<CartCubit>().state;
@@ -30,7 +31,11 @@ extension CheckoutFormWidgets on CheckoutPageState {
     final totalAmount = (cart.estimatedSubtotal + taxAmount + serviceCharge)
         .round();
     final methods = paymentMethods
-        .where((method) => !method.isOpenBill)
+        .where(
+          (method) =>
+              !method.isOpenBill &&
+              (!isOffline || method.code.toUpperCase() == 'CASH'),
+        )
         .toList(growable: false);
     CheckoutPaymentMethod? selectedMethod;
     for (final method in methods) {
@@ -49,6 +54,10 @@ extension CheckoutFormWidgets on CheckoutPageState {
             message: 'ID outlet pada shift aktif tidak tersedia. Muat ulang shift sebelum membuat transaksi.',
           ),
         if (errorMessage != null) CheckoutInlineError(message: errorMessage),
+        if (isOffline)
+          const CheckoutInlineError(
+            message: 'Mode offline: transaksi tunai disimpan di perangkat dan belum tersinkron. Stok merupakan estimasi dari data terakhir.',
+          ),
         if (validationMessage != null)
           CheckoutInlineError(message: validationMessage!),
         Card(
@@ -228,7 +237,7 @@ extension CheckoutFormWidgets on CheckoutPageState {
                       ),
                     ),
                   ],
-                  if (methods.isNotEmpty) ...[
+                  if (methods.isNotEmpty && !isOffline) ...[
                     const SizedBox(height: 12),
                     TextField(
                       controller: pinController,
@@ -260,7 +269,9 @@ extension CheckoutFormWidgets on CheckoutPageState {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            'Nilai final, pajak, dan biaya layanan akan dihitung ulang oleh server.',
+            isOffline
+                ? 'Transaksi offline dihitung dari harga dan pengaturan cache; stok hanya estimasi.'
+                : 'Nilai final, pajak, dan biaya layanan akan dihitung ulang oleh server.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ),
@@ -279,6 +290,7 @@ extension CheckoutFormWidgets on CheckoutPageState {
                   totalAmount,
                   serviceCharge,
                   cart.items,
+                  isOffline: isOffline,
                 ),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -304,14 +316,15 @@ extension CheckoutFormWidgets on CheckoutPageState {
     CheckoutPaymentMethod? method,
     num totalAmount,
     num serviceCharge,
-    List<CartItem> items,
-  ) async {
+    List<CartItem> items, {
+    required bool isOffline,
+  }) async {
     final openBill = this.openBill;
     final cashAmount = method?.isCash == true
         ? _parseCashAmount()
         : totalAmount;
     final pin = pinController.text.trim();
-    if (!openBill && pin.length != 4) {
+    if (!openBill && !isOffline && pin.length != 4) {
       updateState(() => validationMessage = 'PIN harus terdiri dari 4 digit.');
       return;
     }
@@ -330,7 +343,7 @@ extension CheckoutFormWidgets on CheckoutPageState {
       serviceCharge: serviceCharge,
       paymentMethod: method?.code ?? 'OPEN_BILL',
       paidAmount: cashAmount,
-      pin: openBill ? null : pin,
+      pin: openBill || isOffline ? null : pin,
       openBill: openBill,
       memberId: selectedMember?.id,
       tableNumber: tableNumberController.text.trim(),

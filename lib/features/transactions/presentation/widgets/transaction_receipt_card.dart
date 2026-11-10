@@ -50,16 +50,25 @@ class TransactionReceiptCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(receipt.address, textAlign: TextAlign.center),
             ],
+            if (receipt.outletName.isNotEmpty)
+              Text(
+                'Outlet: ${receipt.outletName}',
+                textAlign: TextAlign.center,
+              ),
             const SizedBox(height: 16),
             const Divider(),
             Text(
-              receipt.isPending
+              receipt.isOffline
+                  ? receipt.isReconciliation
+                      ? 'STATUS SERVER BELUM DIPASTIKAN'
+                      : 'BELUM TERSINKRON'
+                  : receipt.isPending
                   ? 'OPEN BILL · BELUM LUNAS'
                   : 'STRUK PEMBAYARAN',
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: receipt.isPending
+                color: receipt.isPending || receipt.isOffline
                     ? theme.colorScheme.tertiary
                     : theme.colorScheme.primary,
               ),
@@ -149,7 +158,14 @@ class TransactionReceiptCard extends StatelessWidget {
               )
             else
               _ReceiptInfoRow(label: 'Metode', value: receipt.paymentMethod),
-            if (!showPaymentStatus && receipt.isPending)
+            if (!showPaymentStatus && receipt.isOffline)
+              _ReceiptInfoRow(
+                label: 'Status',
+                value: receipt.isReconciliation
+                    ? 'Status server belum dapat dipastikan'
+                    : 'BELUM TERSINKRON',
+              )
+            else if (!showPaymentStatus && receipt.isPending)
               const _ReceiptInfoRow(label: 'Status', value: 'Belum lunas'),
             if (!receipt.isPending) ...[
               _ReceiptInfoRow(

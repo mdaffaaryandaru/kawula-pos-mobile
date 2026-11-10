@@ -8,7 +8,8 @@ enum OfflineTransactionStatus {
   pendingSync('pending_sync'),
   syncing('syncing'),
   synced('synced'),
-  failed('failed');
+  failed('failed'),
+  needsReconciliation('needs_reconciliation');
 
   const OfflineTransactionStatus(this.databaseValue);
 
@@ -29,14 +30,27 @@ class OfflineTransactionsDao extends DatabaseAccessor<AppDatabase> {
     required Object? payload,
     required Object? receiptSnapshot,
     DateTime? createdAtLocal,
+    String? localId,
+    String? syncMarker,
+    String? lastError,
+    OfflineTransactionStatus status = OfflineTransactionStatus.pendingSync,
   }) async {
     _validateRequiredValue(ownerUserId, 'ownerUserId');
     _validateRequiredValue(outletId, 'outletId');
     _validateRequiredValue(shiftId, 'shiftId');
     _validateRequiredValue(transactionType, 'transactionType');
 
-    final localId = 'OFF-${_uuid.v4()}';
-    final syncMarker = _uuid.v4();
+    final transactionLocalId = localId ?? 'OFF-${_uuid.v4()}';
+    final transactionSyncMarker = syncMarker ?? 'OFFLINE_SYNC:${_uuid.v4()}';
+    _validateRequiredValue(transactionLocalId, 'localId');
+    _validateRequiredValue(transactionSyncMarker, 'syncMarker');
+    if (!transactionLocalId.startsWith('OFF-')) {
+      throw ArgumentError.value(
+        transactionLocalId,
+        'localId',
+        'ID transaksi lokal harus diawali OFF-.',
+      );
+    }
     final payloadJson = encodeJsonWithoutCredentials(payload);
     final receiptSnapshotJson = encodeJsonWithoutCredentials(receiptSnapshot);
     final createdAt = createdAtLocal ?? DateTime.now();
@@ -44,21 +58,23 @@ class OfflineTransactionsDao extends DatabaseAccessor<AppDatabase> {
     return transaction(() async {
       await into(_database.offlineTransactions).insert(
         OfflineTransactionsCompanion.insert(
-          localId: localId,
+          localId: transactionLocalId,
           ownerUserId: ownerUserId,
           outletId: outletId,
           shiftId: shiftId,
           transactionType: transactionType,
-          syncMarker: syncMarker,
+          syncMarker: transactionSyncMarker,
           payloadJson: payloadJson,
           receiptSnapshotJson: receiptSnapshotJson,
           createdAtLocal: createdAt,
           updatedAt: createdAt,
+          status: Value(status.databaseValue),
+          lastError: Value(lastError),
         ),
       );
       return (select(
         _database.offlineTransactions,
-      )..where((record) => record.localId.equals(localId))).getSingle();
+      )..where((record) => record.localId.equals(transactionLocalId))).getSingle();
     });
   }
 
@@ -71,6 +87,31 @@ class OfflineTransactionsDao extends DatabaseAccessor<AppDatabase> {
   Future<List<OfflineTransaction>> getTransactionsByOwner(String ownerUserId) {
     return (select(_database.offlineTransactions)
           ..where((record) => record.ownerUserId.equals(ownerUserId))
+          ..orderBy([
+            (record) => OrderingTerm.asc(record.createdAtLocal),
+            (record) => OrderingTerm.asc(record.localId),
+          ]))
+        .get();
+  }
+
+  Future<List<OfflineTransaction>> getUnresolvedSales({
+    required String ownerUserId,
+    required String outletId,
+  }) {
+    const unresolvedStatuses = [
+      'pending_sync',
+      'syncing',
+      'failed',
+      'needs_reconciliation',
+    ];
+    return (select(_database.offlineTransactions)
+          ..where(
+            (record) =>
+                record.ownerUserId.equals(ownerUserId) &
+                record.outletId.equals(outletId) &
+                record.transactionType.equals('sale') &
+                record.status.isIn(unresolvedStatuses),
+          )
           ..orderBy([
             (record) => OrderingTerm.asc(record.createdAtLocal),
             (record) => OrderingTerm.asc(record.localId),

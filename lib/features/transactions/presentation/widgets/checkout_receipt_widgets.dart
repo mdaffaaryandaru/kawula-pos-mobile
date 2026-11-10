@@ -10,7 +10,8 @@ import 'package:kawula_pos/features/transactions/presentation/widgets/transactio
 
 extension CheckoutReceiptWidgets on CheckoutPageState {
   Widget completed(CheckoutResult result, CheckoutSettings settings) {
-    final isPending = result.status.toLowerCase() == 'pending';
+    final isPending = result.isOpenBill || result.status.toLowerCase() == 'pending';
+    final needsAttention = isPending || result.isOffline;
     final theme = Theme.of(context);
     final receipt = TransactionReceiptData.fromCheckout(
       result: result,
@@ -27,7 +28,7 @@ extension CheckoutReceiptWidgets on CheckoutPageState {
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: isPending
+              color: needsAttention
                   ? theme.colorScheme.tertiaryContainer
                   : const Color(0xFFE8F5EE),
               borderRadius: BorderRadius.circular(18),
@@ -35,7 +36,7 @@ extension CheckoutReceiptWidgets on CheckoutPageState {
             child: Column(
               children: [
                 Icon(
-                  isPending
+                  needsAttention
                       ? Icons.pending_actions_outlined
                       : Icons.check_circle_outline,
                   size: 40,
@@ -45,7 +46,13 @@ extension CheckoutReceiptWidgets on CheckoutPageState {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  isPending
+                  result.isOffline
+                      ? result.status == 'needs_reconciliation'
+                          ? 'Status transaksi belum dapat dipastikan'
+                          : isPending
+                          ? 'Open Bill lokal tersimpan'
+                          : 'Transaksi tersimpan di perangkat'
+                      : isPending
                       ? 'Open bill berhasil dibuat'
                       : 'Pembayaran berhasil',
                   textAlign: TextAlign.center,
@@ -55,7 +62,11 @@ extension CheckoutReceiptWidgets on CheckoutPageState {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isPending
+                  result.isOffline
+                      ? result.status == 'needs_reconciliation'
+                          ? 'Status server belum dapat dipastikan. Jangan kirim ulang transaksi ini.'
+                          : 'BELUM TERSINKRON — transaksi masih tersimpan di perangkat'
+                      : isPending
                       ? 'Transaksi ini belum lunas'
                       : 'Transaksi berhasil dicatat',
                   textAlign: TextAlign.center,

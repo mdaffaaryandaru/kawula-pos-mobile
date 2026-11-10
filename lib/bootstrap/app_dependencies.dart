@@ -106,6 +106,7 @@ class AppDependencies {
       remoteDataSource,
       localDataSource,
       sessionExpiryHandler: sessionExpiryHandler,
+      masterDataCache: masterDataCache,
     );
     final catalogRepository = CatalogRepositoryImpl(
       CatalogRemoteDataSource(client, apiBaseUrl, localDataSource.readToken),

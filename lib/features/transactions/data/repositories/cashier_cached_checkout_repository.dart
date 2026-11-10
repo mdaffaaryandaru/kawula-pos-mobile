@@ -52,6 +52,9 @@ class CashierCachedCheckoutRepository implements CheckoutRepository {
               })
               .toList(growable: false);
         },
+        skipRequest: _cache.isOfflineKnown,
+        onNetworkFailure: _cache.markOffline,
+        onRequestSuccess: _cache.markOnline,
       );
 
   @override
@@ -77,6 +80,9 @@ class CashierCachedCheckoutRepository implements CheckoutRepository {
       }
       return CheckoutSettingsModel.fromJson(decoded);
     },
+    skipRequest: _cache.isOfflineKnown,
+    onNetworkFailure: _cache.markOffline,
+    onRequestSuccess: _cache.markOnline,
   );
 
   @override
@@ -114,6 +120,9 @@ class CashierCachedCheckoutRepository implements CheckoutRepository {
           })
           .toList(growable: false);
     },
+    skipRequest: _cache.isOfflineKnown,
+    onNetworkFailure: _cache.markOffline,
+    onRequestSuccess: _cache.markOnline,
   );
 
   @override

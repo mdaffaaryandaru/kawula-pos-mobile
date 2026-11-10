@@ -5,6 +5,7 @@ class AuthUser {
     required this.email,
     required this.role,
     required this.hasPin,
+    this.isOfflineSession = false,
   });
 
   final String id;
@@ -12,4 +13,5 @@ class AuthUser {
   final String email;
   final String role;
   final bool hasPin;
+  final bool isOfflineSession;
 }

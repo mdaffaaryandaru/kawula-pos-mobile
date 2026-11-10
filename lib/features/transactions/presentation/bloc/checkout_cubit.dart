@@ -6,13 +6,20 @@ import 'package:kawula_pos/features/members/domain/entities/member.dart';
 import 'package:kawula_pos/features/members/domain/entities/member_reward_claim.dart';
 import 'package:kawula_pos/features/products/domain/entities/cart_item.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
-import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart'
+    show CheckoutModeProvider, CheckoutRepository;
 import 'package:kawula_pos/features/transactions/presentation/bloc/checkout_state.dart';
 
 class CheckoutCubit extends Cubit<CheckoutState> {
   CheckoutCubit(this._repository) : super(const CheckoutLoading());
 
   final CheckoutRepository _repository;
+  bool _isSubmitting = false;
+
+  bool get isOffline => switch (_repository) {
+    CheckoutModeProvider provider => provider.isOffline,
+    _ => false,
+  };
 
   Future<List<Member>> searchMembers(String search) =>
       _repository.searchMembers(search);
@@ -25,7 +32,13 @@ class CheckoutCubit extends Cubit<CheckoutState> {
     try {
       final methods = await _repository.getPaymentMethods();
       final settings = await _repository.getSettings();
-      emit(CheckoutReady(paymentMethods: methods, settings: settings));
+      emit(
+        CheckoutReady(
+          paymentMethods: methods,
+          settings: settings,
+          isOffline: isOffline,
+        ),
+      );
     } catch (error) {
       emit(CheckoutFailure(_messageFor(error)));
     }
@@ -43,6 +56,7 @@ class CheckoutCubit extends Cubit<CheckoutState> {
     String? memberId,
     String? tableNumber,
   }) async {
+    if (_isSubmitting) return;
     final currentState = state;
     if (currentState is! CheckoutReady) return;
     if (items.isEmpty) {
@@ -72,8 +86,10 @@ class CheckoutCubit extends Cubit<CheckoutState> {
       CheckoutSubmitting(
         paymentMethods: currentState.paymentMethods,
         settings: currentState.settings,
+        isOffline: isOffline,
       ),
     );
+    _isSubmitting = true;
     try {
       final result = await _repository.createTransaction(
         outletId: outletId,
@@ -93,9 +109,12 @@ class CheckoutCubit extends Cubit<CheckoutState> {
         CheckoutReady(
           paymentMethods: currentState.paymentMethods,
           settings: currentState.settings,
+          isOffline: isOffline,
           errorMessage: _messageFor(error),
         ),
       );
+    } finally {
+      _isSubmitting = false;
     }
   }
 

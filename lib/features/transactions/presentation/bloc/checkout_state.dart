@@ -13,11 +13,13 @@ final class CheckoutReady extends CheckoutState {
   const CheckoutReady({
     required this.paymentMethods,
     required this.settings,
+    this.isOffline = false,
     this.errorMessage,
   });
 
   final List<CheckoutPaymentMethod> paymentMethods;
   final CheckoutSettings settings;
+  final bool isOffline;
   final String? errorMessage;
 }
 
@@ -25,10 +27,12 @@ final class CheckoutSubmitting extends CheckoutState {
   const CheckoutSubmitting({
     required this.paymentMethods,
     required this.settings,
+    this.isOffline = false,
   });
 
   final List<CheckoutPaymentMethod> paymentMethods;
   final CheckoutSettings settings;
+  final bool isOffline;
 }
 
 final class CheckoutCompleted extends CheckoutState {

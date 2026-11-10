@@ -14,6 +14,7 @@ import 'package:kawula_pos/features/balances/domain/repositories/balances_reposi
 import 'package:kawula_pos/features/categories/domain/repositories/categories_repository.dart';
 import 'package:kawula_pos/features/dashboard/presentation/pages/admin_navigation_page.dart';
 import 'package:kawula_pos/features/dashboard/presentation/pages/cashier_navigation_page.dart';
+import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 import 'package:kawula_pos/features/discounts/domain/repositories/discounts_repository.dart';
 import 'package:kawula_pos/features/inventories/domain/repositories/inventory_repository.dart';
 import 'package:kawula_pos/features/members/domain/repositories/members_repository.dart';
@@ -24,12 +25,14 @@ import 'package:kawula_pos/features/product_units/domain/repositories/product_un
 import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
 import 'package:kawula_pos/features/products/domain/repositories/product_management_repository.dart';
 import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
+import 'package:kawula_pos/features/shifts/data/repositories/cashier_cached_shifts_repository.dart';
 import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
 import 'package:kawula_pos/features/table_areas/domain/repositories/table_areas_repository.dart';
 import 'package:kawula_pos/features/tables/domain/repositories/tables_repository.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/users/domain/repositories/user_management_repository.dart';
 import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
+import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({
@@ -44,6 +47,8 @@ class AuthGate extends StatelessWidget {
     required this.productManagementRepository,
     required this.categoriesRepository,
     required this.variantGroupsRepository,
+    this.masterDataCache,
+    this.offlineTransactionsDao,
     this.discountsRepository,
     this.paymentMethodsRepository,
     this.inventoryRepository,
@@ -65,6 +70,8 @@ class AuthGate extends StatelessWidget {
   final ProductManagementRepository productManagementRepository;
   final CategoriesRepository categoriesRepository;
   final VariantGroupsRepository variantGroupsRepository;
+  final CashierMasterDataCache? masterDataCache;
+  final OfflineTransactionsDao? offlineTransactionsDao;
   final DiscountsRepository? discountsRepository;
   final PaymentMethodsRepository? paymentMethodsRepository;
   final InventoryRepository? inventoryRepository;
@@ -105,6 +112,20 @@ class AuthGate extends StatelessWidget {
               tablesRepository: tablesRepository,
               membersRepository: membersRepository,
               membershipProgramsRepository: membershipProgramsRepository,
+            ),
+          AuthAuthenticated()
+              when state.user.role == 'Kasir' && masterDataCache != null =>
+            CashierNavigationPage(
+              user: state.user,
+              shiftsRepository: CashierCachedShiftsRepository(
+                shiftsRepository,
+                masterDataCache!,
+                ownerUserId: state.user.id,
+              ),
+              catalogRepository: catalogRepository,
+              checkoutRepository: checkoutRepository,
+              balancesRepository: balancesRepository,
+              offlineTransactionsDao: offlineTransactionsDao,
             ),
           AuthAuthenticated() => CashierNavigationPage(
             user: state.user,

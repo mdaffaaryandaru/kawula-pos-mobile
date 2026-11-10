@@ -242,6 +242,16 @@ class CatalogPageState extends State<CatalogPage> {
 
     final transaction = await showCashierOpenBillsDialog(context, _openBills);
     if (transaction == null || !context.mounted) return;
+    if (transaction.id.startsWith('OFF-')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Open Bill lokal belum dapat dilunasi, dibatalkan, atau diproses melalui server.',
+          ),
+        ),
+      );
+      return;
+    }
     await _settleOpenBill(context, transaction);
   }
 

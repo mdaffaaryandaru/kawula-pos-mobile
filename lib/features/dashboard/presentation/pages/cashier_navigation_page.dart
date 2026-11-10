@@ -14,6 +14,7 @@ import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/admin_transaction_report_page.dart';
+import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 
 class CashierNavigationPage extends StatefulWidget {
   const CashierNavigationPage({
@@ -23,6 +24,7 @@ class CashierNavigationPage extends StatefulWidget {
     required this.catalogRepository,
     required this.checkoutRepository,
     required this.balancesRepository,
+    this.offlineTransactionsDao,
   });
 
   final AuthUser user;
@@ -30,6 +32,7 @@ class CashierNavigationPage extends StatefulWidget {
   final CatalogRepository catalogRepository;
   final CheckoutRepository checkoutRepository;
   final BalancesRepository balancesRepository;
+  final OfflineTransactionsDao? offlineTransactionsDao;
 
   @override
   State<CashierNavigationPage> createState() => _CashierNavigationPageState();
@@ -68,6 +71,7 @@ class _CashierNavigationPageState extends State<CashierNavigationPage> {
         admin: widget.user,
         catalogRepository: widget.catalogRepository,
         checkoutRepository: widget.checkoutRepository,
+        offlineTransactionsDao: widget.offlineTransactionsDao,
       ),
       2 => AdminTransactionReportPage(
         checkoutRepository: widget.checkoutRepository,
