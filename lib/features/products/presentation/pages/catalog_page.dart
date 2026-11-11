@@ -1,9 +1,12 @@
+import 'dart:async';
+
 // Flutter imports:
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 // Package imports:
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
 
 // Project imports:
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
@@ -17,9 +20,20 @@ import 'package:kawula_pos/features/products/presentation/pages/product_variant_
 import 'package:kawula_pos/features/products/presentation/widgets/catalog_open_bills_panel.dart';
 import 'package:kawula_pos/features/products/presentation/widgets/catalog_product_grid.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
+import 'package:kawula_pos/features/shifts/presentation/widgets/auto_close_shift_schedule.dart';
+import 'package:kawula_pos/features/store_settings/data/models/store_settings_model.dart';
+import 'package:kawula_pos/features/store_settings/domain/entities/store_settings.dart';
+import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
+import 'package:kawula_pos/features/transactions/data/services/cashier_offline_sync_service.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/presentation/pages/offline_transaction_queue_page.dart';
 import 'package:kawula_pos/features/transactions/presentation/widgets/cashier_open_bill_dialogs.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
+import 'package:kawula_pos/framework/core/network/platform_network_exception.dart';
+import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
+import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
 import 'package:kawula_pos/theme/app_colors.dart';
 
 class CatalogPage extends StatefulWidget {
@@ -30,6 +44,11 @@ class CatalogPage extends StatefulWidget {
     required this.outletId,
     required this.activeShift,
     required this.onManageShift,
+    this.onOpenOfflineReconciliation,
+    this.offlineTransactionsDao,
+    this.cashierOfflineSyncService,
+    this.storeSettingsRepository,
+    this.cashierMasterDataCache,
   });
 
   final AuthUser user;
@@ -37,6 +56,11 @@ class CatalogPage extends StatefulWidget {
   final String? outletId;
   final ActiveShift activeShift;
   final VoidCallback onManageShift;
+  final VoidCallback? onOpenOfflineReconciliation;
+  final OfflineTransactionsDao? offlineTransactionsDao;
+  final CashierOfflineSyncService? cashierOfflineSyncService;
+  final StoreSettingsRepository? storeSettingsRepository;
+  final CashierMasterDataCache? cashierMasterDataCache;
 
   @override
   State<CatalogPage> createState() => CatalogPageState();
@@ -47,9 +71,15 @@ class CatalogPageState extends State<CatalogPage> {
   List<TransactionRecord> _openBills = const [];
   bool _isLoadingOpenBills = false;
   String? _openBillsError;
+  late Future<int> _queueCountFuture;
+  Timer? _offlineStatusTimer;
+  StoreSettings? _autoCloseSettings;
+  bool _autoCloseSettingsAreEstimated = false;
+  String? _autoCloseSettingsError;
 
   @override
   void dispose() {
+    _offlineStatusTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -57,6 +87,16 @@ class CatalogPageState extends State<CatalogPage> {
   @override
   void initState() {
     super.initState();
+    _queueCountFuture = _countQueueItems();
+    if (widget.user.role == 'Kasir') {
+      _loadAutoCloseSettings();
+    }
+    if (canUseOfflineSales(widget.user.role)) {
+      _offlineStatusTimer = Timer.periodic(
+        const Duration(minutes: 1),
+        (_) => _refreshOfflineStatus(),
+      );
+    }
     _loadOpenBills();
   }
 
@@ -93,6 +133,44 @@ class CatalogPageState extends State<CatalogPage> {
           ],
         ),
         actions: [
+          if (widget.user.role == 'Admin' &&
+              widget.onOpenOfflineReconciliation != null)
+            IconButton(
+              tooltip: 'Rekonsiliasi transaksi offline',
+              onPressed: widget.onOpenOfflineReconciliation,
+              icon: const Icon(Icons.fact_check_outlined),
+            ),
+          if (canUseOfflineSales(widget.user.role) &&
+              widget.offlineTransactionsDao != null &&
+              widget.cashierOfflineSyncService != null)
+            FutureBuilder<int>(
+              future: _queueCountFuture,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return IconButton(
+                    tooltip: 'Antrean gagal dimuat: ${snapshot.error}',
+                    onPressed: () => _openQueuePage(context),
+                    icon: Icon(
+                      Icons.sync_problem_rounded,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  );
+                }
+                final count = snapshot.data ?? 0;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: IconButton(
+                    tooltip: 'Antrean transaksi offline',
+                    onPressed: () => _openQueuePage(context),
+                    icon: Badge(
+                      isLabelVisible: count > 0,
+                      label: Text('$count'),
+                      child: const Icon(Icons.sync_alt_outlined),
+                    ),
+                  ),
+                );
+              },
+            ),
           BlocBuilder<CartCubit, CartState>(
             builder: (context, cart) => Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -119,6 +197,7 @@ class CatalogPageState extends State<CatalogPage> {
       ),
       body: Column(
         children: [
+          _offlineStatusBanner(context),
           _activeShiftBanner(context),
           CatalogOpenBillsPanel(
             billCount: _openBills.length,
@@ -227,6 +306,407 @@ class CatalogPageState extends State<CatalogPage> {
   void _refreshCatalogProducts() {
     if (!mounted) return;
     context.read<CatalogCubit>().refreshProducts();
+    _refreshOfflineStatus();
+  }
+
+  Future<int> _countQueueItems() async {
+    final dao = widget.offlineTransactionsDao;
+    final outletId = widget.outletId ?? widget.activeShift.outletId;
+    if (dao == null ||
+        !canUseOfflineSales(widget.user.role) ||
+        outletId == null ||
+        outletId.isEmpty) {
+      return 0;
+    }
+    return (await dao.getUnresolvedTransactions(
+      ownerUserId: widget.user.id,
+      outletId: outletId,
+      shiftId: widget.activeShift.id,
+    )).length;
+  }
+
+  void _refreshOfflineStatus() {
+    if (!mounted || !canUseOfflineSales(widget.user.role)) return;
+    setState(() {
+      _queueCountFuture = _countQueueItems();
+    });
+  }
+
+  Future<void> _loadAutoCloseSettings() async {
+    final repository = widget.storeSettingsRepository;
+    final cache = widget.cashierMasterDataCache;
+    if (widget.user.role != 'Kasir') return;
+
+    if (cache?.shouldUseOfflineData == true) {
+      await _loadCachedAutoCloseSettings();
+      return;
+    }
+
+    if (repository == null) {
+      await _loadCachedAutoCloseSettings(
+        unavailableReason: 'Repository pengaturan shift tidak tersedia.',
+      );
+      return;
+    }
+
+    try {
+      final settings = await repository.getSettings();
+      final scopedCache = cache;
+      String? cacheError;
+      if (scopedCache != null && scopedCache.isScoped) {
+        try {
+          await scopedCache.save(
+            cacheType: 'cashier_store_settings',
+            dataKey: 'store_settings',
+            payload: StoreSettingsModel.fromEntity(settings).toJson(),
+          );
+        } on Exception catch (error) {
+          cacheError = 'Cache pengaturan auto-close gagal disimpan: $error';
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _autoCloseSettings = settings;
+        _autoCloseSettingsAreEstimated = false;
+        _autoCloseSettingsError =
+            AutoCloseShiftSchedule.nextClosingAt(
+                  settings.autoCloseShiftTime,
+                  DateTime.now(),
+                ) ==
+                null
+            ? 'Format waktu auto-close tidak valid.'
+            : cacheError;
+      });
+    } on http.ClientException catch (error) {
+      cache?.markOffline();
+      await _loadCachedAutoCloseSettings(unavailableReason: error.toString());
+    } on TimeoutException catch (error) {
+      cache?.markOffline();
+      await _loadCachedAutoCloseSettings(unavailableReason: error.toString());
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _autoCloseSettingsError = error.message;
+      });
+    } on FormatException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _autoCloseSettingsError = error.message;
+      });
+    } on Exception catch (error) {
+      if (isPlatformNetworkException(error)) {
+        cache?.markOffline();
+        await _loadCachedAutoCloseSettings(unavailableReason: error.toString());
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _autoCloseSettingsError =
+            'Pengaturan auto-close tidak dapat dimuat: $error';
+      });
+    }
+  }
+
+  Future<void> _loadCachedAutoCloseSettings({String? unavailableReason}) async {
+    final cache = widget.cashierMasterDataCache;
+    if (cache == null || !cache.isScoped) {
+      if (!mounted) return;
+      setState(() {
+        _autoCloseSettingsError =
+            unavailableReason ?? 'Pengaturan auto-close belum tersedia.';
+      });
+      return;
+    }
+    final Object? payload;
+    try {
+      payload = await cache.read(
+        cacheType: 'cashier_store_settings',
+        dataKey: 'store_settings',
+      );
+    } on Exception catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _autoCloseSettingsError =
+            'Cache pengaturan auto-close gagal dibaca: $error';
+      });
+      return;
+    }
+    if (!mounted) return;
+    if (payload is! Map) {
+      setState(() {
+        _autoCloseSettings = null;
+        _autoCloseSettingsAreEstimated = true;
+        _autoCloseSettingsError =
+            unavailableReason ?? 'Pengaturan auto-close belum memiliki cache.';
+      });
+      return;
+    }
+
+    try {
+      final settings = StoreSettingsModel.fromJson(
+        Map<String, dynamic>.from(payload),
+      );
+      setState(() {
+        _autoCloseSettings = settings;
+        _autoCloseSettingsAreEstimated = true;
+        _autoCloseSettingsError =
+            AutoCloseShiftSchedule.nextClosingAt(
+                  settings.autoCloseShiftTime,
+                  DateTime.now(),
+                ) ==
+                null
+            ? 'Format waktu auto-close tidak valid.'
+            : null;
+      });
+    } on FormatException catch (error) {
+      setState(() {
+        _autoCloseSettings = null;
+        _autoCloseSettingsAreEstimated = true;
+        _autoCloseSettingsError = error.message;
+      });
+    }
+  }
+
+  Future<void> _openQueuePage(BuildContext context) async {
+    final dao = widget.offlineTransactionsDao;
+    final syncService = widget.cashierOfflineSyncService;
+    if (!canUseOfflineSales(widget.user.role) ||
+        dao == null ||
+        syncService == null) {
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OfflineTransactionQueuePage(
+          user: widget.user,
+          outletId: widget.outletId ?? widget.activeShift.outletId ?? '',
+          shiftId: widget.activeShift.id,
+          dao: dao,
+          syncService: syncService,
+          cashierMasterDataCache: widget.cashierMasterDataCache,
+        ),
+      ),
+    );
+    _refreshOfflineStatus();
+  }
+
+  Widget _offlineStatusBanner(BuildContext context) {
+    final dao = widget.offlineTransactionsDao;
+    if (dao == null || !canUseOfflineSales(widget.user.role)) {
+      return const SizedBox.shrink();
+    }
+
+    final statusListenable =
+        widget.cashierMasterDataCache?.networkStatusListenable;
+    if (statusListenable == null) {
+      final isOffline =
+          widget.checkoutRepository is CheckoutModeProvider &&
+          (widget.checkoutRepository as CheckoutModeProvider).isOffline;
+      return _buildOfflineStatusBanner(
+        context,
+        isOffline ? CashierNetworkStatus.offline : CashierNetworkStatus.online,
+      );
+    }
+
+    return ValueListenableBuilder<CashierNetworkStatus>(
+      valueListenable: statusListenable,
+      builder: (context, status, _) =>
+          _buildOfflineStatusBanner(context, status),
+    );
+  }
+
+  Widget _buildOfflineStatusBanner(
+    BuildContext context,
+    CashierNetworkStatus status,
+  ) {
+    final isOffline = status == CashierNetworkStatus.offline;
+    final isChecking = status == CashierNetworkStatus.checking;
+    return FutureBuilder<int>(
+      future: _queueCountFuture,
+      builder: (context, snapshot) {
+        final offlineText = switch (status) {
+          CashierNetworkStatus.offline => 'Mode Offline: katalog menggunakan data terakhir dan transaksi akan disimpan di perangkat.',
+          CashierNetworkStatus.checking => 'Memeriksa koneksi ke server...',
+          CashierNetworkStatus.online => 'Koneksi tersedia. Antrean dapat disinkronkan setelah PIN dipastikan.',
+        };
+        final color = isOffline
+            ? const Color(0xFFFBF2D6)
+            : isChecking
+            ? Theme.of(context).colorScheme.surfaceContainerHighest
+            : const Color(0xFFE8F7F0);
+        final iconColor = isOffline
+            ? Colors.orange
+            : isChecking
+            ? Theme.of(context).colorScheme.primary
+            : AppColors.success;
+        if (snapshot.hasError) {
+          return Container(
+            width: double.infinity,
+            margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: iconColor.withValues(alpha: 0.35)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isOffline
+                      ? Icons.cloud_off_rounded
+                      : isChecking
+                      ? Icons.sync
+                      : Icons.cloud_done,
+                  color: iconColor,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '$offlineText Antrean gagal dibaca: ${snapshot.error}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        final queueCount = snapshot.data ?? 0;
+        final needsSync = queueCount > 0;
+
+        final autoCloseWarning = _buildAutoCloseWarning(
+          context,
+          queueCount: queueCount,
+        );
+        return Column(
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: Container(
+                key: ValueKey('$isOffline-$queueCount'),
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: iconColor.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isOffline
+                          ? Icons.cloud_off_rounded
+                          : isChecking
+                          ? Icons.sync
+                          : Icons.signal_cellular_4_bar_rounded,
+                      color: iconColor,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        offlineText,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    if (needsSync)
+                      TextButton(
+                        onPressed: () => _openQueuePage(context),
+                        child: const Text('Sinkronkan'),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            ?autoCloseWarning,
+            if (queueCount > 0 && _autoCloseSettingsError != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                child: Text(
+                  'Pengaturan auto-close belum dapat dipastikan: '
+                  '$_autoCloseSettingsError',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget? _buildAutoCloseWarning(
+    BuildContext context, {
+    required int queueCount,
+  }) {
+    final settings = _autoCloseSettings;
+    if (settings == null ||
+        !settings.autoCloseShiftEnabled ||
+        queueCount == 0) {
+      return null;
+    }
+    final now = DateTime.now();
+    final autoCloseAt = AutoCloseShiftSchedule.nextClosingAt(
+      settings.autoCloseShiftTime,
+      now,
+    );
+    if (autoCloseAt == null ||
+        !AutoCloseShiftSchedule.shouldWarn(
+          enabled: settings.autoCloseShiftEnabled,
+          unresolvedCount: queueCount,
+          configuredTime: settings.autoCloseShiftTime,
+          now: now,
+        )) {
+      return null;
+    }
+    final remaining = autoCloseAt.difference(now);
+    final time =
+        '${autoCloseAt.hour.toString().padLeft(2, '0')}:'
+        '${autoCloseAt.minute.toString().padLeft(2, '0')}';
+    final hours = remaining.inHours;
+    final minutes = remaining.inMinutes.remainder(60);
+    final remainingText = hours > 0
+        ? '$hours jam $minutes menit'
+        : minutes > 0
+        ? '$minutes menit'
+        : 'kurang dari 1 menit';
+    final estimated = _autoCloseSettingsAreEstimated
+        ? ' Estimasi dari cache terakhir.'
+        : ' Estimasi waktu lokal; zona waktu server belum diverifikasi.';
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            color: Theme.of(context).colorScheme.onErrorContainer,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Shift diperkirakan ditutup otomatis pukul $time '
+              '(sekitar $remainingText). Masih ada $queueCount transaksi '
+              'yang belum terselesaikan.$estimated',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onErrorContainer,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => _openQueuePage(context),
+            child: const Text('Lihat antrean'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showOpenBills(BuildContext context) async {
@@ -522,7 +1002,10 @@ class CatalogPageState extends State<CatalogPage> {
         child: ProductCartSheet(
           checkoutRepository: widget.checkoutRepository,
           outletId: widget.outletId,
-          onCheckoutReturn: _loadOpenBills,
+          onCheckoutReturn: () async {
+            await _loadOpenBills();
+            _refreshOfflineStatus();
+          },
           onTransactionSuccess: _refreshCatalogProducts,
         ),
       ),

@@ -39,6 +39,7 @@ class KawulaPosApp extends StatelessWidget {
               masterDataCache: dependencies.masterDataCache,
               offlineTransactionsDao:
                   dependencies.database?.offlineTransactionsDao,
+              cashierOfflineSyncService: dependencies.cashierOfflineSyncService,
               catalogRepository: dependencies.catalogRepository,
               checkoutRepository: dependencies.checkoutRepository,
               balancesRepository: dependencies.balancesRepository,

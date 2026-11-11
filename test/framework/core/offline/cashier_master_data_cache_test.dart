@@ -56,6 +56,31 @@ void main() {
     },
   );
 
+  test(
+    'checking uses cache until API verification restores online requests',
+    () async {
+      final catalog = _CatalogRepository()
+        ..products = [_product(name: 'Cached')];
+      final scopedCache = _scope(cache, outletId: 'outlet-a');
+      final repository = CashierCachedCatalogRepository(catalog, scopedCache);
+
+      await repository.getProducts();
+      scopedCache.markOffline();
+      expect((await repository.getProducts()).single.name, 'Cached');
+      expect(catalog.productRequests, 1);
+
+      scopedCache.markChecking();
+      expect(scopedCache.networkStatus, CashierNetworkStatus.checking);
+      expect((await repository.getProducts()).single.name, 'Cached');
+      expect(catalog.productRequests, 1);
+
+      catalog.products = [_product(name: 'Fresh from server')];
+      scopedCache.markOnline();
+      expect((await repository.getProducts()).single.name, 'Fresh from server');
+      expect(catalog.productRequests, 2);
+    },
+  );
+
   test('catalog does not use cache for HTTP 400 or 401', () async {
     final catalog = _CatalogRepository()..products = [_product(name: 'Cached')];
     final repository = CashierCachedCatalogRepository(
@@ -108,10 +133,40 @@ void main() {
     expect((await offlineOtherUser.getProducts()).single.name, 'Other user');
   });
 
-  test('non-cashier roles do not receive a cache scope', () {
+  test('cashier auto-close settings are isolated by outlet', () async {
+    final outletA = _scope(cache, outletId: 'outlet-a');
+    final outletB = _scope(cache, outletId: 'outlet-b');
+    await outletA.save(
+      cacheType: 'cashier_store_settings',
+      dataKey: 'store_settings',
+      payload: {'auto_close_shift_time': '22:00'},
+    );
+    await outletB.save(
+      cacheType: 'cashier_store_settings',
+      dataKey: 'store_settings',
+      payload: {'auto_close_shift_time': '23:30'},
+    );
+
+    expect(
+      await outletA.read(
+        cacheType: 'cashier_store_settings',
+        dataKey: 'store_settings',
+      ),
+      {'auto_close_shift_time': '22:00'},
+    );
+    expect(
+      await outletB.read(
+        cacheType: 'cashier_store_settings',
+        dataKey: 'store_settings',
+      ),
+      {'auto_close_shift_time': '23:30'},
+    );
+  });
+
+  test('only Admin and Kasir receive a cache scope', () {
     expect(
       cache.forRole(role: 'Admin', userId: 'user-a', outletId: 'outlet-a'),
-      isNull,
+      isNotNull,
     );
     expect(
       cache.forRole(role: 'Manajer', userId: 'user-a', outletId: 'outlet-a'),
@@ -120,6 +175,34 @@ void main() {
     expect(
       cache.forRole(role: 'Kasir', userId: 'user-a', outletId: 'outlet-a'),
       isNotNull,
+    );
+  });
+
+  test('cache is isolated by role as well as account and outlet', () async {
+    final cashier = _scope(cache, outletId: 'outlet-a');
+    final admin = cache.forRole(
+      role: 'Admin',
+      userId: 'cashier-1',
+      outletId: 'outlet-a',
+    )!;
+    await cashier.save(
+      cacheType: 'catalog_products',
+      dataKey: 'all',
+      payload: ['cashier-data'],
+    );
+    await admin.save(
+      cacheType: 'catalog_products',
+      dataKey: 'all',
+      payload: ['admin-data'],
+    );
+
+    expect(
+      await cashier.read(cacheType: 'catalog_products', dataKey: 'all'),
+      ['cashier-data'],
+    );
+    expect(
+      await admin.read(cacheType: 'catalog_products', dataKey: 'all'),
+      ['admin-data'],
     );
   });
 
@@ -237,9 +320,11 @@ CatalogProduct _product({required String name}) => CatalogProduct(
 class _CatalogRepository implements CatalogRepository {
   List<CatalogProduct> products = [];
   Object? productError;
+  int productRequests = 0;
 
   @override
   Future<List<CatalogProduct>> getProducts() async {
+    productRequests++;
     final error = productError;
     if (error != null) throw error;
     return products;

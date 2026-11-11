@@ -53,7 +53,7 @@ class CashierCachedCatalogRepository implements CatalogRepository {
           .toList(growable: false);
       return _applyOfflineStockEstimate(products);
     },
-    skipRequest: _cache.isOfflineKnown,
+    skipRequest: _cache.shouldUseOfflineData,
     onNetworkFailure: _cache.markOffline,
     onRequestSuccess: _cache.markOnline,
   );
@@ -98,7 +98,7 @@ class CashierCachedCatalogRepository implements CatalogRepository {
           })
           .toList(growable: false);
     },
-    skipRequest: _cache.isOfflineKnown,
+    skipRequest: _cache.shouldUseOfflineData,
     onNetworkFailure: _cache.markOffline,
     onRequestSuccess: _cache.markOnline,
   );

@@ -2,20 +2,29 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
 import 'package:kawula_pos/features/products/data/models/catalog_models.dart';
 import 'package:kawula_pos/features/products/domain/entities/cart_item.dart';
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
+import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
+import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
 import 'package:kawula_pos/features/transactions/data/models/checkout_models.dart';
 import 'package:kawula_pos/features/transactions/data/repositories/cashier_cached_checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/data/repositories/cashier_offline_checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/data/services/cashier_offline_sync_service.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/presentation/bloc/checkout_cubit.dart';
 import 'package:kawula_pos/features/transactions/presentation/bloc/checkout_state.dart';
+import 'package:kawula_pos/features/transactions/presentation/models/transaction_receipt_data.dart';
+import 'package:kawula_pos/features/transactions/presentation/pages/checkout_page.dart';
+import 'package:kawula_pos/features/transactions/presentation/services/transaction_receipt_pdf.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
+import 'package:kawula_pos/framework/core/network/timeout_http_client.dart';
 import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
@@ -56,13 +65,13 @@ void main() {
         isOfflineSnapshot: offline,
       );
 
-  Future<void> cacheMasterData() async {
-    await cache.save(
+  Future<void> cacheMasterData(CashierMasterDataCache target) async {
+    await target.save(
       cacheType: 'catalog_products',
       dataKey: 'all',
       payload: [CatalogProductModel.fromEntity(item.product).toJson()],
     );
-    await cache.save(
+    await target.save(
       cacheType: 'checkout_settings',
       dataKey: 'store',
       payload: const CheckoutSettingsModel(
@@ -72,12 +81,16 @@ void main() {
         address: 'Jl. Utama',
       ).toJson(),
     );
-    await cache.save(
+    await target.save(
       cacheType: 'checkout_payment_methods',
       dataKey: 'active',
       payload: const [
         CheckoutPaymentMethodModel(name: 'Tunai', code: 'CASH'),
         CheckoutPaymentMethodModel(name: 'QRIS', code: 'QRIS'),
+        CheckoutPaymentMethodModel(
+          name: 'Transfer Bank',
+          code: 'BANK_TRANSFER',
+        ),
       ].map((method) => method.toJson()).toList(),
     );
   }
@@ -106,7 +119,7 @@ void main() {
       selectedVariants: [],
     );
     delegate = _CheckoutDelegate();
-    await cacheMasterData();
+    await cacheMasterData(cache);
     repository = CashierOfflineCheckoutRepository(
       CashierCachedCheckoutRepository(delegate, cache),
       cache,
@@ -184,63 +197,215 @@ void main() {
     expect(row.payloadJson, isNot(contains('pin')));
   });
 
-  test('rejects non-cash offline payment', () async {
-    await expectLater(
-      create(paymentMethod: 'QRIS'),
-      throwsA(isA<StateError>()),
+  testWidgets('offline checkout shows cached methods and online total', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final checkoutCubit = CheckoutCubit(repository);
+    final cartCubit = CartCubit();
+    cartCubit.addProduct(item.product);
+    await checkoutCubit.load();
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: checkoutCubit),
+          BlocProvider.value(value: cartCubit),
+        ],
+        child: const MaterialApp(home: CheckoutPage(outletId: 'outlet-1')),
+      ),
     );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Total estimasi'), findsOneWidget);
+    expect(find.text('Rp 1.150'), findsOneWidget);
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    expect(find.text('QRIS'), findsOneWidget);
+    expect(find.text('Transfer Bank'), findsOneWidget);
+    await tester.tap(find.text('Transfer Bank').last);
+    await tester.pumpAndSettle();
+    expect(
+      find.text(
+        'Informasi rekening bank tidak tersedia dalam data checkout yang tersimpan.',
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await checkoutCubit.close();
+    await cartCubit.close();
+  });
+
+  test('offline receipt PDF is generated without a logo', () async {
+    final results = [
+      await create(),
+      await create(paymentMethod: 'OPEN_BILL', paidAmount: 0, openBill: true),
+    ];
+    for (final result in results) {
+      final receipt = TransactionReceiptData.fromCheckout(
+        result: result,
+        settings: const CheckoutSettings(
+          taxPercentage: 10,
+          serviceCharge: 50,
+          storeName: 'Kawula',
+        ),
+      );
+      final bytes = await buildTransactionReceiptPdf(receipt).save();
+
+      expect(bytes, isNotEmpty);
+      expect(String.fromCharCodes(bytes.take(4)), '%PDF');
+      if (result.isOpenBill) {
+        expect(receipt.isPending, isTrue);
+        expect(receipt.isOffline, isTrue);
+      }
+    }
+  });
+
+  test('verified network recovery stops treating saved session snapshots as offline', () async {
+    cache.markOnline();
+    delegate.createResult = const CheckoutResult(
+      id: 'server-recovered',
+      status: 'completed',
+      totalAmount: 1150,
+      paymentMethod: 'CASH',
+      paidAmount: 1200,
+      changeAmount: 50,
+      createdAt: null,
+    );
+
+    final result = await create(pin: '1234');
+
+    expect(result.id, 'server-recovered');
+    expect(delegate.createCalls, 1);
     expect(
       await database.offlineTransactionsDao.getTransactionsByOwner('cashier-1'),
       isEmpty,
     );
   });
 
+  test(
+    'stores offline QRIS and transfer using their cached payment codes',
+    () async {
+      final methods = await repository.getPaymentMethods();
+      expect(methods.map((method) => method.code), [
+        'CASH',
+        'QRIS',
+        'BANK_TRANSFER',
+      ]);
+
+      for (final paymentMethod in ['QRIS', 'BANK_TRANSFER']) {
+        final result = await create(
+          paymentMethod: paymentMethod,
+          paidAmount: 1150,
+          pin: null,
+        );
+        final row = await database.offlineTransactionsDao
+            .getTransactionByLocalId(result.id);
+        final payload = jsonDecode(row!.payloadJson) as Map<String, dynamic>;
+        final receipt =
+            jsonDecode(row.receiptSnapshotJson) as Map<String, dynamic>;
+
+        expect(result.id, startsWith('OFF-'));
+        expect(result.status, 'pending_sync');
+        expect(result.paymentMethod, paymentMethod);
+        expect(result.totalAmount, 1150);
+        expect(payload['payment_method'], paymentMethod);
+        expect(payload['paid_amount'], 1150);
+        expect(payload.containsKey('pin'), isFalse);
+        expect(receipt['payment_method'], paymentMethod);
+        expect(receipt['total_amount'], 1150);
+        expect(row.status, 'pending_sync');
+      }
+
+      expect(delegate.createCalls, 0);
+    },
+  );
+
+  test('sync forwards QRIS, transfer, and Open Bill through the online checkout contract', () async {
+    await create(paymentMethod: 'QRIS', paidAmount: 1150);
+    await create(paymentMethod: 'BANK_TRANSFER', paidAmount: 1150);
+    await create(paymentMethod: 'OPEN_BILL', paidAmount: 0, openBill: true);
+
+    final syncService = CashierOfflineSyncService(
+      delegate,
+      database.offlineTransactionsDao,
+      activeShiftsRepository: _SyncShiftRepository(shift(offline: false)),
+    );
+    final summary = await syncService.syncForCashier(
+      ownerUserId: 'cashier-1',
+      outletId: 'outlet-1',
+      role: 'Kasir',
+      pin: '4321',
+    );
+
+    expect(summary.successCount, 3);
+    expect(
+      delegate.paymentMethods,
+      unorderedEquals(['QRIS', 'BANK_TRANSFER', 'OPEN_BILL']),
+    );
+    expect(delegate.pins, unorderedEquals(['4321', '4321', null]));
+    expect(delegate.openBills, unorderedEquals([false, false, true]));
+    final rows = await database.offlineTransactionsDao.getTransactionsByOwner(
+      'cashier-1',
+    );
+    expect(rows.every((row) => row.status == 'synced'), isTrue);
+  });
+
   test('rejects underpayment', () async {
     await expectLater(create(paidAmount: 1149), throwsA(isA<StateError>()));
   });
 
-  test('unresolved offline sales reduce estimated stock for later checkout', () async {
-    await repository.createTransaction(
-      outletId: 'outlet-1',
-      items: [
-        CartItem(
-          product: item.product,
-          quantity: 4,
-          selectedVariants: const [],
-        ),
-      ],
-      estimatedTotal: 4450,
-      serviceCharge: 50,
-      paymentMethod: 'CASH',
-      paidAmount: 5000,
-      pin: null,
-      openBill: false,
-    );
-
-    await expectLater(
-      repository.createTransaction(
+  test(
+    'unresolved offline sales reduce estimated stock for later checkout',
+    () async {
+      await repository.createTransaction(
         outletId: 'outlet-1',
         items: [
           CartItem(
             product: item.product,
-            quantity: 2,
+            quantity: 4,
             selectedVariants: const [],
           ),
         ],
-        estimatedTotal: 2250,
+        estimatedTotal: 4450,
         serviceCharge: 50,
         paymentMethod: 'CASH',
-        paidAmount: 2300,
+        paidAmount: 5000,
         pin: null,
         openBill: false,
-      ),
-      throwsA(isA<StateError>()),
-    );
-    expect(
-      await database.offlineTransactionsDao.getTransactionsByOwner('cashier-1'),
-      hasLength(1),
-    );
-  });
+      );
+
+      await expectLater(
+        repository.createTransaction(
+          outletId: 'outlet-1',
+          items: [
+            CartItem(
+              product: item.product,
+              quantity: 2,
+              selectedVariants: const [],
+            ),
+          ],
+          estimatedTotal: 2250,
+          serviceCharge: 50,
+          paymentMethod: 'CASH',
+          paidAmount: 2300,
+          pin: null,
+          openBill: false,
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(
+        await database.offlineTransactionsDao.getTransactionsByOwner(
+          'cashier-1',
+        ),
+        hasLength(1),
+      );
+    },
+  );
 
   test('rejects offline checkout when no open shift is available', () async {
     final noShiftRepository = CashierOfflineCheckoutRepository(
@@ -281,16 +446,58 @@ void main() {
     );
   });
 
-  test('rejects checkout for roles other than Kasir', () async {
+  test('Admin can create an offline sale owned by the Admin account', () async {
+    final adminCache = CashierMasterDataCache(
+      database.cachedRecordsDao,
+    ).forRole(role: 'Admin', userId: 'admin-1', outletId: 'outlet-1')!;
+    adminCache.markOffline();
+    await cacheMasterData(adminCache);
     final adminRepository = CashierOfflineCheckoutRepository(
+      CashierCachedCheckoutRepository(delegate, adminCache),
+      adminCache,
+      database.offlineTransactionsDao,
+      user: cashier(id: 'admin-1', role: 'Admin'),
+      shift: shift(),
+    );
+      for (final paymentMethod in [
+        'CASH',
+        'QRIS',
+        'BANK_TRANSFER',
+        'OPEN_BILL',
+      ]) {
+        await adminRepository.createTransaction(
+          outletId: 'outlet-1',
+          items: [item],
+          estimatedTotal: 1150,
+          serviceCharge: 50,
+          paymentMethod: paymentMethod,
+          paidAmount: paymentMethod == 'OPEN_BILL' ? 0 : 1150,
+          pin: null,
+          openBill: paymentMethod == 'OPEN_BILL',
+        );
+      }
+    final transactions =
+        await database.offlineTransactionsDao.getTransactionsByOwner('admin-1');
+
+    expect(transactions, hasLength(4));
+    expect(transactions.every((transaction) => transaction.ownerUserId == 'admin-1'), isTrue);
+    expect(transactions.every((transaction) => transaction.localId.startsWith('OFF-')), isTrue);
+    expect(
+      transactions.any((transaction) => transaction.transactionType == 'open_bill'),
+      isTrue,
+    );
+  });
+
+  test('rejects checkout for management roles', () async {
+    final managerRepository = CashierOfflineCheckoutRepository(
       repository,
       cache,
       database.offlineTransactionsDao,
-      user: cashier(role: 'Admin'),
+      user: cashier(role: 'Manajer'),
       shift: shift(),
     );
     await expectLater(
-      adminRepository.createTransaction(
+      managerRepository.createTransaction(
         outletId: 'outlet-1',
         items: [item],
         estimatedTotal: 1150,
@@ -316,43 +523,60 @@ void main() {
 
       expect(result.isOpenBill, isTrue);
       expect(result.isOffline, isTrue);
+      expect(result.status, 'pending_sync');
       expect(bills.single.id, result.id);
       expect(bills.single.status, 'offline_open_bill');
       expect(bills.single.isPending, isTrue);
+      final row = await database.offlineTransactionsDao.getTransactionByLocalId(
+        result.id,
+      );
+      final payload = jsonDecode(row!.payloadJson) as Map<String, dynamic>;
+      final receipt =
+          jsonDecode(row.receiptSnapshotJson) as Map<String, dynamic>;
+      expect(payload['payment_method'], 'OPEN_BILL');
+      expect(payload['status'], 'pending');
+      expect(payload.containsKey('paid_amount'), isFalse);
+      expect(payload.containsKey('pin'), isFalse);
+      expect(receipt['payment_method'], 'OPEN_BILL');
+      expect(receipt['paid_amount'], 0);
+      expect(row.status, 'pending_sync');
     },
   );
 
-  test('another cashier cannot read or create against this scoped cache', () async {
-    await create();
-    final otherCashierRepository = CashierOfflineCheckoutRepository(
-      repository,
-      cache,
-      database.offlineTransactionsDao,
-      user: cashier(id: 'cashier-2'),
-      shift: shift(),
-    );
+  test(
+    'another cashier cannot read or create against this scoped cache',
+    () async {
+      await create();
+      final otherCashierRepository = CashierOfflineCheckoutRepository(
+        repository,
+        cache,
+        database.offlineTransactionsDao,
+        user: cashier(id: 'cashier-2'),
+        shift: shift(),
+      );
 
-    expect(await otherCashierRepository.getTransactions(), isEmpty);
-    await expectLater(
-      otherCashierRepository.createTransaction(
-        outletId: 'outlet-1',
-        items: [item],
-        estimatedTotal: 1150,
-        serviceCharge: 50,
-        paymentMethod: 'CASH',
-        paidAmount: 1200,
-        pin: null,
-        openBill: false,
-      ),
-      throwsA(isA<StateError>()),
-    );
-    expect(
-      await database.offlineTransactionsDao.getTransactionsByOwner(
-        'cashier-1',
-      ),
-      hasLength(1),
-    );
-  });
+      expect(await otherCashierRepository.getTransactions(), isEmpty);
+      await expectLater(
+        otherCashierRepository.createTransaction(
+          outletId: 'outlet-1',
+          items: [item],
+          estimatedTotal: 1150,
+          serviceCharge: 50,
+          paymentMethod: 'CASH',
+          paidAmount: 1200,
+          pin: null,
+          openBill: false,
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(
+        await database.offlineTransactionsDao.getTransactionsByOwner(
+          'cashier-1',
+        ),
+        hasLength(1),
+      );
+    },
+  );
 
   test('does not queue HTTP business or authorization errors', () async {
     for (final status in [400, 401, 403]) {
@@ -403,6 +627,32 @@ void main() {
       expect(row.lastError, contains('network lost after submit'));
     },
   );
+
+  test('write response timeout never enters pending sync', () async {
+    cache.markOnline();
+    delegate.createError = RequestOutcomeUnknownException(
+      Uri.parse('https://example.test/transactions'),
+    );
+
+    final result = await onlineRepository().createTransaction(
+      outletId: 'outlet-1',
+      items: [item],
+      estimatedTotal: 1150,
+      serviceCharge: 50,
+      paymentMethod: 'CASH',
+      paidAmount: 1200,
+      pin: '1234',
+      openBill: false,
+    );
+    final row = (await database.offlineTransactionsDao.getTransactionsByOwner(
+      'cashier-1',
+    )).single;
+
+    expect(result.status, 'needs_reconciliation');
+    expect(row.status, 'needs_reconciliation');
+    expect(row.status, isNot('pending_sync'));
+    expect(row.lastError, contains('Status transaksi belum dapat dipastikan'));
+  });
 
   test('preserves PIN on the online path', () async {
     cache.markOnline();
@@ -509,6 +759,9 @@ void main() {
 class _CheckoutDelegate implements CheckoutRepository {
   int createCalls = 0;
   String? lastPin;
+  final List<String> paymentMethods = <String>[];
+  final List<String?> pins = <String?>[];
+  final List<bool> openBills = <bool>[];
   Object? createError;
   CheckoutResult? createResult;
 
@@ -527,6 +780,9 @@ class _CheckoutDelegate implements CheckoutRepository {
   }) async {
     createCalls++;
     lastPin = pin;
+    paymentMethods.add(paymentMethod);
+    pins.add(pin);
+    openBills.add(openBill);
     final error = createError;
     if (error != null) throw error;
     return createResult ??
@@ -540,6 +796,18 @@ class _CheckoutDelegate implements CheckoutRepository {
           createdAt: DateTime.now(),
         );
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _SyncShiftRepository implements ShiftsRepository {
+  const _SyncShiftRepository(this.activeShift);
+
+  final ActiveShift activeShift;
+
+  @override
+  Future<ActiveShift?> getActive() async => activeShift;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

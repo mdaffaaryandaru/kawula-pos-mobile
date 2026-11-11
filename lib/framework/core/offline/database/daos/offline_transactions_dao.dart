@@ -9,7 +9,8 @@ enum OfflineTransactionStatus {
   syncing('syncing'),
   synced('synced'),
   failed('failed'),
-  needsReconciliation('needs_reconciliation');
+  needsReconciliation('needs_reconciliation'),
+  resolvedManually('resolved_manually');
 
   const OfflineTransactionStatus(this.databaseValue);
 
@@ -20,6 +21,12 @@ class OfflineTransactionsDao extends DatabaseAccessor<AppDatabase> {
   OfflineTransactionsDao(super.database) : _database = database;
 
   static const Uuid _uuid = Uuid();
+  static const unresolvedStatuses = [
+    'pending_sync',
+    'syncing',
+    'failed',
+    'needs_reconciliation',
+  ];
   final AppDatabase _database;
 
   Future<OfflineTransaction> saveOfflineTransaction({
@@ -72,9 +79,9 @@ class OfflineTransactionsDao extends DatabaseAccessor<AppDatabase> {
           lastError: Value(lastError),
         ),
       );
-      return (select(
-        _database.offlineTransactions,
-      )..where((record) => record.localId.equals(transactionLocalId))).getSingle();
+      return (select(_database.offlineTransactions)
+            ..where((record) => record.localId.equals(transactionLocalId)))
+          .getSingle();
     });
   }
 
@@ -94,16 +101,206 @@ class OfflineTransactionsDao extends DatabaseAccessor<AppDatabase> {
         .get();
   }
 
+  Stream<List<OfflineTransaction>> watchTransactionsByOutletLatest(
+    String outletId,
+  ) {
+    return (select(_database.offlineTransactions)
+          ..where((record) => record.outletId.equals(outletId))
+          ..orderBy([
+            (record) => OrderingTerm.desc(record.createdAtLocal),
+            (record) => OrderingTerm.desc(record.localId),
+          ]))
+        .watch();
+  }
+
+  Future<List<OfflineTransaction>> getTransactionsByOutlet({
+    required String outletId,
+    String? ownerUserId,
+  }) {
+    return (select(_database.offlineTransactions)
+          ..where((record) {
+            final outletCondition = record.outletId.equals(outletId);
+            return ownerUserId == null
+                ? outletCondition
+                : outletCondition & record.ownerUserId.equals(ownerUserId);
+          })
+          ..orderBy([
+            (record) => OrderingTerm.desc(record.createdAtLocal),
+            (record) => OrderingTerm.desc(record.localId),
+          ]))
+        .get();
+  }
+
+  Future<List<OfflineTransactionResolution>> getResolutionAudit(
+    String localId,
+  ) {
+    return (select(_database.offlineTransactionResolutions)
+          ..where((entry) => entry.localId.equals(localId))
+          ..orderBy([(entry) => OrderingTerm.asc(entry.resolvedAt)]))
+        .get();
+  }
+
+  Future<bool> resolveManually({
+    required String localId,
+    required String outletId,
+    required String adminUserId,
+    required String adminRole,
+    required String resolutionType,
+    required String reason,
+    required DateTime resolvedAt,
+    String? remoteTransactionId,
+    String? notes,
+  }) async {
+    _validateRequiredValue(adminUserId, 'adminUserId');
+    _validateRequiredValue(outletId, 'outletId');
+    _validateRequiredValue(reason, 'reason');
+    if (adminRole != 'Admin') {
+      throw ArgumentError.value(adminRole, 'adminRole', 'Role Admin wajib.');
+    }
+    if (resolutionType == 'matched_existing_remote' &&
+        (remoteTransactionId == null || remoteTransactionId.trim().isEmpty)) {
+      throw ArgumentError.value(
+        remoteTransactionId,
+        'remoteTransactionId',
+        'ID transaksi server wajib untuk pencocokan.',
+      );
+    }
+    if (resolutionType == 'handled_outside_server' &&
+        remoteTransactionId != null) {
+      throw ArgumentError.value(
+        remoteTransactionId,
+        'remoteTransactionId',
+        'Penyelesaian di luar server tidak boleh memiliki ID server.',
+      );
+    }
+    if (!const {
+      'matched_existing_remote',
+      'handled_outside_server',
+    }.contains(resolutionType)) {
+      throw ArgumentError.value(
+        resolutionType,
+        'resolutionType',
+        'Jenis penyelesaian tidak dikenal.',
+      );
+    }
+
+    return transaction(() async {
+      final current =
+          await (select(_database.offlineTransactions)..where(
+                (record) =>
+                    record.localId.equals(localId) &
+                    record.outletId.equals(outletId) &
+                    record.status.isIn([
+                      OfflineTransactionStatus.failed.databaseValue,
+                      OfflineTransactionStatus
+                          .needsReconciliation
+                          .databaseValue,
+                    ]),
+              ))
+              .getSingleOrNull();
+      if (current == null) return false;
+      if (resolutionType == 'handled_outside_server' &&
+          current.status != OfflineTransactionStatus.failed.databaseValue) {
+        throw StateError(
+          'Transaksi dengan status belum pasti tidak dapat ditangani di luar server.',
+        );
+      }
+
+      final updatedCount =
+          await (update(_database.offlineTransactions)..where(
+                (record) =>
+                    record.localId.equals(localId) &
+                    record.outletId.equals(outletId) &
+                    record.status.equals(current.status),
+              ))
+              .write(
+                OfflineTransactionsCompanion(
+                  status: Value(
+                    OfflineTransactionStatus.resolvedManually.databaseValue,
+                  ),
+                  remoteTransactionId:
+                      resolutionType == 'matched_existing_remote'
+                      ? Value(remoteTransactionId)
+                      : const Value.absent(),
+                  updatedAt: Value(resolvedAt),
+                ),
+              );
+      if (updatedCount == 0) return false;
+
+      await into(_database.offlineTransactionResolutions).insert(
+        OfflineTransactionResolutionsCompanion.insert(
+          localId: localId,
+          outletId: outletId,
+          previousStatus: current.status,
+          resultingStatus:
+              OfflineTransactionStatus.resolvedManually.databaseValue,
+          resolutionType: resolutionType,
+          remoteTransactionId: Value(remoteTransactionId),
+          resolvingAdminUserId: adminUserId,
+          resolvingAdminRole: adminRole,
+          resolvedAt: resolvedAt,
+          reason: reason.trim(),
+          notes: Value(notes?.trim().isEmpty == true ? null : notes?.trim()),
+        ),
+      );
+      return true;
+    });
+  }
+
+  Stream<List<OfflineTransaction>> watchTransactionsByOwnerLatest(
+    String ownerUserId,
+  ) {
+    return (select(_database.offlineTransactions)
+          ..where((record) => record.ownerUserId.equals(ownerUserId))
+          ..orderBy([
+            (record) => OrderingTerm.desc(record.createdAtLocal),
+            (record) => OrderingTerm.desc(record.localId),
+          ]))
+        .watch();
+  }
+
+  Future<List<OfflineTransaction>> getUnresolvedByOwnerAndOutlet({
+    required String ownerUserId,
+    required String outletId,
+  }) {
+    return (select(_database.offlineTransactions)
+          ..where(
+            (record) =>
+                record.ownerUserId.equals(ownerUserId) &
+                record.outletId.equals(outletId) &
+                record.status.isIn(unresolvedStatuses),
+          )
+          ..orderBy([
+            (record) => OrderingTerm.asc(record.createdAtLocal),
+            (record) => OrderingTerm.asc(record.localId),
+          ]))
+        .get();
+  }
+
+  Future<List<OfflineTransaction>> getUnresolvedTransactions({
+    required String ownerUserId,
+    required String outletId,
+    required String shiftId,
+  }) {
+    return (select(_database.offlineTransactions)
+          ..where(
+            (record) =>
+                record.ownerUserId.equals(ownerUserId) &
+                record.outletId.equals(outletId) &
+                record.shiftId.equals(shiftId) &
+                record.status.isIn(unresolvedStatuses),
+          )
+          ..orderBy([
+            (record) => OrderingTerm.asc(record.createdAtLocal),
+            (record) => OrderingTerm.asc(record.localId),
+          ]))
+        .get();
+  }
+
   Future<List<OfflineTransaction>> getUnresolvedSales({
     required String ownerUserId,
     required String outletId,
   }) {
-    const unresolvedStatuses = [
-      'pending_sync',
-      'syncing',
-      'failed',
-      'needs_reconciliation',
-    ];
     return (select(_database.offlineTransactions)
           ..where(
             (record) =>
@@ -164,12 +361,13 @@ class OfflineTransactionsDao extends DatabaseAccessor<AppDatabase> {
     return query.get();
   }
 
-  Future<bool> updateSyncStatus({
+  Future<bool> updateTransactionStatus({
     required String localId,
     required OfflineTransactionStatus status,
     String? remoteTransactionId,
     String? lastError,
     DateTime? updatedAt,
+    bool incrementAttemptCount = false,
   }) async {
     if (status == OfflineTransactionStatus.failed &&
         (lastError == null || lastError.trim().isEmpty)) {
@@ -196,20 +394,41 @@ class OfflineTransactionsDao extends DatabaseAccessor<AppDatabase> {
                 ? const Value.absent()
                 : Value(remoteTransactionId),
             updatedAt: Value(now),
-            syncedAt: Value(
-              status == OfflineTransactionStatus.synced ? now : null,
-            ),
-            attemptCount: status == OfflineTransactionStatus.syncing
+            syncedAt: status == OfflineTransactionStatus.synced
+                ? Value(now)
+                : status == OfflineTransactionStatus.pendingSync
+                ? const Value(null)
+                : Value(current.syncedAt),
+            attemptCount:
+                incrementAttemptCount ||
+                    status == OfflineTransactionStatus.syncing
                 ? Value(current.attemptCount + 1)
                 : const Value.absent(),
-            lastError: status == OfflineTransactionStatus.failed
-                ? Value(lastError)
-                : status == OfflineTransactionStatus.synced
-                ? const Value(null)
-                : const Value.absent(),
+            lastError: lastError == null
+                ? status == OfflineTransactionStatus.synced
+                      ? const Value(null)
+                      : const Value.absent()
+                : Value(lastError),
           ),
         );
     return updatedCount > 0;
+  }
+
+  Future<bool> updateSyncStatus({
+    required String localId,
+    required OfflineTransactionStatus status,
+    String? remoteTransactionId,
+    String? lastError,
+    DateTime? updatedAt,
+  }) async {
+    return updateTransactionStatus(
+      localId: localId,
+      status: status,
+      remoteTransactionId: remoteTransactionId,
+      lastError: lastError,
+      updatedAt: updatedAt,
+      incrementAttemptCount: status == OfflineTransactionStatus.syncing,
+    );
   }
 
   void _validateRequiredValue(String value, String argumentName) {

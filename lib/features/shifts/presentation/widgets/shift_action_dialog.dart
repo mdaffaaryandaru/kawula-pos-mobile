@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 // Project imports:
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
+import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
 import 'package:kawula_pos/features/shifts/presentation/widgets/shift_close_form.dart';
@@ -20,6 +21,9 @@ Future<void> showShiftActionDialog(
   BuildContext context, {
   required AuthUser user,
   required ShiftDialogMode mode,
+  Future<int> Function(ActiveShift shift)?
+  loadUnresolvedOfflineTransactionCount,
+  VoidCallback? onOpenOfflineQueue,
 }) {
   final shiftsCubit = context.read<ShiftsCubit>();
   return showDialog<void>(
@@ -27,16 +31,30 @@ Future<void> showShiftActionDialog(
     barrierDismissible: false,
     builder: (_) => BlocProvider.value(
       value: shiftsCubit,
-      child: _ShiftActionDialog(user: user, mode: mode),
+      child: _ShiftActionDialog(
+        user: user,
+        mode: mode,
+        loadUnresolvedOfflineTransactionCount:
+            loadUnresolvedOfflineTransactionCount,
+        onOpenOfflineQueue: onOpenOfflineQueue,
+      ),
     ),
   );
 }
 
 class _ShiftActionDialog extends StatefulWidget {
-  const _ShiftActionDialog({required this.user, required this.mode});
+  const _ShiftActionDialog({
+    required this.user,
+    required this.mode,
+    this.loadUnresolvedOfflineTransactionCount,
+    this.onOpenOfflineQueue,
+  });
 
   final AuthUser user;
   final ShiftDialogMode mode;
+  final Future<int> Function(ActiveShift shift)?
+  loadUnresolvedOfflineTransactionCount;
+  final VoidCallback? onOpenOfflineQueue;
 
   @override
   State<_ShiftActionDialog> createState() => _ShiftActionDialogState();
@@ -75,6 +93,56 @@ class _ShiftActionDialogState extends State<_ShiftActionDialog> {
 
   Future<void> _closeShift(ActiveShift shift) async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (canUseOfflineSales(widget.user.role) &&
+        widget.loadUnresolvedOfflineTransactionCount != null) {
+      try {
+        final unresolvedCount =
+            await widget.loadUnresolvedOfflineTransactionCount!(shift);
+        if (!mounted) return;
+        if (unresolvedCount > 0) {
+          final openQueue = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Shift belum dapat ditutup'),
+              content: Text(
+                'Ada $unresolvedCount transaksi offline pada kasir, outlet, '
+                'dan shift ini yang belum terselesaikan. Status pending_sync, '
+                'syncing, failed, dan needs_reconciliation semuanya '
+                'memblokir tutup shift. Transaksi gagal atau yang perlu '
+                'rekonsiliasi harus ditindaklanjuti bersama manajemen; '
+                'jangan hapus transaksi untuk melewati pemeriksaan.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Kembali'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Lihat antrean'),
+                ),
+              ],
+            ),
+          );
+          if (openQueue == true && mounted) {
+            Navigator.of(context).pop();
+            widget.onOpenOfflineQueue?.call();
+          }
+          return;
+        }
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Antrean offline tidak dapat diperiksa. Shift tidak ditutup: $error',
+            ),
+          ),
+        );
+        return;
+      }
+    }
 
     final actualCash = num.parse(_actualCashController.text.trim());
     final difference = actualCash - shift.expectedCash;

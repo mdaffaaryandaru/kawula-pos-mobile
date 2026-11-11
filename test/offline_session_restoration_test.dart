@@ -110,6 +110,45 @@ void main() {
   );
 
   test(
+    'offline-restored profile becomes server verified after recovery',
+    () async {
+      final loginRepository = _authRepository(
+        localDataSource: localDataSource,
+        cache: cache,
+        profileResponse: _profile(),
+      );
+      await loginRepository.login(
+        email: 'cashier@example.test',
+        password: 'password',
+      );
+
+      final offlineUser = await _authRepository(
+        localDataSource: localDataSource,
+        cache: cache,
+        profileError: const SocketException('network unavailable'),
+      ).restoreSession();
+      expect(offlineUser?.isOfflineSession, isTrue);
+      expect(cache.networkStatus, CashierNetworkStatus.offline);
+
+      final restoredUser = await _authRepository(
+        localDataSource: localDataSource,
+        cache: cache,
+        profileResponse: _profile(name: 'Cashier A refreshed'),
+      ).restoreSession();
+
+      expect(restoredUser?.name, 'Cashier A refreshed');
+      expect(restoredUser?.isOfflineSession, isFalse);
+      expect(cache.networkStatus, CashierNetworkStatus.online);
+      final cachedProfile = await cache.readCashierProfile('cashier-a');
+      expect(cachedProfile, isA<Map<String, dynamic>>());
+      expect(
+        (cachedProfile as Map<String, dynamic>)['name'],
+        'Cashier A refreshed',
+      );
+    },
+  );
+
+  test(
     'missing active shift snapshot is never treated as an open shift',
     () async {
       final repository = CashierCachedShiftsRepository(
@@ -139,6 +178,7 @@ void main() {
       expect(await repository.restoreSession(), isNull);
       expect(localDataSource.token, isNull);
       expect(localDataSource.verifiedCashierUserId, isNull);
+      expect(cache.networkStatus, CashierNetworkStatus.online);
     },
   );
 
@@ -159,16 +199,87 @@ void main() {
       throwsA(isA<ApiException>()),
     );
     expect(localDataSource.verifiedCashierUserId, isNull);
+    expect(cache.networkStatus, CashierNetworkStatus.online);
   });
 
   test(
-    'Admin profile is not restored when the server is unreachable',
+    'Admin profile restores Offline Sales after a previously verified login',
     () async {
       await _authRepository(
         localDataSource: localDataSource,
         cache: cache,
         profileResponse: _profile(role: 'Admin'),
       ).login(email: 'admin@example.test', password: 'password');
+
+      final repository = _authRepository(
+        localDataSource: localDataSource,
+        cache: cache,
+        profileError: const SocketException('offline'),
+      );
+      final restored = await repository.restoreSession();
+      expect(restored?.role, 'Admin');
+      expect(restored?.isOfflineSession, isTrue);
+    },
+  );
+
+  test('Admin snapshot is isolated from cashier shift cache', () async {
+    final loginRepository = _authRepository(
+      localDataSource: localDataSource,
+      cache: cache,
+      profileResponse: _profile(role: 'Admin'),
+    );
+    await loginRepository.login(
+      email: 'admin@example.test',
+      password: 'password',
+    );
+
+    await CashierCachedShiftsRepository(
+      _FakeShiftsRepository(activeShift: _openShift()),
+      cache,
+      ownerUserId: 'cashier-a',
+      role: 'Admin',
+    ).getActive();
+
+    expect(
+      await cache.readCashierShiftSnapshot('cashier-a', role: 'Kasir'),
+      isNull,
+    );
+    expect(
+      (await cache.readCashierShiftSnapshot(
+        'cashier-a',
+        role: 'Admin',
+      ))?['outlet_id'],
+      'outlet-a',
+    );
+  });
+
+  test('Admin B cannot restore Admin A profile from local cache', () async {
+    await _authRepository(
+      localDataSource: localDataSource,
+      cache: cache,
+      profileResponse: _profile(role: 'Admin'),
+    ).login(email: 'admin-a@example.test', password: 'password');
+
+    localDataSource
+      ..token = 'admin-b-token'
+      ..verifiedCashierUserId = 'admin-b';
+    final repository = _authRepository(
+      localDataSource: localDataSource,
+      cache: cache,
+      profileError: const SocketException('offline'),
+    );
+
+    expect(await repository.restoreSession(), isNull);
+  });
+
+  test(
+    'management roles are not restored when the server is unreachable',
+    () async {
+      await _authRepository(
+        localDataSource: localDataSource,
+        cache: cache,
+        profileResponse: _profile(role: 'Manajer'),
+      ).login(email: 'manager@example.test', password: 'password');
 
       final repository = _authRepository(
         localDataSource: localDataSource,
@@ -233,6 +344,37 @@ void main() {
     },
   );
 
+  test('Admin logout does not delete the Admin transaction queue', () async {
+    await _authRepository(
+      localDataSource: localDataSource,
+      cache: cache,
+      profileResponse: _profile(role: 'Admin'),
+    ).login(email: 'admin@example.test', password: 'password');
+    final transaction = await database.offlineTransactionsDao
+        .saveOfflineTransaction(
+          ownerUserId: 'cashier-a',
+          outletId: 'outlet-a',
+          shiftId: 'shift-a',
+          transactionType: 'sale',
+          payload: const {'total': 100},
+          receiptSnapshot: const {'receipt': 'OFF-ADMIN'},
+        );
+
+    await _authRepository(
+      localDataSource: localDataSource,
+      cache: cache,
+      profileResponse: _profile(role: 'Admin'),
+    ).logout();
+
+    expect(localDataSource.token, isNull);
+    expect(
+      await database.offlineTransactionsDao.getTransactionByLocalId(
+        transaction.localId,
+      ),
+      isNotNull,
+    );
+  });
+
   test(
     'token without a prior verified cashier profile requires online login',
     () async {
@@ -272,16 +414,17 @@ AuthRepositoryImpl _authRepository({
   );
 }
 
-http.Response _profile({String role = 'Kasir'}) => http.Response(
-  jsonEncode({
-    '_id': 'cashier-a',
-    'name': 'Cashier A',
-    'email': 'cashier@example.test',
-    'role': role,
-    'has_pin': true,
-  }),
-  200,
-);
+http.Response _profile({String role = 'Kasir', String name = 'Cashier A'}) =>
+    http.Response(
+      jsonEncode({
+        '_id': 'cashier-a',
+        'name': name,
+        'email': 'cashier@example.test',
+        'role': role,
+        'has_pin': true,
+      }),
+      200,
+    );
 
 ActiveShiftModel _openShift() => ActiveShiftModel(
   id: 'shift-a',

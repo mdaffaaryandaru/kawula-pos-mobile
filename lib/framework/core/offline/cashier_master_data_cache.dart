@@ -1,35 +1,53 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/cached_records_dao.dart';
+import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
+
+enum CashierNetworkStatus { online, offline, checking }
 
 class CashierMasterDataCache {
-  CashierMasterDataCache(this._dao, [this._userId, this._outletId])
+  CashierMasterDataCache(this._dao, [this._userId, this._outletId, this._role])
     : _connectivityState = _CashierCacheConnectivityState();
 
   const CashierMasterDataCache.disabled()
     : _dao = null,
       _userId = null,
       _outletId = null,
+      _role = null,
       _connectivityState = null;
 
   final CachedRecordsDao? _dao;
   final String? _userId;
   final String? _outletId;
+  final String? _role;
   final _CashierCacheConnectivityState? _connectivityState;
 
   String? get userId => _userId;
   String? get outletId => _outletId;
-  bool get isOfflineKnown => _connectivityState?.isOffline ?? false;
+  String? get role => _role;
+  ValueListenable<CashierNetworkStatus>? get networkStatusListenable =>
+      _connectivityState?.status;
+  CashierNetworkStatus get networkStatus =>
+      _connectivityState?.status.value ?? CashierNetworkStatus.online;
+  bool get isOfflineKnown => networkStatus == CashierNetworkStatus.offline;
+  bool get shouldUseOfflineData => networkStatus != CashierNetworkStatus.online;
 
   void markOffline() {
     final state = _connectivityState;
-    if (state != null) state.isOffline = true;
+    state?.status.value = CashierNetworkStatus.offline;
+  }
+
+  void markChecking() {
+    final state = _connectivityState;
+    state?.status.value = CashierNetworkStatus.checking;
   }
 
   void markOnline() {
     final state = _connectivityState;
-    if (state != null) state.isOffline = false;
+    state?.status.value = CashierNetworkStatus.online;
   }
 
   CashierMasterDataCache? forRole({
@@ -39,7 +57,7 @@ class CashierMasterDataCache {
   }) {
     final dao = _dao;
     if (dao == null ||
-        role != 'Kasir' ||
+        !canUseOfflineSales(role) ||
         userId.trim().isEmpty ||
         outletId == null ||
         outletId.trim().isEmpty) {
@@ -49,20 +67,23 @@ class CashierMasterDataCache {
       dao,
       userId,
       outletId,
-      _connectivityState ?? _CashierCacheConnectivityState(),
+      role,
+      _connectivityState!,
     );
     return scopedCache;
   }
 
-  bool get isScoped => _userId != null && _outletId != null;
+  bool get isScoped => _userId != null && _outletId != null && _role != null;
 
   Future<void> saveCashierProfile({
     required String userId,
     required String role,
     required Object? payload,
   }) async {
-    if (role != 'Kasir' || userId.trim().isEmpty) {
-      throw ArgumentError('Snapshot sesi hanya dapat disimpan untuk Kasir.');
+    if (!canUseOfflineSales(role) || userId.trim().isEmpty) {
+      throw ArgumentError(
+        'Snapshot sesi tidak memiliki role Offline Sales yang valid.',
+      );
     }
     if (payload is! Map<String, dynamic> ||
         payload['id'] != userId ||
@@ -70,24 +91,48 @@ class CashierMasterDataCache {
       throw ArgumentError('Profil cache tidak sesuai dengan pemilik sesi.');
     }
     final dao = _requireDao();
+    final otherRole = role == 'Admin' ? 'Kasir' : 'Admin';
+    await dao.deleteCache(
+      'offline_sales_session_profile',
+      jsonEncode([userId, otherRole]),
+    );
     await dao.saveCache(
-      cacheType: 'cashier_session_profile',
-      cacheKey: userId,
+      cacheType: 'offline_sales_session_profile',
+      cacheKey: jsonEncode([userId, role]),
       payload: payload,
     );
   }
 
-  Future<Object?> readCashierProfile(String userId) async {
+  Future<Object?> readCashierProfile(String userId, {String? role}) async {
     if (userId.trim().isEmpty) return null;
-    final record = await _requireDao().getCache(
-      'cashier_session_profile',
-      userId,
-    );
-    if (record == null) return null;
-    final payload = jsonDecode(record.payloadJson);
+    final cacheRole = role ?? _role;
+    if (cacheRole != null && !canUseOfflineSales(cacheRole)) return null;
+    final dao = _requireDao();
+    final record = cacheRole == null
+        ? await dao.getCache(
+                'offline_sales_session_profile',
+                jsonEncode([userId, 'Admin']),
+              ) ??
+              await dao.getCache(
+                'offline_sales_session_profile',
+                jsonEncode([userId, 'Kasir']),
+              )
+        : await dao.getCache(
+            'offline_sales_session_profile',
+            jsonEncode([userId, cacheRole]),
+          );
+    final legacyRecord =
+        record ??
+        (cacheRole == null || cacheRole == 'Kasir'
+            ? await dao.getCache('cashier_session_profile', userId)
+            : null);
+    if (legacyRecord == null) return null;
+    final payload = jsonDecode(legacyRecord.payloadJson);
     if (payload is! Map<String, dynamic> ||
         payload['id'] != userId ||
-        payload['role'] != 'Kasir') {
+        payload['role'] is! String ||
+        !canUseOfflineSales(payload['role'] as String) ||
+        (cacheRole != null && payload['role'] != cacheRole)) {
       return null;
     }
     return payload;
@@ -98,9 +143,13 @@ class CashierMasterDataCache {
     required String outletId,
     required String status,
     required DateTime verifiedAt,
+    String? role,
     required Object? shift,
   }) async {
-    if (userId.trim().isEmpty || outletId.trim().isEmpty) {
+    final cacheRole = role ?? _role ?? 'Kasir';
+    if (!canUseOfflineSales(cacheRole) ||
+        userId.trim().isEmpty ||
+        outletId.trim().isEmpty) {
       throw ArgumentError('Snapshot shift harus memiliki akun dan outlet.');
     }
     if (shift is! Map<String, dynamic> || shift['status'] != status) {
@@ -108,10 +157,11 @@ class CashierMasterDataCache {
     }
     await _requireDao().saveCache(
       cacheType: 'cashier_session_shift',
-      cacheKey: userId,
+      cacheKey: jsonEncode([userId, cacheRole]),
       payload: {
         'user_id': userId,
         'outlet_id': outletId,
+        'role': cacheRole,
         'status': status,
         'verified_at': verifiedAt.toIso8601String(),
         'shift': shift,
@@ -120,16 +170,38 @@ class CashierMasterDataCache {
     );
   }
 
-  Future<Map<String, dynamic>?> readCashierShiftSnapshot(String userId) async {
+  Future<Map<String, dynamic>?> readCashierShiftSnapshot(
+    String userId, {
+    String? role,
+  }) async {
     if (userId.trim().isEmpty) return null;
-    final record = await _requireDao().getCache(
-      'cashier_session_shift',
-      userId,
-    );
+    final cacheRole = role ?? _role;
+    if (cacheRole != null && !canUseOfflineSales(cacheRole)) return null;
+    final dao = _requireDao();
+    final record = cacheRole == null
+        ? await dao.getCache(
+                'cashier_session_shift',
+                jsonEncode([userId, 'Admin']),
+              ) ??
+              await dao.getCache(
+                'cashier_session_shift',
+                jsonEncode([userId, 'Kasir']),
+              ) ??
+              await dao.getCache('cashier_session_shift', userId)
+        : await dao.getCache(
+                'cashier_session_shift',
+                jsonEncode([userId, cacheRole]),
+              ) ??
+              (cacheRole == 'Kasir'
+                  ? await dao.getCache('cashier_session_shift', userId)
+                  : null);
     if (record == null) return null;
     final payload = jsonDecode(record.payloadJson);
     if (payload is! Map<String, dynamic> ||
         payload['user_id'] != userId ||
+        (cacheRole != null &&
+            payload['role'] != cacheRole &&
+            !(cacheRole == 'Kasir' && payload['role'] == null)) ||
         payload['outlet_id'] is! String ||
         (payload['outlet_id'] as String).trim().isEmpty ||
         payload['status'] is! String ||
@@ -140,9 +212,19 @@ class CashierMasterDataCache {
     return payload;
   }
 
-  Future<void> deleteCashierShiftSnapshot(String userId) async {
+  Future<void> deleteCashierShiftSnapshot(String userId, {String? role}) async {
     if (userId.trim().isEmpty) return;
-    await _requireDao().deleteCache('cashier_session_shift', userId);
+    final dao = _requireDao();
+    final cacheRole = role ?? _role;
+    if (cacheRole != null) {
+      await dao.deleteCache(
+        'cashier_session_shift',
+        jsonEncode([userId, cacheRole]),
+      );
+    }
+    if (cacheRole == null || cacheRole == 'Kasir') {
+      await dao.deleteCache('cashier_session_shift', userId);
+    }
   }
 
   Future<void> save({
@@ -152,14 +234,15 @@ class CashierMasterDataCache {
   }) async {
     final userId = _userId;
     final outletId = _outletId;
+    final role = _role;
     final dao = _dao;
-    if (dao == null || userId == null || outletId == null) {
+    if (dao == null || userId == null || outletId == null || role == null) {
       throw StateError('Cache master data harus dibatasi ke akun dan outlet.');
     }
 
     await dao.saveCache(
       cacheType: cacheType,
-      cacheKey: jsonEncode([userId, outletId, dataKey]),
+      cacheKey: jsonEncode([userId, role, outletId, dataKey]),
       payload: payload,
     );
   }
@@ -170,13 +253,22 @@ class CashierMasterDataCache {
   }) async {
     final userId = _userId;
     final outletId = _outletId;
+    final role = _role;
     final dao = _dao;
-    if (dao == null || userId == null || outletId == null) return null;
+    if (dao == null || userId == null || outletId == null || role == null) {
+      return null;
+    }
 
-    final record = await dao.getCache(
+    var record = await dao.getCache(
       cacheType,
-      jsonEncode([userId, outletId, dataKey]),
+      jsonEncode([userId, role, outletId, dataKey]),
     );
+    if (record == null && role == 'Kasir') {
+      record = await dao.getCache(
+        cacheType,
+        jsonEncode([userId, outletId, dataKey]),
+      );
+    }
     return record == null ? null : jsonDecode(record.payloadJson);
   }
 
@@ -186,18 +278,29 @@ class CashierMasterDataCache {
   }) async {
     final userId = _userId;
     final outletId = _outletId;
+    final role = _role;
     final dao = _dao;
-    if (dao == null || userId == null || outletId == null) return null;
-    return dao.getCache(
+    if (dao == null || userId == null || outletId == null || role == null) {
+      return null;
+    }
+    var record = await dao.getCache(
       cacheType,
-      jsonEncode([userId, outletId, dataKey]),
+      jsonEncode([userId, role, outletId, dataKey]),
     );
+    if (record == null && role == 'Kasir') {
+      record = await dao.getCache(
+        cacheType,
+        jsonEncode([userId, outletId, dataKey]),
+      );
+    }
+    return record;
   }
 
   CashierMasterDataCache._(
     this._dao,
     this._userId,
     this._outletId,
+    this._role,
     this._connectivityState,
   );
 
@@ -211,5 +314,7 @@ class CashierMasterDataCache {
 }
 
 class _CashierCacheConnectivityState {
-  bool isOffline = false;
+  final ValueNotifier<CashierNetworkStatus> status = ValueNotifier(
+    CashierNetworkStatus.online,
+  );
 }

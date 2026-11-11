@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:kawula_pos/framework/core/network/platform_network_exception.dart';
 
 Future<T> runWithNetworkCache<T>({
   required Future<T> Function() request,
@@ -24,17 +24,13 @@ Future<T> runWithNetworkCache<T>({
     final cached = await readCache();
     if (cached != null) return cached;
     rethrow;
-  } on SocketException {
-    onNetworkFailure?.call();
-    final cached = await readCache();
-    if (cached != null) return cached;
-    rethrow;
   } on TimeoutException {
     onNetworkFailure?.call();
     final cached = await readCache();
     if (cached != null) return cached;
     rethrow;
-  } on HandshakeException {
+  } on Exception catch (error) {
+    if (!isPlatformNetworkException(error)) rethrow;
     onNetworkFailure?.call();
     final cached = await readCache();
     if (cached != null) return cached;

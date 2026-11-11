@@ -31,11 +31,7 @@ extension CheckoutFormWidgets on CheckoutPageState {
     final totalAmount = (cart.estimatedSubtotal + taxAmount + serviceCharge)
         .round();
     final methods = paymentMethods
-        .where(
-          (method) =>
-              !method.isOpenBill &&
-              (!isOffline || method.code.toUpperCase() == 'CASH'),
-        )
+        .where((method) => !method.isOpenBill)
         .toList(growable: false);
     CheckoutPaymentMethod? selectedMethod;
     for (final method in methods) {
@@ -56,7 +52,7 @@ extension CheckoutFormWidgets on CheckoutPageState {
         if (errorMessage != null) CheckoutInlineError(message: errorMessage),
         if (isOffline)
           const CheckoutInlineError(
-            message: 'Mode offline: transaksi tunai disimpan di perangkat dan belum tersinkron. Stok merupakan estimasi dari data terakhir.',
+            message: 'Mode offline: transaksi disimpan di perangkat dan belum tersinkron. Stok merupakan estimasi dari data terakhir.',
           ),
         if (validationMessage != null)
           CheckoutInlineError(message: validationMessage!),
@@ -215,6 +211,8 @@ extension CheckoutFormWidgets on CheckoutPageState {
                               validationMessage = null;
                             }),
                     ),
+                  if (isOffline && selectedMethod != null)
+                    _offlinePaymentInstructions(selectedMethod),
                   if (selectedMethod?.isCash == true) ...[
                     const SizedBox(height: 12),
                     TextField(
@@ -351,4 +349,22 @@ extension CheckoutFormWidgets on CheckoutPageState {
   }
 
   num _parseCashAmount() => num.tryParse(cashController.text.trim()) ?? 0;
+
+  Widget _offlinePaymentInstructions(CheckoutPaymentMethod method) {
+    final descriptor = '${method.code} ${method.name}'.toUpperCase();
+    final message = descriptor.contains('QRIS')
+        ? 'Informasi QRIS toko tidak tersedia dalam data checkout yang tersimpan.'
+        : descriptor.contains('TRANSFER') || descriptor.contains('BANK')
+        ? 'Informasi rekening bank tidak tersedia dalam data checkout yang tersimpan.'
+        : null;
+    if (message == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Text(
+        message,
+        style: Theme.of(context).textTheme.bodySmall
+            ?.copyWith(color: Theme.of(context).colorScheme.error),
+      ),
+    );
+  }
 }

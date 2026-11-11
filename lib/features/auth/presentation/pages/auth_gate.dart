@@ -29,6 +29,7 @@ import 'package:kawula_pos/features/shifts/data/repositories/cashier_cached_shif
 import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
 import 'package:kawula_pos/features/table_areas/domain/repositories/table_areas_repository.dart';
 import 'package:kawula_pos/features/tables/domain/repositories/tables_repository.dart';
+import 'package:kawula_pos/features/transactions/data/services/cashier_offline_sync_service.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/users/domain/repositories/user_management_repository.dart';
 import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
@@ -49,6 +50,7 @@ class AuthGate extends StatelessWidget {
     required this.variantGroupsRepository,
     this.masterDataCache,
     this.offlineTransactionsDao,
+    this.cashierOfflineSyncService,
     this.discountsRepository,
     this.paymentMethodsRepository,
     this.inventoryRepository,
@@ -72,6 +74,7 @@ class AuthGate extends StatelessWidget {
   final VariantGroupsRepository variantGroupsRepository;
   final CashierMasterDataCache? masterDataCache;
   final OfflineTransactionsDao? offlineTransactionsDao;
+  final CashierOfflineSyncService? cashierOfflineSyncService;
   final DiscountsRepository? discountsRepository;
   final PaymentMethodsRepository? paymentMethodsRepository;
   final InventoryRepository? inventoryRepository;
@@ -93,7 +96,17 @@ class AuthGate extends StatelessWidget {
           AuthAuthenticated() when state.user.role == 'Admin' =>
             AdminNavigationPage(
               admin: state.user,
-              shiftsRepository: shiftsRepository,
+              shiftsRepository: masterDataCache == null
+                  ? shiftsRepository
+                  : CashierCachedShiftsRepository(
+                      shiftsRepository,
+                      masterDataCache!,
+                      ownerUserId: state.user.id,
+                      role: state.user.role,
+                    ),
+              masterDataCache: masterDataCache,
+              offlineTransactionsDao: offlineTransactionsDao,
+              cashierOfflineSyncService: cashierOfflineSyncService,
               catalogRepository: catalogRepository,
               checkoutRepository: checkoutRepository,
               balancesRepository: balancesRepository,
@@ -117,15 +130,19 @@ class AuthGate extends StatelessWidget {
               when state.user.role == 'Kasir' && masterDataCache != null =>
             CashierNavigationPage(
               user: state.user,
+              cashierMasterDataCache: masterDataCache,
               shiftsRepository: CashierCachedShiftsRepository(
                 shiftsRepository,
                 masterDataCache!,
                 ownerUserId: state.user.id,
+                role: state.user.role,
               ),
               catalogRepository: catalogRepository,
               checkoutRepository: checkoutRepository,
               balancesRepository: balancesRepository,
               offlineTransactionsDao: offlineTransactionsDao,
+              cashierOfflineSyncService: cashierOfflineSyncService,
+              storeSettingsRepository: storeSettingsRepository,
             ),
           AuthAuthenticated() => CashierNavigationPage(
             user: state.user,
@@ -133,6 +150,9 @@ class AuthGate extends StatelessWidget {
             catalogRepository: catalogRepository,
             checkoutRepository: checkoutRepository,
             balancesRepository: balancesRepository,
+            offlineTransactionsDao: offlineTransactionsDao,
+            cashierOfflineSyncService: cashierOfflineSyncService,
+            storeSettingsRepository: storeSettingsRepository,
           ),
           AuthSessionFailure() => AuthSessionFailureView(
             message: state.message,

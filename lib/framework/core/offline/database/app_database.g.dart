@@ -1267,12 +1267,764 @@ class OfflineTransactionsCompanion extends UpdateCompanion<OfflineTransaction> {
   }
 }
 
+class $OfflineTransactionResolutionsTable extends OfflineTransactionResolutions
+    with
+        TableInfo<
+          $OfflineTransactionResolutionsTable,
+          OfflineTransactionResolution
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OfflineTransactionResolutionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _localIdMeta = const VerificationMeta(
+    'localId',
+  );
+  @override
+  late final GeneratedColumn<String> localId = GeneratedColumn<String>(
+    'local_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _outletIdMeta = const VerificationMeta(
+    'outletId',
+  );
+  @override
+  late final GeneratedColumn<String> outletId = GeneratedColumn<String>(
+    'outlet_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _previousStatusMeta = const VerificationMeta(
+    'previousStatus',
+  );
+  @override
+  late final GeneratedColumn<String> previousStatus = GeneratedColumn<String>(
+    'previous_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _resultingStatusMeta = const VerificationMeta(
+    'resultingStatus',
+  );
+  @override
+  late final GeneratedColumn<String> resultingStatus = GeneratedColumn<String>(
+    'resulting_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _resolutionTypeMeta = const VerificationMeta(
+    'resolutionType',
+  );
+  @override
+  late final GeneratedColumn<String> resolutionType = GeneratedColumn<String>(
+    'resolution_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _remoteTransactionIdMeta =
+      const VerificationMeta('remoteTransactionId');
+  @override
+  late final GeneratedColumn<String> remoteTransactionId =
+      GeneratedColumn<String>(
+        'remote_transaction_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _resolvingAdminUserIdMeta =
+      const VerificationMeta('resolvingAdminUserId');
+  @override
+  late final GeneratedColumn<String> resolvingAdminUserId =
+      GeneratedColumn<String>(
+        'resolving_admin_user_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _resolvingAdminRoleMeta =
+      const VerificationMeta('resolvingAdminRole');
+  @override
+  late final GeneratedColumn<String> resolvingAdminRole =
+      GeneratedColumn<String>(
+        'resolving_admin_role',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _resolvedAtMeta = const VerificationMeta(
+    'resolvedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> resolvedAt = GeneratedColumn<DateTime>(
+    'resolved_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    localId,
+    outletId,
+    previousStatus,
+    resultingStatus,
+    resolutionType,
+    remoteTransactionId,
+    resolvingAdminUserId,
+    resolvingAdminRole,
+    resolvedAt,
+    reason,
+    notes,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'offline_transaction_resolutions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OfflineTransactionResolution> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('local_id')) {
+      context.handle(
+        _localIdMeta,
+        localId.isAcceptableOrUnknown(data['local_id']!, _localIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_localIdMeta);
+    }
+    if (data.containsKey('outlet_id')) {
+      context.handle(
+        _outletIdMeta,
+        outletId.isAcceptableOrUnknown(data['outlet_id']!, _outletIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_outletIdMeta);
+    }
+    if (data.containsKey('previous_status')) {
+      context.handle(
+        _previousStatusMeta,
+        previousStatus.isAcceptableOrUnknown(
+          data['previous_status']!,
+          _previousStatusMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_previousStatusMeta);
+    }
+    if (data.containsKey('resulting_status')) {
+      context.handle(
+        _resultingStatusMeta,
+        resultingStatus.isAcceptableOrUnknown(
+          data['resulting_status']!,
+          _resultingStatusMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_resultingStatusMeta);
+    }
+    if (data.containsKey('resolution_type')) {
+      context.handle(
+        _resolutionTypeMeta,
+        resolutionType.isAcceptableOrUnknown(
+          data['resolution_type']!,
+          _resolutionTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_resolutionTypeMeta);
+    }
+    if (data.containsKey('remote_transaction_id')) {
+      context.handle(
+        _remoteTransactionIdMeta,
+        remoteTransactionId.isAcceptableOrUnknown(
+          data['remote_transaction_id']!,
+          _remoteTransactionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('resolving_admin_user_id')) {
+      context.handle(
+        _resolvingAdminUserIdMeta,
+        resolvingAdminUserId.isAcceptableOrUnknown(
+          data['resolving_admin_user_id']!,
+          _resolvingAdminUserIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_resolvingAdminUserIdMeta);
+    }
+    if (data.containsKey('resolving_admin_role')) {
+      context.handle(
+        _resolvingAdminRoleMeta,
+        resolvingAdminRole.isAcceptableOrUnknown(
+          data['resolving_admin_role']!,
+          _resolvingAdminRoleMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_resolvingAdminRoleMeta);
+    }
+    if (data.containsKey('resolved_at')) {
+      context.handle(
+        _resolvedAtMeta,
+        resolvedAt.isAcceptableOrUnknown(data['resolved_at']!, _resolvedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_resolvedAtMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonMeta);
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  OfflineTransactionResolution map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OfflineTransactionResolution(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      localId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_id'],
+      )!,
+      outletId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}outlet_id'],
+      )!,
+      previousStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}previous_status'],
+      )!,
+      resultingStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resulting_status'],
+      )!,
+      resolutionType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resolution_type'],
+      )!,
+      remoteTransactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}remote_transaction_id'],
+      ),
+      resolvingAdminUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resolving_admin_user_id'],
+      )!,
+      resolvingAdminRole: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resolving_admin_role'],
+      )!,
+      resolvedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}resolved_at'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+    );
+  }
+
+  @override
+  $OfflineTransactionResolutionsTable createAlias(String alias) {
+    return $OfflineTransactionResolutionsTable(attachedDatabase, alias);
+  }
+}
+
+class OfflineTransactionResolution extends DataClass
+    implements Insertable<OfflineTransactionResolution> {
+  final int id;
+  final String localId;
+  final String outletId;
+  final String previousStatus;
+  final String resultingStatus;
+  final String resolutionType;
+  final String? remoteTransactionId;
+  final String resolvingAdminUserId;
+  final String resolvingAdminRole;
+  final DateTime resolvedAt;
+  final String reason;
+  final String? notes;
+  const OfflineTransactionResolution({
+    required this.id,
+    required this.localId,
+    required this.outletId,
+    required this.previousStatus,
+    required this.resultingStatus,
+    required this.resolutionType,
+    this.remoteTransactionId,
+    required this.resolvingAdminUserId,
+    required this.resolvingAdminRole,
+    required this.resolvedAt,
+    required this.reason,
+    this.notes,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['local_id'] = Variable<String>(localId);
+    map['outlet_id'] = Variable<String>(outletId);
+    map['previous_status'] = Variable<String>(previousStatus);
+    map['resulting_status'] = Variable<String>(resultingStatus);
+    map['resolution_type'] = Variable<String>(resolutionType);
+    if (!nullToAbsent || remoteTransactionId != null) {
+      map['remote_transaction_id'] = Variable<String>(remoteTransactionId);
+    }
+    map['resolving_admin_user_id'] = Variable<String>(resolvingAdminUserId);
+    map['resolving_admin_role'] = Variable<String>(resolvingAdminRole);
+    map['resolved_at'] = Variable<DateTime>(resolvedAt);
+    map['reason'] = Variable<String>(reason);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    return map;
+  }
+
+  OfflineTransactionResolutionsCompanion toCompanion(bool nullToAbsent) {
+    return OfflineTransactionResolutionsCompanion(
+      id: Value(id),
+      localId: Value(localId),
+      outletId: Value(outletId),
+      previousStatus: Value(previousStatus),
+      resultingStatus: Value(resultingStatus),
+      resolutionType: Value(resolutionType),
+      remoteTransactionId: remoteTransactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(remoteTransactionId),
+      resolvingAdminUserId: Value(resolvingAdminUserId),
+      resolvingAdminRole: Value(resolvingAdminRole),
+      resolvedAt: Value(resolvedAt),
+      reason: Value(reason),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+    );
+  }
+
+  factory OfflineTransactionResolution.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OfflineTransactionResolution(
+      id: serializer.fromJson<int>(json['id']),
+      localId: serializer.fromJson<String>(json['localId']),
+      outletId: serializer.fromJson<String>(json['outletId']),
+      previousStatus: serializer.fromJson<String>(json['previousStatus']),
+      resultingStatus: serializer.fromJson<String>(json['resultingStatus']),
+      resolutionType: serializer.fromJson<String>(json['resolutionType']),
+      remoteTransactionId: serializer.fromJson<String?>(
+        json['remoteTransactionId'],
+      ),
+      resolvingAdminUserId: serializer.fromJson<String>(
+        json['resolvingAdminUserId'],
+      ),
+      resolvingAdminRole: serializer.fromJson<String>(
+        json['resolvingAdminRole'],
+      ),
+      resolvedAt: serializer.fromJson<DateTime>(json['resolvedAt']),
+      reason: serializer.fromJson<String>(json['reason']),
+      notes: serializer.fromJson<String?>(json['notes']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'localId': serializer.toJson<String>(localId),
+      'outletId': serializer.toJson<String>(outletId),
+      'previousStatus': serializer.toJson<String>(previousStatus),
+      'resultingStatus': serializer.toJson<String>(resultingStatus),
+      'resolutionType': serializer.toJson<String>(resolutionType),
+      'remoteTransactionId': serializer.toJson<String?>(remoteTransactionId),
+      'resolvingAdminUserId': serializer.toJson<String>(resolvingAdminUserId),
+      'resolvingAdminRole': serializer.toJson<String>(resolvingAdminRole),
+      'resolvedAt': serializer.toJson<DateTime>(resolvedAt),
+      'reason': serializer.toJson<String>(reason),
+      'notes': serializer.toJson<String?>(notes),
+    };
+  }
+
+  OfflineTransactionResolution copyWith({
+    int? id,
+    String? localId,
+    String? outletId,
+    String? previousStatus,
+    String? resultingStatus,
+    String? resolutionType,
+    Value<String?> remoteTransactionId = const Value.absent(),
+    String? resolvingAdminUserId,
+    String? resolvingAdminRole,
+    DateTime? resolvedAt,
+    String? reason,
+    Value<String?> notes = const Value.absent(),
+  }) => OfflineTransactionResolution(
+    id: id ?? this.id,
+    localId: localId ?? this.localId,
+    outletId: outletId ?? this.outletId,
+    previousStatus: previousStatus ?? this.previousStatus,
+    resultingStatus: resultingStatus ?? this.resultingStatus,
+    resolutionType: resolutionType ?? this.resolutionType,
+    remoteTransactionId: remoteTransactionId.present
+        ? remoteTransactionId.value
+        : this.remoteTransactionId,
+    resolvingAdminUserId: resolvingAdminUserId ?? this.resolvingAdminUserId,
+    resolvingAdminRole: resolvingAdminRole ?? this.resolvingAdminRole,
+    resolvedAt: resolvedAt ?? this.resolvedAt,
+    reason: reason ?? this.reason,
+    notes: notes.present ? notes.value : this.notes,
+  );
+  OfflineTransactionResolution copyWithCompanion(
+    OfflineTransactionResolutionsCompanion data,
+  ) {
+    return OfflineTransactionResolution(
+      id: data.id.present ? data.id.value : this.id,
+      localId: data.localId.present ? data.localId.value : this.localId,
+      outletId: data.outletId.present ? data.outletId.value : this.outletId,
+      previousStatus: data.previousStatus.present
+          ? data.previousStatus.value
+          : this.previousStatus,
+      resultingStatus: data.resultingStatus.present
+          ? data.resultingStatus.value
+          : this.resultingStatus,
+      resolutionType: data.resolutionType.present
+          ? data.resolutionType.value
+          : this.resolutionType,
+      remoteTransactionId: data.remoteTransactionId.present
+          ? data.remoteTransactionId.value
+          : this.remoteTransactionId,
+      resolvingAdminUserId: data.resolvingAdminUserId.present
+          ? data.resolvingAdminUserId.value
+          : this.resolvingAdminUserId,
+      resolvingAdminRole: data.resolvingAdminRole.present
+          ? data.resolvingAdminRole.value
+          : this.resolvingAdminRole,
+      resolvedAt: data.resolvedAt.present
+          ? data.resolvedAt.value
+          : this.resolvedAt,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      notes: data.notes.present ? data.notes.value : this.notes,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OfflineTransactionResolution(')
+          ..write('id: $id, ')
+          ..write('localId: $localId, ')
+          ..write('outletId: $outletId, ')
+          ..write('previousStatus: $previousStatus, ')
+          ..write('resultingStatus: $resultingStatus, ')
+          ..write('resolutionType: $resolutionType, ')
+          ..write('remoteTransactionId: $remoteTransactionId, ')
+          ..write('resolvingAdminUserId: $resolvingAdminUserId, ')
+          ..write('resolvingAdminRole: $resolvingAdminRole, ')
+          ..write('resolvedAt: $resolvedAt, ')
+          ..write('reason: $reason, ')
+          ..write('notes: $notes')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    localId,
+    outletId,
+    previousStatus,
+    resultingStatus,
+    resolutionType,
+    remoteTransactionId,
+    resolvingAdminUserId,
+    resolvingAdminRole,
+    resolvedAt,
+    reason,
+    notes,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OfflineTransactionResolution &&
+          other.id == this.id &&
+          other.localId == this.localId &&
+          other.outletId == this.outletId &&
+          other.previousStatus == this.previousStatus &&
+          other.resultingStatus == this.resultingStatus &&
+          other.resolutionType == this.resolutionType &&
+          other.remoteTransactionId == this.remoteTransactionId &&
+          other.resolvingAdminUserId == this.resolvingAdminUserId &&
+          other.resolvingAdminRole == this.resolvingAdminRole &&
+          other.resolvedAt == this.resolvedAt &&
+          other.reason == this.reason &&
+          other.notes == this.notes);
+}
+
+class OfflineTransactionResolutionsCompanion
+    extends UpdateCompanion<OfflineTransactionResolution> {
+  final Value<int> id;
+  final Value<String> localId;
+  final Value<String> outletId;
+  final Value<String> previousStatus;
+  final Value<String> resultingStatus;
+  final Value<String> resolutionType;
+  final Value<String?> remoteTransactionId;
+  final Value<String> resolvingAdminUserId;
+  final Value<String> resolvingAdminRole;
+  final Value<DateTime> resolvedAt;
+  final Value<String> reason;
+  final Value<String?> notes;
+  const OfflineTransactionResolutionsCompanion({
+    this.id = const Value.absent(),
+    this.localId = const Value.absent(),
+    this.outletId = const Value.absent(),
+    this.previousStatus = const Value.absent(),
+    this.resultingStatus = const Value.absent(),
+    this.resolutionType = const Value.absent(),
+    this.remoteTransactionId = const Value.absent(),
+    this.resolvingAdminUserId = const Value.absent(),
+    this.resolvingAdminRole = const Value.absent(),
+    this.resolvedAt = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.notes = const Value.absent(),
+  });
+  OfflineTransactionResolutionsCompanion.insert({
+    this.id = const Value.absent(),
+    required String localId,
+    required String outletId,
+    required String previousStatus,
+    required String resultingStatus,
+    required String resolutionType,
+    this.remoteTransactionId = const Value.absent(),
+    required String resolvingAdminUserId,
+    required String resolvingAdminRole,
+    required DateTime resolvedAt,
+    required String reason,
+    this.notes = const Value.absent(),
+  }) : localId = Value(localId),
+       outletId = Value(outletId),
+       previousStatus = Value(previousStatus),
+       resultingStatus = Value(resultingStatus),
+       resolutionType = Value(resolutionType),
+       resolvingAdminUserId = Value(resolvingAdminUserId),
+       resolvingAdminRole = Value(resolvingAdminRole),
+       resolvedAt = Value(resolvedAt),
+       reason = Value(reason);
+  static Insertable<OfflineTransactionResolution> custom({
+    Expression<int>? id,
+    Expression<String>? localId,
+    Expression<String>? outletId,
+    Expression<String>? previousStatus,
+    Expression<String>? resultingStatus,
+    Expression<String>? resolutionType,
+    Expression<String>? remoteTransactionId,
+    Expression<String>? resolvingAdminUserId,
+    Expression<String>? resolvingAdminRole,
+    Expression<DateTime>? resolvedAt,
+    Expression<String>? reason,
+    Expression<String>? notes,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (localId != null) 'local_id': localId,
+      if (outletId != null) 'outlet_id': outletId,
+      if (previousStatus != null) 'previous_status': previousStatus,
+      if (resultingStatus != null) 'resulting_status': resultingStatus,
+      if (resolutionType != null) 'resolution_type': resolutionType,
+      if (remoteTransactionId != null)
+        'remote_transaction_id': remoteTransactionId,
+      if (resolvingAdminUserId != null)
+        'resolving_admin_user_id': resolvingAdminUserId,
+      if (resolvingAdminRole != null)
+        'resolving_admin_role': resolvingAdminRole,
+      if (resolvedAt != null) 'resolved_at': resolvedAt,
+      if (reason != null) 'reason': reason,
+      if (notes != null) 'notes': notes,
+    });
+  }
+
+  OfflineTransactionResolutionsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? localId,
+    Value<String>? outletId,
+    Value<String>? previousStatus,
+    Value<String>? resultingStatus,
+    Value<String>? resolutionType,
+    Value<String?>? remoteTransactionId,
+    Value<String>? resolvingAdminUserId,
+    Value<String>? resolvingAdminRole,
+    Value<DateTime>? resolvedAt,
+    Value<String>? reason,
+    Value<String?>? notes,
+  }) {
+    return OfflineTransactionResolutionsCompanion(
+      id: id ?? this.id,
+      localId: localId ?? this.localId,
+      outletId: outletId ?? this.outletId,
+      previousStatus: previousStatus ?? this.previousStatus,
+      resultingStatus: resultingStatus ?? this.resultingStatus,
+      resolutionType: resolutionType ?? this.resolutionType,
+      remoteTransactionId: remoteTransactionId ?? this.remoteTransactionId,
+      resolvingAdminUserId: resolvingAdminUserId ?? this.resolvingAdminUserId,
+      resolvingAdminRole: resolvingAdminRole ?? this.resolvingAdminRole,
+      resolvedAt: resolvedAt ?? this.resolvedAt,
+      reason: reason ?? this.reason,
+      notes: notes ?? this.notes,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (localId.present) {
+      map['local_id'] = Variable<String>(localId.value);
+    }
+    if (outletId.present) {
+      map['outlet_id'] = Variable<String>(outletId.value);
+    }
+    if (previousStatus.present) {
+      map['previous_status'] = Variable<String>(previousStatus.value);
+    }
+    if (resultingStatus.present) {
+      map['resulting_status'] = Variable<String>(resultingStatus.value);
+    }
+    if (resolutionType.present) {
+      map['resolution_type'] = Variable<String>(resolutionType.value);
+    }
+    if (remoteTransactionId.present) {
+      map['remote_transaction_id'] = Variable<String>(
+        remoteTransactionId.value,
+      );
+    }
+    if (resolvingAdminUserId.present) {
+      map['resolving_admin_user_id'] = Variable<String>(
+        resolvingAdminUserId.value,
+      );
+    }
+    if (resolvingAdminRole.present) {
+      map['resolving_admin_role'] = Variable<String>(resolvingAdminRole.value);
+    }
+    if (resolvedAt.present) {
+      map['resolved_at'] = Variable<DateTime>(resolvedAt.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OfflineTransactionResolutionsCompanion(')
+          ..write('id: $id, ')
+          ..write('localId: $localId, ')
+          ..write('outletId: $outletId, ')
+          ..write('previousStatus: $previousStatus, ')
+          ..write('resultingStatus: $resultingStatus, ')
+          ..write('resolutionType: $resolutionType, ')
+          ..write('remoteTransactionId: $remoteTransactionId, ')
+          ..write('resolvingAdminUserId: $resolvingAdminUserId, ')
+          ..write('resolvingAdminRole: $resolvingAdminRole, ')
+          ..write('resolvedAt: $resolvedAt, ')
+          ..write('reason: $reason, ')
+          ..write('notes: $notes')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $CachedRecordsTable cachedRecords = $CachedRecordsTable(this);
   late final $OfflineTransactionsTable offlineTransactions =
       $OfflineTransactionsTable(this);
+  late final $OfflineTransactionResolutionsTable offlineTransactionResolutions =
+      $OfflineTransactionResolutionsTable(this);
   late final Index offlineTransactionsOwnerStatusCreatedIdx = Index(
     'offline_transactions_owner_status_created_idx',
     'CREATE INDEX offline_transactions_owner_status_created_idx ON offline_transactions (owner_user_id, status, created_at_local)',
@@ -1293,6 +2045,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'offline_transactions_created_idx',
     'CREATE INDEX offline_transactions_created_idx ON offline_transactions (created_at_local)',
   );
+  late final Index offlineTransactionResolutionsLocalCreatedIdx = Index(
+    'offline_transaction_resolutions_local_created_idx',
+    'CREATE INDEX offline_transaction_resolutions_local_created_idx ON offline_transaction_resolutions (local_id, resolved_at)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1300,11 +2056,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     cachedRecords,
     offlineTransactions,
+    offlineTransactionResolutions,
     offlineTransactionsOwnerStatusCreatedIdx,
     offlineTransactionsOutletIdx,
     offlineTransactionsShiftIdx,
     offlineTransactionsStatusIdx,
     offlineTransactionsCreatedIdx,
+    offlineTransactionResolutionsLocalCreatedIdx,
   ];
 }
 
@@ -1946,6 +2704,378 @@ typedef $$OfflineTransactionsTableProcessedTableManager =
       OfflineTransaction,
       PrefetchHooks Function()
     >;
+typedef $$OfflineTransactionResolutionsTableCreateCompanionBuilder =
+    OfflineTransactionResolutionsCompanion Function({
+      Value<int> id,
+      required String localId,
+      required String outletId,
+      required String previousStatus,
+      required String resultingStatus,
+      required String resolutionType,
+      Value<String?> remoteTransactionId,
+      required String resolvingAdminUserId,
+      required String resolvingAdminRole,
+      required DateTime resolvedAt,
+      required String reason,
+      Value<String?> notes,
+    });
+typedef $$OfflineTransactionResolutionsTableUpdateCompanionBuilder =
+    OfflineTransactionResolutionsCompanion Function({
+      Value<int> id,
+      Value<String> localId,
+      Value<String> outletId,
+      Value<String> previousStatus,
+      Value<String> resultingStatus,
+      Value<String> resolutionType,
+      Value<String?> remoteTransactionId,
+      Value<String> resolvingAdminUserId,
+      Value<String> resolvingAdminRole,
+      Value<DateTime> resolvedAt,
+      Value<String> reason,
+      Value<String?> notes,
+    });
+
+class $$OfflineTransactionResolutionsTableFilterComposer
+    extends Composer<_$AppDatabase, $OfflineTransactionResolutionsTable> {
+  $$OfflineTransactionResolutionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localId => $composableBuilder(
+    column: $table.localId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get outletId => $composableBuilder(
+    column: $table.outletId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get previousStatus => $composableBuilder(
+    column: $table.previousStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resultingStatus => $composableBuilder(
+    column: $table.resultingStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resolutionType => $composableBuilder(
+    column: $table.resolutionType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get remoteTransactionId => $composableBuilder(
+    column: $table.remoteTransactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resolvingAdminUserId => $composableBuilder(
+    column: $table.resolvingAdminUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resolvingAdminRole => $composableBuilder(
+    column: $table.resolvingAdminRole,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OfflineTransactionResolutionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $OfflineTransactionResolutionsTable> {
+  $$OfflineTransactionResolutionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localId => $composableBuilder(
+    column: $table.localId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get outletId => $composableBuilder(
+    column: $table.outletId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get previousStatus => $composableBuilder(
+    column: $table.previousStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resultingStatus => $composableBuilder(
+    column: $table.resultingStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resolutionType => $composableBuilder(
+    column: $table.resolutionType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get remoteTransactionId => $composableBuilder(
+    column: $table.remoteTransactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resolvingAdminUserId => $composableBuilder(
+    column: $table.resolvingAdminUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resolvingAdminRole => $composableBuilder(
+    column: $table.resolvingAdminRole,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OfflineTransactionResolutionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $OfflineTransactionResolutionsTable> {
+  $$OfflineTransactionResolutionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get localId =>
+      $composableBuilder(column: $table.localId, builder: (column) => column);
+
+  GeneratedColumn<String> get outletId =>
+      $composableBuilder(column: $table.outletId, builder: (column) => column);
+
+  GeneratedColumn<String> get previousStatus => $composableBuilder(
+    column: $table.previousStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resultingStatus => $composableBuilder(
+    column: $table.resultingStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resolutionType => $composableBuilder(
+    column: $table.resolutionType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get remoteTransactionId => $composableBuilder(
+    column: $table.remoteTransactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resolvingAdminUserId => $composableBuilder(
+    column: $table.resolvingAdminUserId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resolvingAdminRole => $composableBuilder(
+    column: $table.resolvingAdminRole,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+}
+
+class $$OfflineTransactionResolutionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $OfflineTransactionResolutionsTable,
+          OfflineTransactionResolution,
+          $$OfflineTransactionResolutionsTableFilterComposer,
+          $$OfflineTransactionResolutionsTableOrderingComposer,
+          $$OfflineTransactionResolutionsTableAnnotationComposer,
+          $$OfflineTransactionResolutionsTableCreateCompanionBuilder,
+          $$OfflineTransactionResolutionsTableUpdateCompanionBuilder,
+          (
+            OfflineTransactionResolution,
+            BaseReferences<
+              _$AppDatabase,
+              $OfflineTransactionResolutionsTable,
+              OfflineTransactionResolution
+            >,
+          ),
+          OfflineTransactionResolution,
+          PrefetchHooks Function()
+        > {
+  $$OfflineTransactionResolutionsTableTableManager(
+    _$AppDatabase db,
+    $OfflineTransactionResolutionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OfflineTransactionResolutionsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$OfflineTransactionResolutionsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$OfflineTransactionResolutionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> localId = const Value.absent(),
+                Value<String> outletId = const Value.absent(),
+                Value<String> previousStatus = const Value.absent(),
+                Value<String> resultingStatus = const Value.absent(),
+                Value<String> resolutionType = const Value.absent(),
+                Value<String?> remoteTransactionId = const Value.absent(),
+                Value<String> resolvingAdminUserId = const Value.absent(),
+                Value<String> resolvingAdminRole = const Value.absent(),
+                Value<DateTime> resolvedAt = const Value.absent(),
+                Value<String> reason = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+              }) => OfflineTransactionResolutionsCompanion(
+                id: id,
+                localId: localId,
+                outletId: outletId,
+                previousStatus: previousStatus,
+                resultingStatus: resultingStatus,
+                resolutionType: resolutionType,
+                remoteTransactionId: remoteTransactionId,
+                resolvingAdminUserId: resolvingAdminUserId,
+                resolvingAdminRole: resolvingAdminRole,
+                resolvedAt: resolvedAt,
+                reason: reason,
+                notes: notes,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String localId,
+                required String outletId,
+                required String previousStatus,
+                required String resultingStatus,
+                required String resolutionType,
+                Value<String?> remoteTransactionId = const Value.absent(),
+                required String resolvingAdminUserId,
+                required String resolvingAdminRole,
+                required DateTime resolvedAt,
+                required String reason,
+                Value<String?> notes = const Value.absent(),
+              }) => OfflineTransactionResolutionsCompanion.insert(
+                id: id,
+                localId: localId,
+                outletId: outletId,
+                previousStatus: previousStatus,
+                resultingStatus: resultingStatus,
+                resolutionType: resolutionType,
+                remoteTransactionId: remoteTransactionId,
+                resolvingAdminUserId: resolvingAdminUserId,
+                resolvingAdminRole: resolvingAdminRole,
+                resolvedAt: resolvedAt,
+                reason: reason,
+                notes: notes,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $OfflineTransactionResolutionsTable,
+                    OfflineTransactionResolution
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $OfflineTransactionResolutionsTable,
+                    OfflineTransactionResolution
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OfflineTransactionResolutionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $OfflineTransactionResolutionsTable,
+      OfflineTransactionResolution,
+      $$OfflineTransactionResolutionsTableFilterComposer,
+      $$OfflineTransactionResolutionsTableOrderingComposer,
+      $$OfflineTransactionResolutionsTableAnnotationComposer,
+      $$OfflineTransactionResolutionsTableCreateCompanionBuilder,
+      $$OfflineTransactionResolutionsTableUpdateCompanionBuilder,
+      (
+        OfflineTransactionResolution,
+        BaseReferences<
+          _$AppDatabase,
+          $OfflineTransactionResolutionsTable,
+          OfflineTransactionResolution
+        >,
+      ),
+      OfflineTransactionResolution,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1954,4 +3084,10 @@ class $AppDatabaseManager {
       $$CachedRecordsTableTableManager(_db, _db.cachedRecords);
   $$OfflineTransactionsTableTableManager get offlineTransactions =>
       $$OfflineTransactionsTableTableManager(_db, _db.offlineTransactions);
+  $$OfflineTransactionResolutionsTableTableManager
+  get offlineTransactionResolutions =>
+      $$OfflineTransactionResolutionsTableTableManager(
+        _db,
+        _db.offlineTransactionResolutions,
+      );
 }

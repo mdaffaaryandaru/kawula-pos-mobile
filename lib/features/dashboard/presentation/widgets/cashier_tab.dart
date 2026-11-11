@@ -17,9 +17,14 @@ import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 import 'package:kawula_pos/features/shifts/presentation/widgets/shift_action_dialog.dart';
 import 'package:kawula_pos/features/transactions/data/repositories/cashier_cached_checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/data/repositories/cashier_offline_checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/data/services/cashier_offline_sync_service.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/presentation/pages/offline_transaction_queue_page.dart';
+import 'package:kawula_pos/features/transactions/presentation/pages/admin_offline_reconciliation_page.dart';
+import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
 import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
+import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
 
 class CashierTab extends StatelessWidget {
   const CashierTab({
@@ -28,6 +33,9 @@ class CashierTab extends StatelessWidget {
     required this.catalogRepository,
     required this.checkoutRepository,
     this.offlineTransactionsDao,
+    this.cashierOfflineSyncService,
+    this.cashierMasterDataCache,
+    this.storeSettingsRepository,
     this.catalogPageKey,
   });
 
@@ -35,19 +43,37 @@ class CashierTab extends StatelessWidget {
   final CatalogRepository catalogRepository;
   final CheckoutRepository checkoutRepository;
   final OfflineTransactionsDao? offlineTransactionsDao;
+  final CashierOfflineSyncService? cashierOfflineSyncService;
+  final CashierMasterDataCache? cashierMasterDataCache;
+  final StoreSettingsRepository? storeSettingsRepository;
   final GlobalKey<CatalogPageState>? catalogPageKey;
 
+  Future<int> _loadUnresolvedCount(
+    ActiveShift activeShift,
+    OfflineTransactionsDao dao,
+  ) {
+    final outletId = activeShift.outletId;
+    if (outletId == null || outletId.trim().isEmpty) {
+      throw StateError('Outlet shift tidak tersedia untuk memeriksa antrean.');
+    }
+    return dao
+        .getUnresolvedTransactions(
+          ownerUserId: admin.id,
+          outletId: outletId,
+          shiftId: activeShift.id,
+        )
+        .then((records) => records.length);
+  }
+
   Widget _buildActiveShift(BuildContext context, ActiveShift shift) {
-    final scopedCache = context.read<CashierMasterDataCache>().forRole(
+    final shiftsCubit = context.read<ShiftsCubit>();
+    final scopedCache = cashierMasterDataCache?.forRole(
       role: admin.role,
       userId: admin.id,
       outletId: shift.outletId,
     );
     final offlineTransactionsDao = this.offlineTransactionsDao;
-    if (scopedCache != null &&
-        (admin.isOfflineSession || shift.isOfflineSnapshot)) {
-      scopedCache.markOffline();
-    }
+    final cashierOfflineSyncService = this.cashierOfflineSyncService;
 
     final scopedCatalogRepository = scopedCache == null
         ? catalogRepository
@@ -71,6 +97,11 @@ class CashierTab extends StatelessWidget {
           );
 
     return MultiBlocProvider(
+      key: ValueKey<(String, String, String?)>((
+        admin.id,
+        admin.role,
+        shift.outletId,
+      )),
       providers: [
         BlocProvider(
           create: (_) => CatalogCubit(scopedCatalogRepository)..load(),
@@ -83,11 +114,78 @@ class CashierTab extends StatelessWidget {
         checkoutRepository: scopedCheckoutRepository,
         outletId: shift.outletId,
         activeShift: shift,
-        onManageShift: () => showShiftActionDialog(
-          context,
-          user: admin,
-          mode: ShiftDialogMode.closing,
-        ),
+        offlineTransactionsDao: offlineTransactionsDao,
+        cashierOfflineSyncService: cashierOfflineSyncService,
+        storeSettingsRepository: storeSettingsRepository,
+        cashierMasterDataCache: scopedCache,
+        onOpenOfflineReconciliation:
+            admin.role == 'Admin' &&
+                offlineTransactionsDao != null &&
+                shift.outletId != null &&
+                shift.outletId!.isNotEmpty
+            ? () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AdminOfflineReconciliationPage(
+                      admin: admin,
+                      outletId: shift.outletId!,
+                      dao: offlineTransactionsDao,
+                      checkoutRepository: checkoutRepository,
+                      isOutletActive: () {
+                        final currentState = shiftsCubit.state;
+                        return currentState is ShiftsActive &&
+                            currentState.shift.outletId == shift.outletId;
+                      },
+                      outletActiveStream: shiftsCubit.stream.map((state) {
+                        return state is ShiftsActive &&
+                            state.shift.outletId == shift.outletId;
+                      }),
+                      cashierMasterDataCache: scopedCache,
+                    ),
+                  ),
+                );
+              }
+            : null,
+        onManageShift: () {
+          if (scopedCache != null &&
+              scopedCache.networkStatus != CashierNetworkStatus.online) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Pengelolaan shift memerlukan koneksi internet.'),
+              ),
+            );
+            return;
+          }
+          showShiftActionDialog(
+            context,
+            user: admin,
+            mode: ShiftDialogMode.closing,
+            loadUnresolvedOfflineTransactionCount:
+                canUseOfflineSales(admin.role) && offlineTransactionsDao != null
+                ? (activeShift) =>
+                      _loadUnresolvedCount(activeShift, offlineTransactionsDao)
+                : null,
+            onOpenOfflineQueue:
+                canUseOfflineSales(admin.role) &&
+                    offlineTransactionsDao != null &&
+                    cashierOfflineSyncService != null
+                ? () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => OfflineTransactionQueuePage(
+                          user: admin,
+                          outletId: shift.outletId ?? '',
+                          shiftId: shift.id,
+                          dao: offlineTransactionsDao,
+                          syncService: cashierOfflineSyncService,
+                          cashierMasterDataCache: scopedCache,
+                        ),
+                      ),
+                    );
+                  }
+                : null,
+          );
+        },
       ),
     );
   }
@@ -100,6 +198,11 @@ class CashierTab extends StatelessWidget {
           appBar: CashierAppBar(),
           body: Center(child: CircularProgressIndicator()),
         ),
+        ShiftsNeedsOpening()
+            when cashierMasterDataCache != null &&
+                cashierMasterDataCache!.networkStatus !=
+                    CashierNetworkStatus.online =>
+          _shiftRequiresConnection(context),
         ShiftsNeedsOpening() => Scaffold(
           appBar: const CashierAppBar(),
           body: Center(
@@ -210,6 +313,32 @@ class CashierTab extends StatelessWidget {
       },
     );
   }
+
+  Widget _shiftRequiresConnection(BuildContext context) => Scaffold(
+    appBar: const CashierAppBar(),
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              'Shift aktif tidak tersedia secara lokal.',
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Buka shift harus dilakukan saat online sebelum Offline Sales.',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class CashierAppBar extends StatelessWidget implements PreferredSizeWidget {

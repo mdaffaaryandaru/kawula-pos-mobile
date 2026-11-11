@@ -4,7 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 // Project imports:
 import 'package:kawula_pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:kawula_pos/features/auth/presentation/bloc/auth_state.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 import 'package:kawula_pos/framework/core/network/auth_session_expiry_handler.dart';
+import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   AuthCubit(this._repository, {this.sessionExpiryHandler})
@@ -15,6 +17,45 @@ class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _repository;
   final AuthSessionExpiryHandler? sessionExpiryHandler;
   int _operationGeneration = 0;
+  Future<bool>? _cashierVerificationInProgress;
+
+  Future<bool> verifyCashierSession() {
+    final inProgress = _cashierVerificationInProgress;
+    if (inProgress != null) return inProgress;
+    final verification = _verifyCashierSession();
+    _cashierVerificationInProgress = verification;
+    return verification.whenComplete(() {
+      if (identical(_cashierVerificationInProgress, verification)) {
+        _cashierVerificationInProgress = null;
+      }
+    });
+  }
+
+  Future<bool> _verifyCashierSession() async {
+    final currentState = state;
+    if (currentState is! AuthAuthenticated ||
+        !canUseOfflineSales(currentState.user.role)) {
+      return false;
+    }
+
+    final generation = _operationGeneration;
+    try {
+      final user = await _repository.restoreSession();
+      if (generation != _operationGeneration || isClosed) return false;
+      if (user == null) {
+        emit(
+          const AuthUnauthenticated(
+            errorMessage: 'Sesi telah berakhir. Silakan login kembali.',
+          ),
+        );
+        return false;
+      }
+      emit(AuthAuthenticated(user));
+      return !user.isOfflineSession;
+    } on ApiException {
+      return false;
+    }
+  }
 
   Future<void> restoreSession() async {
     final generation = ++_operationGeneration;

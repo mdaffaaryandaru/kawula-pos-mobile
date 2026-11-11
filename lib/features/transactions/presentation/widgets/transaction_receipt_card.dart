@@ -60,8 +60,8 @@ class TransactionReceiptCard extends StatelessWidget {
             Text(
               receipt.isOffline
                   ? receipt.isReconciliation
-                      ? 'STATUS SERVER BELUM DIPASTIKAN'
-                      : 'BELUM TERSINKRON'
+                        ? 'STATUS SERVER BELUM DIPASTIKAN'
+                        : 'BELUM TERSINKRON'
                   : receipt.isPending
                   ? 'OPEN BILL · BELUM LUNAS'
                   : 'STRUK PEMBAYARAN',
@@ -167,6 +167,8 @@ class TransactionReceiptCard extends StatelessWidget {
               )
             else if (!showPaymentStatus && receipt.isPending)
               const _ReceiptInfoRow(label: 'Status', value: 'Belum lunas'),
+            if (!showPaymentStatus && receipt.isOffline && receipt.isPending)
+              const _ReceiptInfoRow(label: 'Pembayaran', value: 'Belum lunas'),
             if (!receipt.isPending) ...[
               _ReceiptInfoRow(
                 label: 'Dibayar',

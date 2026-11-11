@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
@@ -18,6 +17,8 @@ import 'package:kawula_pos/features/transactions/domain/repositories/checkout_re
 import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
+import 'package:kawula_pos/framework/core/network/platform_network_exception.dart';
+import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
 
 class CashierOfflineCheckoutRepository
     implements CheckoutRepository, CheckoutModeProvider {
@@ -38,8 +39,7 @@ class CashierOfflineCheckoutRepository
   final ActiveShift shift;
 
   @override
-  bool get isOffline =>
-      user.isOfflineSession || shift.isOfflineSnapshot || _cache.isOfflineKnown;
+  bool get isOffline => _cache.shouldUseOfflineData;
 
   @override
   Future<List<CheckoutPaymentMethod>> getPaymentMethods() =>
@@ -61,11 +61,10 @@ class CashierOfflineCheckoutRepository
         _cache.markOnline();
       } on http.ClientException {
         _cache.markOffline();
-      } on SocketException {
-        _cache.markOffline();
       } on TimeoutException {
         _cache.markOffline();
-      } on HandshakeException {
+      } on Exception catch (error) {
+        if (!isPlatformNetworkException(error)) rethrow;
         _cache.markOffline();
       }
     }
@@ -213,19 +212,6 @@ class CashierOfflineCheckoutRepository
         tableNumber: tableNumber,
         lastError: error.toString(),
       );
-    } on SocketException catch (error) {
-      _cache.markOffline();
-      return _saveAfterUnknownServerOutcome(
-        outletId: outletId,
-        items: items,
-        serviceCharge: serviceCharge,
-        paymentMethod: paymentMethod,
-        paidAmount: paidAmount,
-        openBill: openBill,
-        memberId: memberId,
-        tableNumber: tableNumber,
-        lastError: error.toString(),
-      );
     } on TimeoutException catch (error) {
       _cache.markOffline();
       return _saveAfterUnknownServerOutcome(
@@ -239,7 +225,8 @@ class CashierOfflineCheckoutRepository
         tableNumber: tableNumber,
         lastError: error.toString(),
       );
-    } on HandshakeException catch (error) {
+    } on Exception catch (error) {
+      if (!isPlatformNetworkException(error)) rethrow;
       _cache.markOffline();
       return _saveAfterUnknownServerOutcome(
         outletId: outletId,
@@ -290,12 +277,11 @@ class CashierOfflineCheckoutRepository
     required OfflineTransactionStatus status,
     String? lastError,
   }) async {
-    if (user.role != 'Kasir' ||
-        (!user.isOfflineSession &&
-            !shift.isOfflineSnapshot &&
-            !_cache.isOfflineKnown)) {
+    if (!canUseOfflineSales(user.role) ||
+        _cache.role != user.role ||
+        !_cache.shouldUseOfflineData) {
       throw StateError(
-        'Checkout offline hanya tersedia untuk sesi Kasir offline.',
+        'Checkout offline hanya tersedia untuk sesi Offline Sales yang sesuai.',
       );
     }
 
@@ -345,13 +331,19 @@ class CashierOfflineCheckoutRepository
         .toList(growable: false);
     if (items.isEmpty) throw StateError('Keranjang masih kosong.');
 
-    final cashIsAvailable = methods.any(
-      (method) => method.code.toUpperCase() == 'CASH',
-    );
-    if (!openBill &&
-        (paymentMethod.toUpperCase() != 'CASH' || !cashIsAvailable)) {
-      throw StateError('Checkout offline hanya mendukung pembayaran tunai.');
+    CheckoutPaymentMethodModel? selectedMethod;
+    for (final method in methods) {
+      if (method.code.toUpperCase() == paymentMethod.trim().toUpperCase()) {
+        selectedMethod = method;
+        break;
+      }
     }
+    if (!openBill && selectedMethod == null) {
+      throw StateError(
+        'Metode pembayaran tidak tersedia dalam cache checkout.',
+      );
+    }
+    final storedPaymentMethod = openBill ? 'OPEN_BILL' : selectedMethod!.code;
 
     final unresolvedSales = await _offlineTransactionsDao.getUnresolvedSales(
       ownerUserId: user.id,
@@ -430,7 +422,7 @@ class CashierOfflineCheckoutRepository
     final total = (subtotal + taxAmount + serviceCharge).round();
     if (!openBill && (paidAmount < total || paidAmount < 0)) {
       throw StateError(
-        'Uang diterima tidak boleh kurang dari total transaksi.',
+        'Nominal pembayaran tidak boleh kurang dari total transaksi.',
       );
     }
     if (openBill && paymentMethod.toUpperCase() != 'OPEN_BILL') {
@@ -470,7 +462,7 @@ class CashierOfflineCheckoutRepository
           .toList(growable: false),
       'total_amount': total,
       'service_charge': serviceCharge,
-      'payment_method': openBill ? 'OPEN_BILL' : 'CASH',
+      'payment_method': storedPaymentMethod,
       if (memberId != null && memberId.isNotEmpty) 'member_id': memberId,
       if (tableNumber != null && tableNumber.trim().isNotEmpty)
         'table_number': tableNumber.trim(),
@@ -515,7 +507,7 @@ class CashierOfflineCheckoutRepository
       'service_charge': serviceCharge,
       'discount_amount': discountAmount,
       'total_amount': total,
-      'payment_method': openBill ? 'OPEN_BILL' : 'CASH',
+      'payment_method': storedPaymentMethod,
       'paid_amount': openBill ? 0 : paidAmount,
       'change_amount': changeAmount,
       'member_id': memberId,
@@ -543,7 +535,7 @@ class CashierOfflineCheckoutRepository
       id: localId,
       status: status.databaseValue,
       totalAmount: total,
-      paymentMethod: openBill ? 'OPEN_BILL' : 'CASH',
+      paymentMethod: storedPaymentMethod,
       paidAmount: openBill ? 0 : paidAmount,
       changeAmount: changeAmount,
       createdAt: createdAt,

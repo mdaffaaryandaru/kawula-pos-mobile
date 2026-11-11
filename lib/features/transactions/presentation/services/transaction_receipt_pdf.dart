@@ -31,13 +31,25 @@ Future<Uint8List?> loadTransactionReceiptLogo(
   TransactionReceiptData receipt,
 ) async {
   if (receipt.logoUrl.isEmpty) return null;
-  final response = await http.get(
-    Uri.parse(resolveTransactionReceiptLogoUrl(receipt.logoUrl)),
-  );
-  if (response.statusCode < 200 || response.statusCode >= 300) {
-    throw Exception('Logo toko gagal dimuat (HTTP ${response.statusCode}).');
+
+  try {
+    final response = await http
+        .get(Uri.parse(resolveTransactionReceiptLogoUrl(receipt.logoUrl)))
+        .timeout(const Duration(seconds: 4));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      return null;
+    }
+
+    if (response.bodyBytes.isEmpty) return null;
+
+    return response.bodyBytes;
+  } catch (_) {
+    // Logo bersifat opsional.
+    // Kegagalan mengambil logo tidak boleh
+    // menggagalkan pembuatan PDF struk.
+    return null;
   }
-  return response.bodyBytes;
 }
 
 pw.Document buildTransactionReceiptPdf(
@@ -71,12 +83,12 @@ pw.Document buildTransactionReceiptPdf(
         pw.SizedBox(height: 8),
         pw.Center(
           child: pw.Text(
-            receipt.isOffline
+            receipt.isPending
+                ? 'OPEN BILL - BELUM LUNAS'
+                : receipt.isOffline
                 ? receipt.isReconciliation
                       ? 'STATUS SERVER BELUM DIPASTIKAN'
                       : 'BELUM TERSINKRON'
-                : receipt.isPending
-                ? 'OPEN BILL - BELUM LUNAS'
                 : 'STRUK PEMBAYARAN',
             style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
           ),
@@ -145,6 +157,8 @@ pw.Document buildTransactionReceiptPdf(
           _receiptPdfRow('Dibayar', formatRupiah(receipt.paidAmount)),
           _receiptPdfRow('Kembalian', formatRupiah(receipt.changeAmount)),
         ],
+        if (receipt.isOffline && receipt.isPending)
+          _receiptPdfRow('Pembayaran', 'Belum lunas'),
         if (receipt.notes.isNotEmpty) ...[
           pw.SizedBox(height: 6),
           pw.Text('Catatan transaksi: ${receipt.notes}'),

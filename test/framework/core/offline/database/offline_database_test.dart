@@ -25,13 +25,17 @@ void main() {
 
   Future<OfflineTransaction> saveTransaction({
     String ownerUserId = 'cashier-a',
+    String outletId = 'outlet-1',
+    String shiftId = 'shift-1',
     DateTime? createdAtLocal,
     Object? receiptSnapshot = const {'total': 12000},
+    OfflineTransactionStatus status = OfflineTransactionStatus.pendingSync,
+    String? lastError,
   }) {
     return offlineTransactionsDao.saveOfflineTransaction(
       ownerUserId: ownerUserId,
-      outletId: 'outlet-1',
-      shiftId: 'shift-1',
+      outletId: outletId,
+      shiftId: shiftId,
       transactionType: 'sale',
       payload: const {
         'items': [
@@ -41,6 +45,8 @@ void main() {
       },
       receiptSnapshot: receiptSnapshot,
       createdAtLocal: createdAtLocal,
+      status: status,
+      lastError: lastError,
     );
   }
 
@@ -50,7 +56,7 @@ void main() {
           .customSelect('PRAGMA user_version')
           .getSingle();
 
-      expect(version.data['user_version'], 1);
+      expect(version.data['user_version'], 2);
       expect(await cachedRecordsDao.getCachesByType('products'), isEmpty);
     });
 
@@ -90,7 +96,7 @@ void main() {
               .customSelect('SELECT value FROM legacy_marker')
               .getSingle();
 
-          expect(version.data['user_version'], 1);
+          expect(version.data['user_version'], 2);
           expect(marker.data['value'], 'preserved');
           expect(
             await migrationDatabase.cachedRecordsDao.getCachesByType(
@@ -288,6 +294,54 @@ void main() {
       expect(transactions.map((item) => item.localId), [failed.localId]);
     });
 
+    test('unresolved shift queue includes all blocking statuses and isolates user, outlet, and shift', () async {
+      for (final status in [
+        OfflineTransactionStatus.pendingSync,
+        OfflineTransactionStatus.syncing,
+        OfflineTransactionStatus.failed,
+        OfflineTransactionStatus.needsReconciliation,
+      ]) {
+        await saveTransaction(
+          ownerUserId: 'cashier-a',
+          outletId: 'outlet-1',
+          shiftId: 'shift-1',
+          status: status,
+          lastError: status == OfflineTransactionStatus.failed
+              ? 'Business rejection'
+              : null,
+        );
+      }
+      await saveTransaction(
+        ownerUserId: 'cashier-a',
+        outletId: 'outlet-1',
+        shiftId: 'shift-1',
+        status: OfflineTransactionStatus.synced,
+      );
+      await saveTransaction(
+        ownerUserId: 'cashier-a',
+        outletId: 'outlet-1',
+        shiftId: 'shift-1',
+        status: OfflineTransactionStatus.resolvedManually,
+      );
+      await saveTransaction(ownerUserId: 'cashier-b');
+      await saveTransaction(ownerUserId: 'cashier-a', outletId: 'outlet-2');
+      await saveTransaction(ownerUserId: 'cashier-a', shiftId: 'shift-2');
+
+      final unresolved = await offlineTransactionsDao.getUnresolvedTransactions(
+        ownerUserId: 'cashier-a',
+        outletId: 'outlet-1',
+        shiftId: 'shift-1',
+      );
+
+      expect(unresolved, hasLength(4));
+      expect(unresolved.map((record) => record.status).toSet(), {
+        'pending_sync',
+        'syncing',
+        'failed',
+        'needs_reconciliation',
+      });
+    });
+
     test('updates sync status, server ID, and attempt count', () async {
       final saved = await saveTransaction();
       await offlineTransactionsDao.updateSyncStatus(
@@ -331,6 +385,116 @@ void main() {
       expect(failed.lastError, 'Server rejected the transaction');
       expect(failed.attemptCount, 1);
     });
+
+    test(
+      'manual resolution is audited and does not erase transaction evidence',
+      () async {
+        final saved = await saveTransaction(
+          status: OfflineTransactionStatus.needsReconciliation,
+          lastError: 'Server response was lost',
+        );
+        final resolvedAt = DateTime.utc(2026, 11, 10, 12);
+
+        final resolved = await offlineTransactionsDao.resolveManually(
+          localId: saved.localId,
+          outletId: 'outlet-1',
+          adminUserId: 'admin-1',
+          adminRole: 'Admin',
+          resolutionType: 'matched_existing_remote',
+          remoteTransactionId: 'server-transaction-1',
+          resolvedAt: resolvedAt,
+          reason: 'Confirmed against server history.',
+          notes: 'Two products and local receipt reviewed.',
+        );
+        final transaction = await offlineTransactionsDao
+            .getTransactionByLocalId(saved.localId);
+        final audit = await offlineTransactionsDao.getResolutionAudit(
+          saved.localId,
+        );
+        final unresolved = await offlineTransactionsDao
+            .getUnresolvedTransactions(
+              ownerUserId: 'cashier-a',
+              outletId: 'outlet-1',
+              shiftId: 'shift-1',
+            );
+
+        expect(resolved, isTrue);
+        expect(transaction!.status, 'resolved_manually');
+        expect(transaction.remoteTransactionId, 'server-transaction-1');
+        expect(transaction.lastError, 'Server response was lost');
+        expect(transaction.payloadJson, saved.payloadJson);
+        expect(transaction.receiptSnapshotJson, saved.receiptSnapshotJson);
+        expect(transaction.syncedAt, isNull);
+        expect(audit, hasLength(1));
+        expect(audit.single.previousStatus, 'needs_reconciliation');
+        expect(audit.single.resultingStatus, 'resolved_manually');
+        expect(audit.single.resolvingAdminUserId, 'admin-1');
+        expect(audit.single.resolutionType, 'matched_existing_remote');
+        expect(audit.single.reason, 'Confirmed against server history.');
+        expect(audit.single.notes, 'Two products and local receipt reviewed.');
+        expect(
+          audit.single.resolvedAt.millisecondsSinceEpoch,
+          resolvedAt.millisecondsSinceEpoch,
+        );
+        expect(unresolved, isEmpty);
+      },
+    );
+
+    test(
+      'manual handling outside server cannot resolve unknown outcomes',
+      () async {
+        final saved = await saveTransaction(
+          status: OfflineTransactionStatus.needsReconciliation,
+        );
+
+        await expectLater(
+          offlineTransactionsDao.resolveManually(
+            localId: saved.localId,
+            outletId: 'outlet-1',
+            adminUserId: 'admin-1',
+            adminRole: 'Admin',
+            resolutionType: 'handled_outside_server',
+            resolvedAt: DateTime.utc(2026, 11, 10),
+            reason: 'Cannot verify server state.',
+          ),
+          throwsStateError,
+        );
+
+        expect(
+          (await offlineTransactionsDao.getTransactionByLocalId(saved.localId))!
+              .status,
+          'needs_reconciliation',
+        );
+        expect(
+          await offlineTransactionsDao.getResolutionAudit(saved.localId),
+          isEmpty,
+        );
+      },
+    );
+
+    test(
+      'outlet queue query includes all owners and excludes other outlets',
+      () async {
+        final local = await saveTransaction(
+          ownerUserId: 'cashier-a',
+          outletId: 'outlet-1',
+        );
+        final sameOutlet = await saveTransaction(
+          ownerUserId: 'cashier-b',
+          outletId: 'outlet-1',
+        );
+        await saveTransaction(ownerUserId: 'cashier-c', outletId: 'outlet-2');
+
+        final records = await offlineTransactionsDao.getTransactionsByOutlet(
+          outletId: 'outlet-1',
+        );
+
+        expect(records.map((record) => record.localId).toSet(), {
+          local.localId,
+          sameOutlet.localId,
+        });
+      },
+    );
   });
 
   test(
@@ -376,4 +540,124 @@ void main() {
       }
     },
   );
+
+  test(
+    'resolution audit remains after closing and reopening the database',
+    () async {
+      final previousWarningSetting =
+          driftRuntimeOptions.dontWarnAboutMultipleDatabases;
+      driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+      final directory = await Directory.systemTemp.createTemp(
+        'kawula-resolution-audit-',
+      );
+      final databaseFile = File(
+        '${directory.path}${Platform.pathSeparator}audit.sqlite',
+      );
+      final persistentDatabase = AppDatabase(
+        executor: NativeDatabase(databaseFile),
+      );
+      var databaseClosed = false;
+      try {
+        final saved = await persistentDatabase.offlineTransactionsDao
+            .saveOfflineTransaction(
+              ownerUserId: 'cashier-persist',
+              outletId: 'outlet-1',
+              shiftId: 'shift-1',
+              transactionType: 'sale',
+              payload: {'total_amount': 5000},
+              receiptSnapshot: {'total_amount': 5000},
+              status: OfflineTransactionStatus.failed,
+              lastError: 'Server rejected transaction',
+            );
+        await persistentDatabase.offlineTransactionsDao.resolveManually(
+          localId: saved.localId,
+          outletId: 'outlet-1',
+          adminUserId: 'admin-1',
+          adminRole: 'Admin',
+          resolutionType: 'handled_outside_server',
+          resolvedAt: DateTime.utc(2026, 11, 10),
+          reason: 'Handled by the store manager.',
+        );
+        await persistentDatabase.close();
+        databaseClosed = true;
+
+        final reopenedDatabase = AppDatabase(
+          executor: NativeDatabase(databaseFile),
+        );
+        try {
+          final transaction = await reopenedDatabase.offlineTransactionsDao
+              .getTransactionByLocalId(saved.localId);
+          final audit = await reopenedDatabase.offlineTransactionsDao
+              .getResolutionAudit(saved.localId);
+
+          expect(transaction!.status, 'resolved_manually');
+          expect(transaction.remoteTransactionId, isNull);
+          expect(audit, hasLength(1));
+          expect(audit.single.resolutionType, 'handled_outside_server');
+        } finally {
+          await reopenedDatabase.close();
+        }
+      } finally {
+        if (!databaseClosed) await persistentDatabase.close();
+        await directory.delete(recursive: true);
+        driftRuntimeOptions.dontWarnAboutMultipleDatabases =
+            previousWarningSetting;
+      }
+    },
+  );
+
+  test('schema version one migrates to the audit table without losing transactions', () async {
+    final previousWarningSetting =
+        driftRuntimeOptions.dontWarnAboutMultipleDatabases;
+    driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+    final directory = await Directory.systemTemp.createTemp(
+      'kawula-schema-v1-migration-',
+    );
+    final databaseFile = File(
+      '${directory.path}${Platform.pathSeparator}version-one.sqlite',
+    );
+    final versionOne = AppDatabase(executor: NativeDatabase(databaseFile));
+    var versionOneClosed = false;
+    try {
+      final saved = await versionOne.offlineTransactionsDao
+          .saveOfflineTransaction(
+            ownerUserId: 'cashier-v1',
+            outletId: 'outlet-1',
+            shiftId: 'shift-1',
+            transactionType: 'sale',
+            payload: {'amount': 7000},
+            receiptSnapshot: {'total': 7000},
+          );
+      await versionOne.customStatement(
+        'DROP TABLE offline_transaction_resolutions',
+      );
+      await versionOne.customStatement('PRAGMA user_version = 1');
+      await versionOne.close();
+      versionOneClosed = true;
+
+      final migrated = AppDatabase(executor: NativeDatabase(databaseFile));
+      try {
+        final transaction = await migrated.offlineTransactionsDao
+            .getTransactionByLocalId(saved.localId);
+        final audit = await migrated.offlineTransactionsDao.getResolutionAudit(
+          saved.localId,
+        );
+        final version = await migrated
+            .customSelect('PRAGMA user_version')
+            .getSingle();
+
+        expect(transaction, isNotNull);
+        expect(transaction!.payloadJson, saved.payloadJson);
+        expect(audit, isEmpty);
+        expect(version.data['user_version'], 2);
+      } finally {
+        await migrated.close();
+      }
+    } finally {
+      if (!versionOneClosed) await versionOne.close();
+      await directory.delete(recursive: true);
+      driftRuntimeOptions.dontWarnAboutMultipleDatabases =
+          previousWarningSetting;
+    }
+  });
 }

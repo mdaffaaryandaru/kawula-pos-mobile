@@ -206,7 +206,9 @@ class TransactionRecordModel extends TransactionRecord {
     super.cogs,
     super.refundAmount,
     super.outletName,
+    super.outletId,
     super.cashierName,
+    super.cashierId,
     super.memberName,
     super.tableNumber,
     super.refundReason,
@@ -256,7 +258,9 @@ class TransactionRecordModel extends TransactionRecord {
           ? json['refund_amount'] as num
           : 0,
       outletName: _referenceField(json['outlet_id'], 'name'),
+      outletId: _referenceId(json['outlet_id']),
       cashierName: _referenceField(json['created_by'], 'name'),
+      cashierId: _referenceId(json['created_by']),
       memberName: _referenceField(json['member_id'], 'name'),
       tableNumber: json['table_number'] is String
           ? json['table_number'] as String
@@ -291,11 +295,21 @@ String _referenceField(Object? value, String field) {
   return '';
 }
 
+String _referenceId(Object? value) {
+  if (value is String) return value;
+  if (value is Map<String, dynamic>) {
+    final id = value['_id'] ?? value['id'];
+    return id is String ? id : '';
+  }
+  return '';
+}
+
 class TransactionRecordItemModel extends TransactionRecordItem {
   const TransactionRecordItemModel({
     required super.productName,
     required super.quantity,
     required super.price,
+    super.productId,
     super.notes,
     super.selectedVariants,
   });
@@ -318,6 +332,7 @@ class TransactionRecordItemModel extends TransactionRecordItem {
     }
     return TransactionRecordItemModel(
       productName: name,
+      productId: _referenceId(product),
       quantity: quantity.toInt(),
       price: price,
       notes: json['notes'] is String ? json['notes'] as String : '',

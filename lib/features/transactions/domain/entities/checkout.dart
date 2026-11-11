@@ -112,7 +112,9 @@ class TransactionRecord {
     this.cogs = 0,
     this.refundAmount = 0,
     this.outletName = '',
+    this.outletId = '',
     this.cashierName = '',
+    this.cashierId = '',
     this.memberName = '',
     this.tableNumber = '',
     this.refundReason = '',
@@ -136,7 +138,9 @@ class TransactionRecord {
   final num cogs;
   final num refundAmount;
   final String outletName;
+  final String outletId;
   final String cashierName;
+  final String cashierId;
   final String memberName;
   final String tableNumber;
   final String refundReason;
@@ -165,7 +169,9 @@ class TransactionRecord {
         cogs: cogs,
         refundAmount: refundAmount,
         outletName: outletName.isEmpty ? fallback.outletName : outletName,
+        outletId: outletId.isEmpty ? fallback.outletId : outletId,
         cashierName: cashierName.isEmpty ? fallback.cashierName : cashierName,
+        cashierId: cashierId.isEmpty ? fallback.cashierId : cashierId,
         memberName: memberName.isEmpty ? fallback.memberName : memberName,
         tableNumber: tableNumber.isEmpty ? fallback.tableNumber : tableNumber,
         refundReason: refundReason.isEmpty
@@ -181,6 +187,7 @@ class TransactionRecordItem {
     required this.productName,
     required this.quantity,
     required this.price,
+    this.productId = '',
     this.notes = '',
     this.selectedVariants = const [],
   });
@@ -188,6 +195,7 @@ class TransactionRecordItem {
   final String productName;
   final int quantity;
   final num price;
+  final String productId;
   final String notes;
   final List<CheckoutResultVariant> selectedVariants;
 }

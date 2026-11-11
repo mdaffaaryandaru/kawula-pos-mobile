@@ -5,7 +5,9 @@ class AuthLocalDataSource {
   AuthLocalDataSource(this._storage);
 
   static const _tokenKey = 'access_token';
-  static const _verifiedCashierUserIdKey = 'verified_cashier_user_id';
+  static const _verifiedOfflineSalesUserIdKey =
+      'verified_offline_sales_user_id';
+  static const _legacyVerifiedCashierUserIdKey = 'verified_cashier_user_id';
 
   final FlutterSecureStorage _storage;
 
@@ -16,12 +18,19 @@ class AuthLocalDataSource {
 
   Future<void> deleteToken() => _storage.delete(key: _tokenKey);
 
-  Future<String?> readVerifiedCashierUserId() =>
-      _storage.read(key: _verifiedCashierUserIdKey);
+  Future<String?> readVerifiedCashierUserId() async {
+    final verifiedUserId = await _storage.read(
+      key: _verifiedOfflineSalesUserIdKey,
+    );
+    return verifiedUserId ??
+        await _storage.read(key: _legacyVerifiedCashierUserIdKey);
+  }
 
   Future<void> saveVerifiedCashierUserId(String userId) =>
-      _storage.write(key: _verifiedCashierUserIdKey, value: userId);
+      _storage.write(key: _verifiedOfflineSalesUserIdKey, value: userId);
 
-  Future<void> clearVerifiedCashierUserId() =>
-      _storage.delete(key: _verifiedCashierUserIdKey);
+  Future<void> clearVerifiedCashierUserId() async {
+    await _storage.delete(key: _verifiedOfflineSalesUserIdKey);
+    await _storage.delete(key: _legacyVerifiedCashierUserIdKey);
+  }
 }

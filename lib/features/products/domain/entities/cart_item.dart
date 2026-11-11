@@ -24,8 +24,11 @@ class CartItem {
     final variants = [...selectedVariants]
       ..sort((a, b) {
         final group = a.groupName.compareTo(b.groupName);
-        return group != 0 ? group : a.optionName.compareTo(b.optionName);
+        if (group != 0) return group;
+        final aOption = a.optionId ?? a.optionName;
+        final bOption = b.optionId ?? b.optionName;
+        return aOption.compareTo(bOption);
       });
-    return '${product.id}|${variants.map((variant) => '$variant.groupName:${variant.optionId ?? variant.optionName}').join('|')}';
+    return '${product.id}|${variants.map((variant) => '${variant.groupName}:${variant.optionId ?? variant.optionName}').join('|')}';
   }
 }

@@ -1,6 +1,5 @@
 // Package imports:
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
 
 // Project imports:
 import 'package:kawula_pos/config/api_config.dart';
@@ -55,6 +54,7 @@ import 'package:kawula_pos/features/tables/data/repositories/tables_repository_i
 import 'package:kawula_pos/features/tables/domain/repositories/tables_repository.dart';
 import 'package:kawula_pos/features/transactions/data/datasources/checkout_remote_data_source.dart';
 import 'package:kawula_pos/features/transactions/data/repositories/checkout_repository_impl.dart';
+import 'package:kawula_pos/features/transactions/data/services/cashier_offline_sync_service.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/users/data/datasources/users_remote_data_source.dart';
 import 'package:kawula_pos/features/users/data/repositories/user_management_repository_impl.dart';
@@ -64,6 +64,8 @@ import 'package:kawula_pos/features/variant_groups/data/repositories/variant_gro
 import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
 import 'package:kawula_pos/framework/core/network/auth_session_expiry_handler.dart';
 import 'package:kawula_pos/framework/core/network/session_aware_http_client.dart';
+import 'package:kawula_pos/framework/core/network/http_client_factory.dart';
+import 'package:kawula_pos/framework/core/network/timeout_http_client.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
 
@@ -77,6 +79,7 @@ class AppDependencies {
     required this.shiftsRepository,
     required this.catalogRepository,
     required this.checkoutRepository,
+    this.cashierOfflineSyncService,
     required this.balancesRepository,
     required this.storeSettingsRepository,
     required this.userManagementRepository,
@@ -96,7 +99,10 @@ class AppDependencies {
 
   factory AppDependencies.create() {
     final sessionExpiryHandler = AuthSessionExpiryHandler();
-    final client = SessionAwareHttpClient(http.Client(), sessionExpiryHandler);
+    final client = SessionAwareHttpClient(
+      TimeoutHttpClient(createPlatformHttpClient()),
+      sessionExpiryHandler,
+    );
     final apiBaseUrl = ApiConfig.baseUrl;
     final database = AppDatabase();
     final masterDataCache = CashierMasterDataCache(database.cachedRecordsDao);
@@ -134,6 +140,11 @@ class AppDependencies {
         localDataSource.readToken,
         membersRemoteDataSource: membersRemoteDataSource,
       ),
+    );
+    final cashierOfflineSyncService = CashierOfflineSyncService(
+      checkoutRepository,
+      database.offlineTransactionsDao,
+      activeShiftsRepository: shiftsRepository,
     );
     final balancesRepository = BalancesRepositoryImpl(
       BalancesRemoteDataSource(client, apiBaseUrl, localDataSource.readToken),
@@ -210,6 +221,7 @@ class AppDependencies {
       shiftsRepository: shiftsRepository,
       catalogRepository: catalogRepository,
       checkoutRepository: checkoutRepository,
+      cashierOfflineSyncService: cashierOfflineSyncService,
       balancesRepository: balancesRepository,
       storeSettingsRepository: storeSettingsRepository,
       userManagementRepository: userManagementRepository,
@@ -236,6 +248,7 @@ class AppDependencies {
   final ShiftsRepository shiftsRepository;
   final CatalogRepository catalogRepository;
   final CheckoutRepository checkoutRepository;
+  final CashierOfflineSyncService? cashierOfflineSyncService;
   final BalancesRepository balancesRepository;
   final StoreSettingsRepository storeSettingsRepository;
   final UserManagementRepository userManagementRepository;
