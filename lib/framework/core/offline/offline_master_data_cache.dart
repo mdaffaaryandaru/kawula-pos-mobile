@@ -6,13 +6,13 @@ import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/cached_records_dao.dart';
 import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
 
-enum CashierNetworkStatus { online, offline, checking }
+enum OfflineNetworkStatus { online, offline, checking }
 
-class CashierMasterDataCache {
-  CashierMasterDataCache(this._dao, [this._userId, this._outletId, this._role])
-    : _connectivityState = _CashierCacheConnectivityState();
+class OfflineMasterDataCache {
+  OfflineMasterDataCache(this._dao, [this._userId, this._outletId, this._role])
+    : _connectivityState = _OfflineCacheConnectivityState();
 
-  const CashierMasterDataCache.disabled()
+  const OfflineMasterDataCache.disabled()
     : _dao = null,
       _userId = null,
       _outletId = null,
@@ -23,34 +23,34 @@ class CashierMasterDataCache {
   final String? _userId;
   final String? _outletId;
   final String? _role;
-  final _CashierCacheConnectivityState? _connectivityState;
+  final _OfflineCacheConnectivityState? _connectivityState;
 
   String? get userId => _userId;
   String? get outletId => _outletId;
   String? get role => _role;
-  ValueListenable<CashierNetworkStatus>? get networkStatusListenable =>
+  ValueListenable<OfflineNetworkStatus>? get networkStatusListenable =>
       _connectivityState?.status;
-  CashierNetworkStatus get networkStatus =>
-      _connectivityState?.status.value ?? CashierNetworkStatus.online;
-  bool get isOfflineKnown => networkStatus == CashierNetworkStatus.offline;
-  bool get shouldUseOfflineData => networkStatus != CashierNetworkStatus.online;
+  OfflineNetworkStatus get networkStatus =>
+      _connectivityState?.status.value ?? OfflineNetworkStatus.online;
+  bool get isOfflineKnown => networkStatus == OfflineNetworkStatus.offline;
+  bool get shouldUseOfflineData => networkStatus != OfflineNetworkStatus.online;
 
   void markOffline() {
     final state = _connectivityState;
-    state?.status.value = CashierNetworkStatus.offline;
+    state?.status.value = OfflineNetworkStatus.offline;
   }
 
   void markChecking() {
     final state = _connectivityState;
-    state?.status.value = CashierNetworkStatus.checking;
+    state?.status.value = OfflineNetworkStatus.checking;
   }
 
   void markOnline() {
     final state = _connectivityState;
-    state?.status.value = CashierNetworkStatus.online;
+    state?.status.value = OfflineNetworkStatus.online;
   }
 
-  CashierMasterDataCache? forRole({
+  OfflineMasterDataCache? forRole({
     required String role,
     required String userId,
     required String? outletId,
@@ -63,7 +63,7 @@ class CashierMasterDataCache {
         outletId.trim().isEmpty) {
       return null;
     }
-    final scopedCache = CashierMasterDataCache._(
+    final scopedCache = OfflineMasterDataCache._(
       dao,
       userId,
       outletId,
@@ -75,7 +75,7 @@ class CashierMasterDataCache {
 
   bool get isScoped => _userId != null && _outletId != null && _role != null;
 
-  Future<void> saveCashierProfile({
+  Future<void> saveOfflineSalesProfile({
     required String userId,
     required String role,
     required Object? payload,
@@ -103,7 +103,7 @@ class CashierMasterDataCache {
     );
   }
 
-  Future<Object?> readCashierProfile(String userId, {String? role}) async {
+  Future<Object?> readOfflineSalesProfile(String userId, {String? role}) async {
     if (userId.trim().isEmpty) return null;
     final cacheRole = role ?? _role;
     if (cacheRole != null && !canUseOfflineSales(cacheRole)) return null;
@@ -124,6 +124,7 @@ class CashierMasterDataCache {
     final legacyRecord =
         record ??
         (cacheRole == null || cacheRole == 'Kasir'
+            // TODO: Keep this legacy cache key until the minimum supported app version is known.
             ? await dao.getCache('cashier_session_profile', userId)
             : null);
     if (legacyRecord == null) return null;
@@ -138,7 +139,7 @@ class CashierMasterDataCache {
     return payload;
   }
 
-  Future<void> saveCashierShiftSnapshot({
+  Future<void> saveOfflineSalesShiftSnapshot({
     required String userId,
     required String outletId,
     required String status,
@@ -170,7 +171,7 @@ class CashierMasterDataCache {
     );
   }
 
-  Future<Map<String, dynamic>?> readCashierShiftSnapshot(
+  Future<Map<String, dynamic>?> readOfflineSalesShiftSnapshot(
     String userId, {
     String? role,
   }) async {
@@ -212,7 +213,10 @@ class CashierMasterDataCache {
     return payload;
   }
 
-  Future<void> deleteCashierShiftSnapshot(String userId, {String? role}) async {
+  Future<void> deleteOfflineSalesShiftSnapshot(
+    String userId, {
+    String? role,
+  }) async {
     if (userId.trim().isEmpty) return;
     final dao = _requireDao();
     final cacheRole = role ?? _role;
@@ -296,7 +300,7 @@ class CashierMasterDataCache {
     return record;
   }
 
-  CashierMasterDataCache._(
+  OfflineMasterDataCache._(
     this._dao,
     this._userId,
     this._outletId,
@@ -313,8 +317,8 @@ class CashierMasterDataCache {
   }
 }
 
-class _CashierCacheConnectivityState {
-  final ValueNotifier<CashierNetworkStatus> status = ValueNotifier(
-    CashierNetworkStatus.online,
+class _OfflineCacheConnectivityState {
+  final ValueNotifier<OfflineNetworkStatus> status = ValueNotifier(
+    OfflineNetworkStatus.online,
   );
 }

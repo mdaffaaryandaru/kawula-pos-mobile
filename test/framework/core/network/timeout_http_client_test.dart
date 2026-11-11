@@ -215,4 +215,22 @@ void main() {
       expect(cacheRead, isFalse);
     }
   });
+
+  test(
+    'unknown write outcomes are never replaced with cached success',
+    () async {
+      var cacheRead = false;
+      await expectLater(
+        runWithNetworkCache<String>(
+          request: () async => throw RequestOutcomeUnknownException(uri),
+          readCache: () async {
+            cacheRead = true;
+            return 'cached';
+          },
+        ),
+        throwsA(isA<RequestOutcomeUnknownException>()),
+      );
+      expect(cacheRead, isFalse);
+    },
+  );
 }

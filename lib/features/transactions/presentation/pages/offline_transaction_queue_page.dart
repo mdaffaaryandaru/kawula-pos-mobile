@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
 import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
-import 'package:kawula_pos/features/transactions/data/services/cashier_offline_sync_service.dart';
+import 'package:kawula_pos/features/transactions/data/services/offline_transaction_sync_service.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
 
 class OfflineTransactionQueuePage extends StatefulWidget {
@@ -19,15 +19,15 @@ class OfflineTransactionQueuePage extends StatefulWidget {
     required this.shiftId,
     required this.dao,
     required this.syncService,
-    this.cashierMasterDataCache,
+    this.offlineMasterDataCache,
   });
 
   final AuthUser user;
   final String outletId;
   final String shiftId;
   final OfflineTransactionsDao dao;
-  final CashierOfflineSyncService syncService;
-  final CashierMasterDataCache? cashierMasterDataCache;
+  final OfflineTransactionSyncService syncService;
+  final OfflineMasterDataCache? offlineMasterDataCache;
 
   @override
   State<OfflineTransactionQueuePage> createState() =>
@@ -38,20 +38,20 @@ class _OfflineTransactionQueuePageState
     extends State<OfflineTransactionQueuePage> {
   bool _isSyncFlowActive = false;
   String _selectedStatus = 'all';
-  ValueListenable<CashierNetworkStatus>? _networkStatusListenable;
+  ValueListenable<OfflineNetworkStatus>? _networkStatusListenable;
 
   @override
   void initState() {
     super.initState();
-    _listenToNetworkStatus(widget.cashierMasterDataCache);
+    _listenToNetworkStatus(widget.offlineMasterDataCache);
   }
 
   @override
   void didUpdateWidget(OfflineTransactionQueuePage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.cashierMasterDataCache != widget.cashierMasterDataCache) {
+    if (oldWidget.offlineMasterDataCache != widget.offlineMasterDataCache) {
       _networkStatusListenable?.removeListener(_onNetworkStatusChanged);
-      _listenToNetworkStatus(widget.cashierMasterDataCache);
+      _listenToNetworkStatus(widget.offlineMasterDataCache);
     }
   }
 
@@ -61,7 +61,7 @@ class _OfflineTransactionQueuePageState
     super.dispose();
   }
 
-  void _listenToNetworkStatus(CashierMasterDataCache? cache) {
+  void _listenToNetworkStatus(OfflineMasterDataCache? cache) {
     _networkStatusListenable = cache?.networkStatusListenable;
     _networkStatusListenable?.addListener(_onNetworkStatusChanged);
   }
@@ -70,8 +70,8 @@ class _OfflineTransactionQueuePageState
     if (mounted) setState(() {});
   }
 
-  CashierNetworkStatus get _networkStatus =>
-      _networkStatusListenable?.value ?? CashierNetworkStatus.offline;
+  OfflineNetworkStatus get _networkStatus =>
+      _networkStatusListenable?.value ?? OfflineNetworkStatus.offline;
 
   String _statusLabel(String status) {
     return switch (status) {
@@ -133,7 +133,7 @@ class _OfflineTransactionQueuePageState
       );
       if (!mounted || pin == null || pin.isEmpty) return;
 
-      final summary = await widget.syncService.syncForCashier(
+      final summary = await widget.syncService.syncOfflineTransactions(
         ownerUserId: widget.user.id,
         outletId: widget.outletId,
         role: widget.user.role,
@@ -227,7 +227,7 @@ class _OfflineTransactionQueuePageState
         ),
       );
     }
-    final canSyncOnline = _networkStatus == CashierNetworkStatus.online;
+    final canSyncOnline = _networkStatus == OfflineNetworkStatus.online;
     return StreamBuilder<List<OfflineTransaction>>(
       stream: widget.dao.watchTransactionsByOwnerLatest(widget.user.id),
       builder: (context, snapshot) {

@@ -9,7 +9,7 @@ import 'package:kawula_pos/features/products/domain/entities/cart_item.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/admin_shift_detail.dart';
 import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
-import 'package:kawula_pos/features/transactions/data/services/cashier_offline_sync_service.dart';
+import 'package:kawula_pos/features/transactions/data/services/offline_transaction_sync_service.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
@@ -20,7 +20,7 @@ void main() {
   late AppDatabase database;
   late _FakeCheckoutRepository delegate;
   late _FakeShiftsRepository shiftsRepository;
-  late CashierOfflineSyncService service;
+  late OfflineTransactionSyncService service;
 
   Future<void> insertTransaction({
     required String localId,
@@ -55,7 +55,7 @@ void main() {
     delegate = _FakeCheckoutRepository();
     shiftsRepository = _FakeShiftsRepository()
       ..activeShift = _activeShift(outletId: 'outlet-1');
-    service = CashierOfflineSyncService(
+    service = OfflineTransactionSyncService(
       delegate,
       database.offlineTransactionsDao,
       activeShiftsRepository: shiftsRepository,
@@ -118,7 +118,7 @@ void main() {
         receiptSnapshot: {'store_name': 'Kawula'},
       );
 
-      final summary = await service.syncForCashier(
+      final summary = await service.syncOfflineTransactions(
         ownerUserId: 'cashier-1',
         outletId: 'outlet-1',
         role: 'Kasir',
@@ -170,7 +170,7 @@ void main() {
       payload: const {},
     );
 
-    final summary = await service.syncForCashier(
+    final summary = await service.syncOfflineTransactions(
       ownerUserId: 'admin-1',
       outletId: 'outlet-1',
       role: 'Admin',
@@ -212,7 +212,7 @@ void main() {
       );
       shiftsRepository.activeShift = null;
 
-      final summary = await service.syncForCashier(
+      final summary = await service.syncOfflineTransactions(
         ownerUserId: 'cashier-1',
         outletId: 'outlet-1',
         role: 'Kasir',
@@ -254,7 +254,7 @@ void main() {
       );
       shiftsRepository.activeShift = _activeShift(outletId: 'outlet-2');
 
-      final summary = await service.syncForCashier(
+      final summary = await service.syncOfflineTransactions(
         ownerUserId: 'cashier-1',
         outletId: 'outlet-1',
         role: 'Kasir',
@@ -303,7 +303,7 @@ void main() {
       payload: payload,
     );
 
-    final summary = await service.syncForCashier(
+    final summary = await service.syncOfflineTransactions(
       ownerUserId: 'cashier-1',
       outletId: 'outlet-1',
       role: 'Kasir',
@@ -339,7 +339,7 @@ void main() {
         status: OfflineTransactionStatus.needsReconciliation,
       );
 
-      final summary = await service.syncForCashier(
+      final summary = await service.syncOfflineTransactions(
         ownerUserId: 'cashier-1',
         outletId: 'outlet-1',
         role: 'Kasir',
@@ -382,14 +382,14 @@ void main() {
       delegate.createGate = Completer<void>();
       delegate.createStarted = Completer<void>();
 
-      final firstSync = service.syncForCashier(
+      final firstSync = service.syncOfflineTransactions(
         ownerUserId: 'cashier-1',
         outletId: 'outlet-1',
         role: 'Kasir',
         pin: '1234',
       );
       await delegate.createStarted!.future;
-      final secondSummary = await service.syncForCashier(
+      final secondSummary = await service.syncOfflineTransactions(
         ownerUserId: 'cashier-1',
         outletId: 'outlet-1',
         role: 'Kasir',
@@ -423,7 +423,7 @@ void main() {
         lastError: 'Business validation rejected',
       );
 
-      final summary = await service.syncForCashier(
+      final summary = await service.syncOfflineTransactions(
         ownerUserId: 'cashier-1',
         outletId: 'outlet-1',
         role: 'Kasir',
@@ -463,7 +463,7 @@ void main() {
       );
       delegate.resultId = 'OFF-not-remote';
 
-      final summary = await service.syncForCashier(
+      final summary = await service.syncOfflineTransactions(
         ownerUserId: 'cashier-1',
         outletId: 'outlet-1',
         role: 'Kasir',
@@ -511,7 +511,7 @@ void main() {
         statusCode: 400,
       );
 
-      final summary = await service.syncForCashier(
+      final summary = await service.syncOfflineTransactions(
         ownerUserId: 'cashier-1',
         outletId: 'outlet-1',
         role: 'Kasir',
@@ -552,9 +552,9 @@ void main() {
       },
       receiptSnapshot: {'store_name': 'Kawula'},
     );
-    delegate.failures[1] = const ApiException('PIN salah.', statusCode: 400);
+    delegate.failures[1] = const ApiException('PIN salah.', statusCode: 403);
 
-    final summary = await service.syncForCashier(
+    final summary = await service.syncOfflineTransactions(
       ownerUserId: 'cashier-1',
       outletId: 'outlet-1',
       role: 'Kasir',
@@ -569,6 +569,61 @@ void main() {
     expect(summary.stopReason, contains('PIN ditolak'));
     expect(row.status, 'pending_sync');
     expect(row.lastError, contains('PIN kasir ditolak'));
+  });
+
+  test('marks forbidden transactions failed and never retries them', () async {
+    await insertTransaction(
+      localId: 'OFF-forbidden',
+      ownerUserId: 'cashier-1',
+      outletId: 'outlet-1',
+      status: OfflineTransactionStatus.pendingSync,
+      payload: {
+        'outlet_id': 'outlet-1',
+        'items': [
+          {
+            'product_id': 'product-1',
+            'product_name': 'Kopi',
+            'quantity': 1,
+            'unit_price': 1000,
+            'selected_variants': const [],
+          },
+        ],
+        'total_amount': 1100,
+        'service_charge': 50,
+        'payment_method': 'CASH',
+        'paid_amount': 1100,
+      },
+      receiptSnapshot: {'store_name': 'Kawula'},
+    );
+    delegate.failures[1] = const ApiException(
+      'Akses ditolak oleh server.',
+      statusCode: 403,
+    );
+
+    final summary = await service.syncOfflineTransactions(
+      ownerUserId: 'cashier-1',
+      outletId: 'outlet-1',
+      role: 'Kasir',
+      pin: '1234',
+    );
+    final row = (await database.offlineTransactionsDao.getTransactionsByOwner(
+      'cashier-1',
+    )).single;
+
+    expect(summary.failedCount, 1);
+    expect(summary.stopped, isTrue);
+    expect(summary.stopReason, contains('Akses ditolak'));
+    expect(row.status, 'failed');
+    expect(row.lastError, contains('Akses ditolak'));
+
+    await service.syncOfflineTransactions(
+      ownerUserId: 'cashier-1',
+      outletId: 'outlet-1',
+      role: 'Kasir',
+      pin: '1234',
+    );
+
+    expect(delegate.calls, isEmpty);
   });
 
   test('stops for expired token without clearing the queue', () async {
@@ -597,7 +652,7 @@ void main() {
     );
     delegate.failures[1] = const ApiException('Token expired', statusCode: 401);
 
-    final summary = await service.syncForCashier(
+    final summary = await service.syncOfflineTransactions(
       ownerUserId: 'cashier-1',
       outletId: 'outlet-1',
       role: 'Kasir',
@@ -640,7 +695,7 @@ void main() {
       );
       delegate.failures[1] = const SocketException('network timeout');
 
-      final summary = await service.syncForCashier(
+      final summary = await service.syncOfflineTransactions(
         ownerUserId: 'cashier-1',
         outletId: 'outlet-1',
         role: 'Kasir',

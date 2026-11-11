@@ -17,22 +17,24 @@ import 'package:kawula_pos/features/products/presentation/bloc/catalog_state.dar
 import 'package:kawula_pos/features/products/presentation/pages/product_cart_sheet.dart';
 import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
 import 'package:kawula_pos/features/products/presentation/pages/product_variant_dialog.dart';
+import 'package:kawula_pos/features/products/presentation/widgets/catalog_cart_summary.dart';
+import 'package:kawula_pos/features/products/presentation/widgets/catalog_offline_status_widgets.dart';
 import 'package:kawula_pos/features/products/presentation/widgets/catalog_open_bills_panel.dart';
-import 'package:kawula_pos/features/products/presentation/widgets/catalog_product_grid.dart';
+import 'package:kawula_pos/features/products/presentation/widgets/catalog_product_browser.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 import 'package:kawula_pos/features/shifts/presentation/widgets/auto_close_shift_schedule.dart';
 import 'package:kawula_pos/features/store_settings/data/models/store_settings_model.dart';
 import 'package:kawula_pos/features/store_settings/domain/entities/store_settings.dart';
 import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
-import 'package:kawula_pos/features/transactions/data/services/cashier_offline_sync_service.dart';
+import 'package:kawula_pos/features/transactions/data/services/offline_transaction_sync_service.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/offline_transaction_queue_page.dart';
-import 'package:kawula_pos/features/transactions/presentation/widgets/cashier_open_bill_dialogs.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/open_bill_dialogs.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 import 'package:kawula_pos/framework/core/network/platform_network_exception.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
 import 'package:kawula_pos/theme/app_colors.dart';
 
@@ -46,9 +48,9 @@ class CatalogPage extends StatefulWidget {
     required this.onManageShift,
     this.onOpenOfflineReconciliation,
     this.offlineTransactionsDao,
-    this.cashierOfflineSyncService,
+    this.offlineTransactionSyncService,
     this.storeSettingsRepository,
-    this.cashierMasterDataCache,
+    this.offlineMasterDataCache,
   });
 
   final AuthUser user;
@@ -58,9 +60,9 @@ class CatalogPage extends StatefulWidget {
   final VoidCallback onManageShift;
   final VoidCallback? onOpenOfflineReconciliation;
   final OfflineTransactionsDao? offlineTransactionsDao;
-  final CashierOfflineSyncService? cashierOfflineSyncService;
+  final OfflineTransactionSyncService? offlineTransactionSyncService;
   final StoreSettingsRepository? storeSettingsRepository;
-  final CashierMasterDataCache? cashierMasterDataCache;
+  final OfflineMasterDataCache? offlineMasterDataCache;
 
   @override
   State<CatalogPage> createState() => CatalogPageState();
@@ -142,34 +144,10 @@ class CatalogPageState extends State<CatalogPage> {
             ),
           if (canUseOfflineSales(widget.user.role) &&
               widget.offlineTransactionsDao != null &&
-              widget.cashierOfflineSyncService != null)
-            FutureBuilder<int>(
-              future: _queueCountFuture,
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return IconButton(
-                    tooltip: 'Antrean gagal dimuat: ${snapshot.error}',
-                    onPressed: () => _openQueuePage(context),
-                    icon: Icon(
-                      Icons.sync_problem_rounded,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  );
-                }
-                final count = snapshot.data ?? 0;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: IconButton(
-                    tooltip: 'Antrean transaksi offline',
-                    onPressed: () => _openQueuePage(context),
-                    icon: Badge(
-                      isLabelVisible: count > 0,
-                      label: Text('$count'),
-                      child: const Icon(Icons.sync_alt_outlined),
-                    ),
-                  ),
-                );
-              },
+              widget.offlineTransactionSyncService != null)
+            CatalogOfflineQueueButton(
+              queueCount: _queueCountFuture,
+              onOpenQueue: () => _openQueuePage(context),
             ),
           BlocBuilder<CartCubit, CartState>(
             builder: (context, cart) => Padding(
@@ -214,7 +192,11 @@ class CatalogPageState extends State<CatalogPage> {
                     child: CircularProgressIndicator(),
                   ),
                   CatalogFailure() => _CatalogFailure(message: state.message),
-                  CatalogLoaded() => _catalog(context, state),
+                  CatalogLoaded() => CatalogProductBrowser(
+                    state: state,
+                    searchController: _searchController,
+                    onProductTap: (product) => _addToCart(context, product),
+                  ),
                 };
               },
             ),
@@ -222,60 +204,10 @@ class CatalogPageState extends State<CatalogPage> {
         ],
       ),
       bottomNavigationBar: BlocBuilder<CartCubit, CartState>(
-        builder: (context, cart) {
-          return AnimatedSwitcher(
-            duration: const Duration(milliseconds: 240),
-            reverseDuration: const Duration(milliseconds: 180),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            transitionBuilder: (child, animation) => SizeTransition(
-              sizeFactor: animation,
-              alignment: Alignment.topCenter,
-              child: FadeTransition(opacity: animation, child: child),
-            ),
-            child: cart.isEmpty
-                ? const SizedBox.shrink(key: ValueKey('empty-cart-bar'))
-                : SafeArea(
-                    key: const ValueKey('active-cart-bar'),
-                    minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                    child: FilledButton.icon(
-                      onPressed: () => _showCart(context),
-                      icon: const Icon(Icons.shopping_bag_outlined),
-                      label: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 180),
-                          transitionBuilder: (child, animation) =>
-                              FadeTransition(
-                                opacity: animation,
-                                child: SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(0, .2),
-                                    end: Offset.zero,
-                                  ).animate(animation),
-                                  child: child,
-                                ),
-                              ),
-                          child: Text(
-                            'Keranjang (${cart.totalQuantity}) · '
-                            '${formatRupiah(cart.estimatedSubtotal)}',
-                            key: ValueKey(
-                              '${cart.totalQuantity}-${cart.estimatedSubtotal}',
-                            ),
-                          ),
-                        ),
-                      ),
-                      style: FilledButton.styleFrom(
-                        elevation: 3,
-                        shadowColor: AppColors.primary.withValues(alpha: .25),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                    ),
-                  ),
-          );
-        },
+        builder: (context, cart) => CatalogCartSummary(
+          cart: cart,
+          onOpenCart: () => _showCart(context),
+        ),
       ),
     );
   }
@@ -334,7 +266,7 @@ class CatalogPageState extends State<CatalogPage> {
 
   Future<void> _loadAutoCloseSettings() async {
     final repository = widget.storeSettingsRepository;
-    final cache = widget.cashierMasterDataCache;
+    final cache = widget.offlineMasterDataCache;
     if (widget.user.role != 'Kasir') return;
 
     if (cache?.shouldUseOfflineData == true) {
@@ -408,7 +340,7 @@ class CatalogPageState extends State<CatalogPage> {
   }
 
   Future<void> _loadCachedAutoCloseSettings({String? unavailableReason}) async {
-    final cache = widget.cashierMasterDataCache;
+    final cache = widget.offlineMasterDataCache;
     if (cache == null || !cache.isScoped) {
       if (!mounted) return;
       setState(() {
@@ -469,7 +401,7 @@ class CatalogPageState extends State<CatalogPage> {
 
   Future<void> _openQueuePage(BuildContext context) async {
     final dao = widget.offlineTransactionsDao;
-    final syncService = widget.cashierOfflineSyncService;
+    final syncService = widget.offlineTransactionSyncService;
     if (!canUseOfflineSales(widget.user.role) ||
         dao == null ||
         syncService == null) {
@@ -483,7 +415,7 @@ class CatalogPageState extends State<CatalogPage> {
           shiftId: widget.activeShift.id,
           dao: dao,
           syncService: syncService,
-          cashierMasterDataCache: widget.cashierMasterDataCache,
+          offlineMasterDataCache: widget.offlineMasterDataCache,
         ),
       ),
     );
@@ -497,142 +429,33 @@ class CatalogPageState extends State<CatalogPage> {
     }
 
     final statusListenable =
-        widget.cashierMasterDataCache?.networkStatusListenable;
+        widget.offlineMasterDataCache?.networkStatusListenable;
     if (statusListenable == null) {
       final isOffline =
           widget.checkoutRepository is CheckoutModeProvider &&
           (widget.checkoutRepository as CheckoutModeProvider).isOffline;
-      return _buildOfflineStatusBanner(
-        context,
-        isOffline ? CashierNetworkStatus.offline : CashierNetworkStatus.online,
+      return CatalogOfflineStatusBanner(
+        status: isOffline
+            ? OfflineNetworkStatus.offline
+            : OfflineNetworkStatus.online,
+        queueCount: _queueCountFuture,
+        autoCloseSettingsError: _autoCloseSettingsError,
+        onOpenQueue: () => _openQueuePage(context),
+        buildAutoCloseWarning: (context, count) =>
+            _buildAutoCloseWarning(context, queueCount: count),
       );
     }
 
-    return ValueListenableBuilder<CashierNetworkStatus>(
+    return ValueListenableBuilder<OfflineNetworkStatus>(
       valueListenable: statusListenable,
-      builder: (context, status, _) =>
-          _buildOfflineStatusBanner(context, status),
-    );
-  }
-
-  Widget _buildOfflineStatusBanner(
-    BuildContext context,
-    CashierNetworkStatus status,
-  ) {
-    final isOffline = status == CashierNetworkStatus.offline;
-    final isChecking = status == CashierNetworkStatus.checking;
-    return FutureBuilder<int>(
-      future: _queueCountFuture,
-      builder: (context, snapshot) {
-        final offlineText = switch (status) {
-          CashierNetworkStatus.offline => 'Mode Offline: katalog menggunakan data terakhir dan transaksi akan disimpan di perangkat.',
-          CashierNetworkStatus.checking => 'Memeriksa koneksi ke server...',
-          CashierNetworkStatus.online => 'Koneksi tersedia. Antrean dapat disinkronkan setelah PIN dipastikan.',
-        };
-        final color = isOffline
-            ? const Color(0xFFFBF2D6)
-            : isChecking
-            ? Theme.of(context).colorScheme.surfaceContainerHighest
-            : const Color(0xFFE8F7F0);
-        final iconColor = isOffline
-            ? Colors.orange
-            : isChecking
-            ? Theme.of(context).colorScheme.primary
-            : AppColors.success;
-        if (snapshot.hasError) {
-          return Container(
-            width: double.infinity,
-            margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: iconColor.withValues(alpha: 0.35)),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  isOffline
-                      ? Icons.cloud_off_rounded
-                      : isChecking
-                      ? Icons.sync
-                      : Icons.cloud_done,
-                  color: iconColor,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    '$offlineText Antrean gagal dibaca: ${snapshot.error}',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-        final queueCount = snapshot.data ?? 0;
-        final needsSync = queueCount > 0;
-
-        final autoCloseWarning = _buildAutoCloseWarning(
-          context,
-          queueCount: queueCount,
-        );
-        return Column(
-          children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
-              child: Container(
-                key: ValueKey('$isOffline-$queueCount'),
-                width: double.infinity,
-                margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: iconColor.withValues(alpha: 0.35)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isOffline
-                          ? Icons.cloud_off_rounded
-                          : isChecking
-                          ? Icons.sync
-                          : Icons.signal_cellular_4_bar_rounded,
-                      color: iconColor,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        offlineText,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                    if (needsSync)
-                      TextButton(
-                        onPressed: () => _openQueuePage(context),
-                        child: const Text('Sinkronkan'),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            ?autoCloseWarning,
-            if (queueCount > 0 && _autoCloseSettingsError != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                child: Text(
-                  'Pengaturan auto-close belum dapat dipastikan: '
-                  '$_autoCloseSettingsError',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-          ],
-        );
-      },
+      builder: (context, status, _) => CatalogOfflineStatusBanner(
+        status: status,
+        queueCount: _queueCountFuture,
+        autoCloseSettingsError: _autoCloseSettingsError,
+        onOpenQueue: () => _openQueuePage(context),
+        buildAutoCloseWarning: (context, count) =>
+            _buildAutoCloseWarning(context, queueCount: count),
+      ),
     );
   }
 
@@ -720,7 +543,7 @@ class CatalogPageState extends State<CatalogPage> {
     }
     if (_openBills.isEmpty) return;
 
-    final transaction = await showCashierOpenBillsDialog(context, _openBills);
+    final transaction = await showOpenBillsDialog(context, _openBills);
     if (transaction == null || !context.mounted) return;
     if (transaction.id.startsWith('OFF-')) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -751,7 +574,7 @@ class CatalogPageState extends State<CatalogPage> {
         return;
       }
 
-      final input = await showCashierOpenBillPaymentDialog(
+      final input = await showOpenBillPaymentDialog(
         context,
         transaction: transaction,
         methods: methods,
@@ -868,102 +691,6 @@ class CatalogPageState extends State<CatalogPage> {
     );
   }
 
-  Widget _catalog(BuildContext context, CatalogLoaded state) {
-    final products = state.visibleProducts;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxHeight < 180;
-        return Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                compact ? 4 : 8,
-                16,
-                compact ? 6 : 12,
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: context.read<CatalogCubit>().search,
-                decoration: InputDecoration(
-                  hintText: 'Cari nama produk atau kategori',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 160),
-                    transitionBuilder: (child, animation) =>
-                        ScaleTransition(scale: animation, child: child),
-                    child: _searchController.text.isEmpty
-                        ? const SizedBox.shrink(key: ValueKey('no-search'))
-                        : IconButton(
-                            key: const ValueKey('clear-search'),
-                            tooltip: 'Hapus pencarian',
-                            onPressed: () {
-                              _searchController.clear();
-                              context.read<CatalogCubit>().search('');
-                            },
-                            icon: const Icon(Icons.close),
-                          ),
-                  ),
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  contentPadding: EdgeInsets.symmetric(
-                    vertical: compact ? 10 : 16,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(
-                      color: AppColors.primary,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(
-              height: compact ? 40 : 48,
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _CategoryChip(
-                    label: 'Semua',
-                    selected: state.selectedCategoryId == null,
-                    onSelected: () =>
-                        context.read<CatalogCubit>().selectCategory(null),
-                  ),
-                  for (final category in state.categories)
-                    _CategoryChip(
-                      label: category.name,
-                      selected: state.selectedCategoryId == category.id,
-                      onSelected: () => context
-                          .read<CatalogCubit>()
-                          .selectCategory(category.id),
-                    ),
-                ],
-              ),
-            ),
-            SizedBox(height: compact ? 4 : 8),
-            Expanded(
-              child: CatalogProductGrid(
-                products: products,
-                contentKey: '${state.selectedCategoryId}-${state.searchQuery}',
-                onProductTap: (product) => _addToCart(context, product),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _addToCart(BuildContext context, CatalogProduct product) async {
     final cartCubit = context.read<CartCubit>();
     final issue = cartCubit.state.validateProductQuantity(product, quantity: 1);
@@ -1007,60 +734,6 @@ class CatalogPageState extends State<CatalogPage> {
             _refreshOfflineStatus();
           },
           onTransactionSuccess: _refreshCatalogProducts,
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryChip extends StatelessWidget {
-  const _CategoryChip({
-    required this.label,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: .18),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
-              : null,
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: onSelected,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: selected ? Colors.white : AppColors.textSecondary,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ),
         ),
       ),
     );

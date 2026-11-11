@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:kawula_pos/features/outlets/data/models/outlet_model.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 import 'package:kawula_pos/framework/core/network/api_header_builder.dart';
+import 'package:kawula_pos/framework/core/network/api_response_decoder.dart';
 import 'package:kawula_pos/framework/core/network/api_url_builder.dart';
 
 class OutletsRemoteDataSource {
@@ -75,10 +76,7 @@ class OutletsRemoteDataSource {
 
   Future<Map<String, String>> _authorizedHeaders() async {
     final token = await _readToken();
-    return {
-      ...buildAuthorizationHeaders(token),
-      'Accept': 'application/json',
-    };
+    return {...buildAuthorizationHeaders(token), 'Accept': 'application/json'};
   }
 
   Future<Map<String, String>> _authorizedJsonHeaders() async => {
@@ -86,32 +84,6 @@ class OutletsRemoteDataSource {
     'Content-Type': 'application/json',
   };
 
-  Object? _decodeResponse(http.Response response) {
-    Object? decoded;
-    if (response.body.trim().isNotEmpty) {
-      try {
-        decoded = jsonDecode(response.body);
-      } on FormatException {
-        if (response.statusCode < 200 || response.statusCode >= 300) {
-          throw ApiException(
-            'Permintaan gagal dengan kode ${response.statusCode}.',
-            statusCode: response.statusCode,
-          );
-        }
-        throw const ApiException('Respons server tidak valid.');
-      }
-    }
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = decoded is Map<String, dynamic>
-          ? decoded['message']
-          : null;
-      throw ApiException(
-        message is String
-            ? message
-            : 'Permintaan gagal dengan kode ${response.statusCode}.',
-        statusCode: response.statusCode,
-      );
-    }
-    return decoded;
-  }
+  Object? _decodeResponse(http.Response response) =>
+      decodeApiResponse(response);
 }

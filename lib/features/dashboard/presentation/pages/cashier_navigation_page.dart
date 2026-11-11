@@ -12,40 +12,40 @@ import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
 import 'package:kawula_pos/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:kawula_pos/features/balances/domain/repositories/balances_repository.dart';
 import 'package:kawula_pos/features/dashboard/presentation/pages/admin_dashboard_page.dart';
-import 'package:kawula_pos/features/dashboard/presentation/widgets/cashier_tab.dart';
+import 'package:kawula_pos/features/dashboard/presentation/widgets/offline_sales_tab.dart';
 import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
 import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
 import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
-import 'package:kawula_pos/features/transactions/data/services/cashier_offline_sync_service.dart';
+import 'package:kawula_pos/features/transactions/data/services/offline_transaction_sync_service.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/admin_transaction_report_page.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 
 class CashierNavigationPage extends StatefulWidget {
   const CashierNavigationPage({
     super.key,
     required this.user,
-    this.cashierMasterDataCache,
+    this.offlineMasterDataCache,
     required this.shiftsRepository,
     required this.catalogRepository,
     required this.checkoutRepository,
     required this.balancesRepository,
     this.offlineTransactionsDao,
-    this.cashierOfflineSyncService,
+    this.offlineTransactionSyncService,
     this.storeSettingsRepository,
   });
 
   final AuthUser user;
-  final CashierMasterDataCache? cashierMasterDataCache;
+  final OfflineMasterDataCache? offlineMasterDataCache;
   final ShiftsRepository shiftsRepository;
   final CatalogRepository catalogRepository;
   final CheckoutRepository checkoutRepository;
   final BalancesRepository balancesRepository;
   final OfflineTransactionsDao? offlineTransactionsDao;
-  final CashierOfflineSyncService? cashierOfflineSyncService;
+  final OfflineTransactionSyncService? offlineTransactionSyncService;
   final StoreSettingsRepository? storeSettingsRepository;
 
   @override
@@ -69,12 +69,12 @@ class _CashierNavigationPageState extends State<CashierNavigationPage>
     _shiftsCubit = ShiftsCubit(widget.shiftsRepository)..loadActive();
     _pages = List<Widget?>.filled(3, null);
     _pages[0] = _pageAt(0);
-    if (widget.user.role == 'Kasir' && widget.cashierMasterDataCache != null) {
+    if (widget.user.role == 'Kasir' && widget.offlineMasterDataCache != null) {
       WidgetsBinding.instance.addObserver(this);
       _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
         _onConnectivityChanged,
         onError: (Object error, StackTrace stackTrace) {
-          widget.cashierMasterDataCache?.markOffline();
+          widget.offlineMasterDataCache?.markOffline();
           if (mounted) setState(() {});
         },
       );
@@ -103,14 +103,14 @@ class _CashierNavigationPageState extends State<CashierNavigationPage>
   }
 
   Future<void> _refreshConnectivity() async {
-    if (widget.user.role != 'Kasir' || widget.cashierMasterDataCache == null) {
+    if (widget.user.role != 'Kasir' || widget.offlineMasterDataCache == null) {
       return;
     }
     try {
       final results = await _connectivity.checkConnectivity();
       await _onConnectivityChanged(results);
     } on Exception {
-      widget.cashierMasterDataCache?.markOffline();
+      widget.offlineMasterDataCache?.markOffline();
       if (mounted) setState(() {});
     }
   }
@@ -119,7 +119,7 @@ class _CashierNavigationPageState extends State<CashierNavigationPage>
     _hasNetworkConnectivity = results.any(
       (result) => result != ConnectivityResult.none,
     );
-    final cache = widget.cashierMasterDataCache;
+    final cache = widget.offlineMasterDataCache;
     if (!_hasNetworkConnectivity) {
       cache?.markOffline();
       if (mounted) setState(() {});
@@ -140,7 +140,7 @@ class _CashierNavigationPageState extends State<CashierNavigationPage>
 
   Future<void> _retryRecoveryWhenOffline() async {
     if (!_hasNetworkConnectivity ||
-        widget.cashierMasterDataCache?.isOfflineKnown != true) {
+        widget.offlineMasterDataCache?.isOfflineKnown != true) {
       return;
     }
     await _refreshConnectivity();
@@ -149,17 +149,19 @@ class _CashierNavigationPageState extends State<CashierNavigationPage>
   Future<void> _verifyServerSession() async {
     if (_isVerifyingServer || !mounted) return;
     _isVerifyingServer = true;
-    final cache = widget.cashierMasterDataCache;
+    final cache = widget.offlineMasterDataCache;
     try {
-      final verified = await context.read<AuthCubit>().verifyCashierSession();
+      final verified = await context
+          .read<AuthCubit>()
+          .verifyOfflineSalesSession();
       if (!mounted) return;
       if (verified) {
         await _shiftsCubit.refreshActive();
-      } else if (cache?.networkStatus == CashierNetworkStatus.checking) {
+      } else if (cache?.networkStatus == OfflineNetworkStatus.checking) {
         cache?.markOffline();
       }
     } on Exception {
-      if (cache?.networkStatus == CashierNetworkStatus.checking) {
+      if (cache?.networkStatus == OfflineNetworkStatus.checking) {
         cache?.markOffline();
       }
     } finally {
@@ -178,13 +180,13 @@ class _CashierNavigationPageState extends State<CashierNavigationPage>
         onOpenManagement: () => _selectDestination(1),
         isCashier: true,
       ),
-      1 => CashierTab(
+      1 => OfflineSalesTab(
         admin: widget.user,
         catalogRepository: widget.catalogRepository,
         checkoutRepository: widget.checkoutRepository,
-        cashierMasterDataCache: widget.cashierMasterDataCache,
+        offlineMasterDataCache: widget.offlineMasterDataCache,
         offlineTransactionsDao: widget.offlineTransactionsDao,
-        cashierOfflineSyncService: widget.cashierOfflineSyncService,
+        offlineTransactionSyncService: widget.offlineTransactionSyncService,
         storeSettingsRepository: widget.storeSettingsRepository,
       ),
       2 => AdminTransactionReportPage(

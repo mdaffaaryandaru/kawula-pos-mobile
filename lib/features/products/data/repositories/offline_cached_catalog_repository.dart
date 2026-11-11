@@ -3,19 +3,19 @@ import 'dart:convert';
 import 'package:kawula_pos/features/products/data/models/catalog_models.dart';
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 import 'package:kawula_pos/framework/core/offline/run_with_network_cache.dart';
 
-class CashierCachedCatalogRepository implements CatalogRepository {
-  const CashierCachedCatalogRepository(
+class OfflineCachedCatalogRepository implements CatalogRepository {
+  const OfflineCachedCatalogRepository(
     this._delegate,
     this._cache, {
     this.offlineTransactionsDao,
   });
 
   final CatalogRepository _delegate;
-  final CashierMasterDataCache _cache;
+  final OfflineMasterDataCache _cache;
   final OfflineTransactionsDao? offlineTransactionsDao;
 
   @override

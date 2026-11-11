@@ -13,7 +13,7 @@ import 'package:kawula_pos/features/transactions/domain/repositories/checkout_re
 import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 
 class AdminOfflineReconciliationPage extends StatefulWidget {
   const AdminOfflineReconciliationPage({
@@ -24,7 +24,7 @@ class AdminOfflineReconciliationPage extends StatefulWidget {
     required this.checkoutRepository,
     required this.isOutletActive,
     required this.outletActiveStream,
-    this.cashierMasterDataCache,
+    this.offlineMasterDataCache,
   });
 
   final AuthUser admin;
@@ -33,7 +33,7 @@ class AdminOfflineReconciliationPage extends StatefulWidget {
   final CheckoutRepository checkoutRepository;
   final bool Function() isOutletActive;
   final Stream<bool> outletActiveStream;
-  final CashierMasterDataCache? cashierMasterDataCache;
+  final OfflineMasterDataCache? offlineMasterDataCache;
 
   @override
   State<AdminOfflineReconciliationPage> createState() =>
@@ -46,7 +46,7 @@ class _AdminOfflineReconciliationPageState
   String _statusFilter = 'unresolved';
   DateTimeRange? _dateRange;
   bool _isWorking = false;
-  ValueListenable<CashierNetworkStatus>? _networkStatusListenable;
+  ValueListenable<OfflineNetworkStatus>? _networkStatusListenable;
   StreamSubscription<bool>? _outletActiveSubscription;
   late bool _outletActive;
 
@@ -55,15 +55,15 @@ class _AdminOfflineReconciliationPageState
     super.initState();
     _outletActive = widget.isOutletActive();
     _listenToOutletStatus(widget.outletActiveStream);
-    _listenToNetworkStatus(widget.cashierMasterDataCache);
+    _listenToNetworkStatus(widget.offlineMasterDataCache);
   }
 
   @override
   void didUpdateWidget(AdminOfflineReconciliationPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.cashierMasterDataCache != widget.cashierMasterDataCache) {
+    if (oldWidget.offlineMasterDataCache != widget.offlineMasterDataCache) {
       _networkStatusListenable?.removeListener(_onNetworkStatusChanged);
-      _listenToNetworkStatus(widget.cashierMasterDataCache);
+      _listenToNetworkStatus(widget.offlineMasterDataCache);
     }
     if (oldWidget.outletActiveStream != widget.outletActiveStream) {
       unawaited(_outletActiveSubscription?.cancel());
@@ -83,15 +83,15 @@ class _AdminOfflineReconciliationPageState
   bool get _readOnly =>
       _currentUserIsOffline ||
       !_outletActive ||
-      (widget.cashierMasterDataCache?.networkStatus ==
-          CashierNetworkStatus.offline);
+      (widget.offlineMasterDataCache?.networkStatus ==
+          OfflineNetworkStatus.offline);
 
   bool get _currentUserIsOffline {
     final state = context.read<AuthCubit>().state;
     return state is AuthAuthenticated && state.user.isOfflineSession;
   }
 
-  void _listenToNetworkStatus(CashierMasterDataCache? cache) {
+  void _listenToNetworkStatus(OfflineMasterDataCache? cache) {
     _networkStatusListenable = cache?.networkStatusListenable;
     _networkStatusListenable?.addListener(_onNetworkStatusChanged);
   }
@@ -115,7 +115,7 @@ class _AdminOfflineReconciliationPageState
   Future<AuthUser?> _verifyAdminSession() async {
     if (!_outletActive || !widget.isOutletActive()) return null;
     final cubit = context.read<AuthCubit>();
-    if (!await cubit.verifyCashierSession()) return null;
+    if (!await cubit.verifyOfflineSalesSession()) return null;
     final state = cubit.state;
     if (state is! AuthAuthenticated ||
         state.user.id != widget.admin.id ||

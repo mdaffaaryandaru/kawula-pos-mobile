@@ -25,15 +25,15 @@ import 'package:kawula_pos/features/product_units/domain/repositories/product_un
 import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
 import 'package:kawula_pos/features/products/domain/repositories/product_management_repository.dart';
 import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
-import 'package:kawula_pos/features/shifts/data/repositories/cashier_cached_shifts_repository.dart';
+import 'package:kawula_pos/features/shifts/data/repositories/offline_cached_shifts_repository.dart';
 import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
 import 'package:kawula_pos/features/table_areas/domain/repositories/table_areas_repository.dart';
 import 'package:kawula_pos/features/tables/domain/repositories/tables_repository.dart';
-import 'package:kawula_pos/features/transactions/data/services/cashier_offline_sync_service.dart';
+import 'package:kawula_pos/features/transactions/data/services/offline_transaction_sync_service.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/users/domain/repositories/user_management_repository.dart';
 import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({
@@ -50,7 +50,7 @@ class AuthGate extends StatelessWidget {
     required this.variantGroupsRepository,
     this.masterDataCache,
     this.offlineTransactionsDao,
-    this.cashierOfflineSyncService,
+    this.offlineTransactionSyncService,
     this.discountsRepository,
     this.paymentMethodsRepository,
     this.inventoryRepository,
@@ -72,9 +72,9 @@ class AuthGate extends StatelessWidget {
   final ProductManagementRepository productManagementRepository;
   final CategoriesRepository categoriesRepository;
   final VariantGroupsRepository variantGroupsRepository;
-  final CashierMasterDataCache? masterDataCache;
+  final OfflineMasterDataCache? masterDataCache;
   final OfflineTransactionsDao? offlineTransactionsDao;
-  final CashierOfflineSyncService? cashierOfflineSyncService;
+  final OfflineTransactionSyncService? offlineTransactionSyncService;
   final DiscountsRepository? discountsRepository;
   final PaymentMethodsRepository? paymentMethodsRepository;
   final InventoryRepository? inventoryRepository;
@@ -98,7 +98,7 @@ class AuthGate extends StatelessWidget {
               admin: state.user,
               shiftsRepository: masterDataCache == null
                   ? shiftsRepository
-                  : CashierCachedShiftsRepository(
+                  : OfflineCachedShiftsRepository(
                       shiftsRepository,
                       masterDataCache!,
                       ownerUserId: state.user.id,
@@ -106,7 +106,7 @@ class AuthGate extends StatelessWidget {
                     ),
               masterDataCache: masterDataCache,
               offlineTransactionsDao: offlineTransactionsDao,
-              cashierOfflineSyncService: cashierOfflineSyncService,
+              offlineTransactionSyncService: offlineTransactionSyncService,
               catalogRepository: catalogRepository,
               checkoutRepository: checkoutRepository,
               balancesRepository: balancesRepository,
@@ -130,8 +130,8 @@ class AuthGate extends StatelessWidget {
               when state.user.role == 'Kasir' && masterDataCache != null =>
             CashierNavigationPage(
               user: state.user,
-              cashierMasterDataCache: masterDataCache,
-              shiftsRepository: CashierCachedShiftsRepository(
+              offlineMasterDataCache: masterDataCache,
+              shiftsRepository: OfflineCachedShiftsRepository(
                 shiftsRepository,
                 masterDataCache!,
                 ownerUserId: state.user.id,
@@ -141,7 +141,7 @@ class AuthGate extends StatelessWidget {
               checkoutRepository: checkoutRepository,
               balancesRepository: balancesRepository,
               offlineTransactionsDao: offlineTransactionsDao,
-              cashierOfflineSyncService: cashierOfflineSyncService,
+              offlineTransactionSyncService: offlineTransactionSyncService,
               storeSettingsRepository: storeSettingsRepository,
             ),
           AuthAuthenticated() => CashierNavigationPage(
@@ -151,7 +151,7 @@ class AuthGate extends StatelessWidget {
             checkoutRepository: checkoutRepository,
             balancesRepository: balancesRepository,
             offlineTransactionsDao: offlineTransactionsDao,
-            cashierOfflineSyncService: cashierOfflineSyncService,
+            offlineTransactionSyncService: offlineTransactionSyncService,
             storeSettingsRepository: storeSettingsRepository,
           ),
           AuthSessionFailure() => AuthSessionFailureView(

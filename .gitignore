@@ -72,6 +72,10 @@ test/*
 !test/offline_session_restoration_test.dart
 !test/cashier_offline_checkout_repository_test.dart
 !test/admin_navigation_refresh_test.dart
+!test/widget_test.dart
+!test/offline_transaction_queue_page_test.dart
+
+AGENTS.md
 
 # FVM Version Cache
 .fvm/

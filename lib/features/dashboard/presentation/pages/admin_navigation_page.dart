@@ -14,7 +14,7 @@ import 'package:kawula_pos/features/balances/domain/repositories/balances_reposi
 import 'package:kawula_pos/features/categories/domain/repositories/categories_repository.dart';
 import 'package:kawula_pos/features/dashboard/presentation/pages/admin_dashboard_page.dart';
 import 'package:kawula_pos/features/dashboard/presentation/pages/admin_management_page.dart';
-import 'package:kawula_pos/features/dashboard/presentation/widgets/cashier_tab.dart';
+import 'package:kawula_pos/features/dashboard/presentation/widgets/offline_sales_tab.dart';
 import 'package:kawula_pos/features/discounts/domain/repositories/discounts_repository.dart';
 import 'package:kawula_pos/features/inventories/domain/repositories/inventory_repository.dart';
 import 'package:kawula_pos/features/members/domain/repositories/members_repository.dart';
@@ -35,8 +35,8 @@ import 'package:kawula_pos/features/transactions/domain/repositories/checkout_re
 import 'package:kawula_pos/features/transactions/presentation/pages/admin_transaction_report_page.dart';
 import 'package:kawula_pos/features/users/domain/repositories/user_management_repository.dart';
 import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
-import 'package:kawula_pos/features/transactions/data/services/cashier_offline_sync_service.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/features/transactions/data/services/offline_transaction_sync_service.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
 
@@ -47,7 +47,7 @@ class AdminNavigationPage extends StatefulWidget {
     required this.shiftsRepository,
     this.masterDataCache,
     this.offlineTransactionsDao,
-    this.cashierOfflineSyncService,
+    this.offlineTransactionSyncService,
     required this.catalogRepository,
     required this.checkoutRepository,
     required this.balancesRepository,
@@ -70,9 +70,9 @@ class AdminNavigationPage extends StatefulWidget {
 
   final AuthUser admin;
   final ShiftsRepository shiftsRepository;
-  final CashierMasterDataCache? masterDataCache;
+  final OfflineMasterDataCache? masterDataCache;
   final OfflineTransactionsDao? offlineTransactionsDao;
-  final CashierOfflineSyncService? cashierOfflineSyncService;
+  final OfflineTransactionSyncService? offlineTransactionSyncService;
   final CatalogRepository catalogRepository;
   final CheckoutRepository checkoutRepository;
   final BalancesRepository balancesRepository;
@@ -102,8 +102,7 @@ class _AdminNavigationPageState extends State<AdminNavigationPage>
   late ShiftsCubit _shiftsCubit;
   late final List<Widget?> _pages;
   final _dashboardKey = GlobalKey<AdminDashboardPageState>();
-  GlobalKey<CatalogPageState> _catalogPageKey =
-      GlobalKey<CatalogPageState>();
+  GlobalKey<CatalogPageState> _catalogPageKey = GlobalKey<CatalogPageState>();
   final Connectivity _connectivity = Connectivity();
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   StreamSubscription<ShiftsState>? _shiftsSubscription;
@@ -202,9 +201,7 @@ class _AdminNavigationPageState extends State<AdminNavigationPage>
     }
   }
 
-  Future<void> _onConnectivityChanged(
-    List<ConnectivityResult> results,
-  ) async {
+  Future<void> _onConnectivityChanged(List<ConnectivityResult> results) async {
     final isConnected = results.any(
       (result) => result != ConnectivityResult.none,
     );
@@ -232,15 +229,17 @@ class _AdminNavigationPageState extends State<AdminNavigationPage>
     _isVerifyingServer = true;
     final cache = widget.masterDataCache;
     try {
-      final verified = await context.read<AuthCubit>().verifyCashierSession();
+      final verified = await context
+          .read<AuthCubit>()
+          .verifyOfflineSalesSession();
       if (!mounted) return;
       if (verified) {
         await _shiftsCubit.refreshActive();
-      } else if (cache?.networkStatus == CashierNetworkStatus.checking) {
+      } else if (cache?.networkStatus == OfflineNetworkStatus.checking) {
         cache?.markOffline();
       }
     } on Exception {
-      if (cache?.networkStatus == CashierNetworkStatus.checking) {
+      if (cache?.networkStatus == OfflineNetworkStatus.checking) {
         cache?.markOffline();
       }
     } finally {
@@ -298,60 +297,62 @@ class _AdminNavigationPageState extends State<AdminNavigationPage>
 
   Widget _pageAt(int index) {
     return switch (index) {
-      0 => _onlineOnly(AdminDashboardPage(
-        key: _dashboardKey,
-        admin: widget.admin,
-        checkoutRepository: widget.checkoutRepository,
-        onOpenCashier: () => _selectDestination(1),
-        onOpenReport: () {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => _onlineOnly(AdminTransactionReportPage(
-                  checkoutRepository: widget.checkoutRepository,
-                  balancesRepository: widget.balancesRepository,
+      0 => _onlineOnly(
+        AdminDashboardPage(
+          key: _dashboardKey,
+          admin: widget.admin,
+          checkoutRepository: widget.checkoutRepository,
+          onOpenCashier: () => _selectDestination(1),
+          onOpenReport: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => _onlineOnly(
+                  AdminTransactionReportPage(
+                    checkoutRepository: widget.checkoutRepository,
+                    balancesRepository: widget.balancesRepository,
+                  ),
                 ),
               ),
-            ),
-          );
-        },
-        onOpenManagement: () => _selectDestination(2),
-      )),
-      1 => CashierTab(
-        key: ValueKey<(String, String)>((
-          widget.admin.id,
-          widget.admin.role,
-        )),
+            );
+          },
+          onOpenManagement: () => _selectDestination(2),
+        ),
+      ),
+      1 => OfflineSalesTab(
+        key: ValueKey<(String, String)>((widget.admin.id, widget.admin.role)),
         admin: widget.admin,
         catalogRepository: widget.catalogRepository,
         checkoutRepository: widget.checkoutRepository,
-        cashierMasterDataCache: widget.masterDataCache,
+        offlineMasterDataCache: widget.masterDataCache,
         offlineTransactionsDao: widget.offlineTransactionsDao,
-        cashierOfflineSyncService: widget.cashierOfflineSyncService,
+        offlineTransactionSyncService: widget.offlineTransactionSyncService,
         storeSettingsRepository: widget.storeSettingsRepository,
         catalogPageKey: _catalogPageKey,
       ),
-      2 => _onlineOnly(AdminManagementPage(
-        admin: widget.admin,
-        apiBaseUrl: widget.apiBaseUrl,
-        catalogRepository: widget.catalogRepository,
-        userManagementRepository: widget.userManagementRepository,
-        productManagementRepository: widget.productManagementRepository,
-        categoriesRepository: widget.categoriesRepository,
-        balancesRepository: widget.balancesRepository,
-        storeSettingsRepository: widget.storeSettingsRepository,
-        checkoutRepository: widget.checkoutRepository,
-        shiftsRepository: widget.shiftsRepository,
-        variantGroupsRepository: widget.variantGroupsRepository,
-        discountsRepository: widget.discountsRepository,
-        paymentMethodsRepository: widget.paymentMethodsRepository,
-        inventoryRepository: widget.inventoryRepository,
-        productUnitsRepository: widget.productUnitsRepository,
-        outletsRepository: widget.outletsRepository,
-        tableAreasRepository: widget.tableAreasRepository,
-        tablesRepository: widget.tablesRepository,
-        membersRepository: widget.membersRepository,
-        membershipProgramsRepository: widget.membershipProgramsRepository,
-      )),
+      2 => _onlineOnly(
+        AdminManagementPage(
+          admin: widget.admin,
+          apiBaseUrl: widget.apiBaseUrl,
+          catalogRepository: widget.catalogRepository,
+          userManagementRepository: widget.userManagementRepository,
+          productManagementRepository: widget.productManagementRepository,
+          categoriesRepository: widget.categoriesRepository,
+          balancesRepository: widget.balancesRepository,
+          storeSettingsRepository: widget.storeSettingsRepository,
+          checkoutRepository: widget.checkoutRepository,
+          shiftsRepository: widget.shiftsRepository,
+          variantGroupsRepository: widget.variantGroupsRepository,
+          discountsRepository: widget.discountsRepository,
+          paymentMethodsRepository: widget.paymentMethodsRepository,
+          inventoryRepository: widget.inventoryRepository,
+          productUnitsRepository: widget.productUnitsRepository,
+          outletsRepository: widget.outletsRepository,
+          tableAreasRepository: widget.tableAreasRepository,
+          tablesRepository: widget.tablesRepository,
+          membersRepository: widget.membersRepository,
+          membershipProgramsRepository: widget.membershipProgramsRepository,
+        ),
+      ),
       _ => const SizedBox.shrink(),
     };
   }
@@ -363,16 +364,16 @@ class _AdminNavigationPageState extends State<AdminNavigationPage>
 class _OnlineOnlyAdminPage extends StatelessWidget {
   const _OnlineOnlyAdminPage({required this.cache, required this.child});
 
-  final CashierMasterDataCache? cache;
+  final OfflineMasterDataCache? cache;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final statusListenable = cache?.networkStatusListenable;
     if (statusListenable == null) return child;
-    return ValueListenableBuilder<CashierNetworkStatus>(
+    return ValueListenableBuilder<OfflineNetworkStatus>(
       valueListenable: statusListenable,
-      builder: (context, status, _) => status != CashierNetworkStatus.online
+      builder: (context, status, _) => status != OfflineNetworkStatus.online
           ? Scaffold(
               body: Center(
                 child: Padding(
@@ -383,7 +384,7 @@ class _OnlineOnlyAdminPage extends StatelessWidget {
                       const Icon(Icons.cloud_off_outlined, size: 48),
                       const SizedBox(height: 16),
                       Text(
-                        status == CashierNetworkStatus.checking
+                        status == OfflineNetworkStatus.checking
                             ? 'Memverifikasi koneksi dan sesi...'
                             : 'Halaman ini memerlukan koneksi internet.',
                         style: Theme.of(context).textTheme.titleMedium,

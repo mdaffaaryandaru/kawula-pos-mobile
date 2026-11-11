@@ -54,7 +54,7 @@ import 'package:kawula_pos/features/tables/data/repositories/tables_repository_i
 import 'package:kawula_pos/features/tables/domain/repositories/tables_repository.dart';
 import 'package:kawula_pos/features/transactions/data/datasources/checkout_remote_data_source.dart';
 import 'package:kawula_pos/features/transactions/data/repositories/checkout_repository_impl.dart';
-import 'package:kawula_pos/features/transactions/data/services/cashier_offline_sync_service.dart';
+import 'package:kawula_pos/features/transactions/data/services/offline_transaction_sync_service.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/users/data/datasources/users_remote_data_source.dart';
 import 'package:kawula_pos/features/users/data/repositories/user_management_repository_impl.dart';
@@ -67,7 +67,7 @@ import 'package:kawula_pos/framework/core/network/session_aware_http_client.dart
 import 'package:kawula_pos/framework/core/network/http_client_factory.dart';
 import 'package:kawula_pos/framework/core/network/timeout_http_client.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 
 class AppDependencies {
   const AppDependencies({
@@ -79,22 +79,22 @@ class AppDependencies {
     required this.shiftsRepository,
     required this.catalogRepository,
     required this.checkoutRepository,
-    this.cashierOfflineSyncService,
+    this.offlineTransactionSyncService,
     required this.balancesRepository,
     required this.storeSettingsRepository,
     required this.userManagementRepository,
     required this.productManagementRepository,
     required this.categoriesRepository,
     required this.variantGroupsRepository,
-    this.discountsRepository,
-    this.paymentMethodsRepository,
-    this.inventoryRepository,
-    this.productUnitsRepository,
-    this.outletsRepository,
-    this.tableAreasRepository,
-    this.tablesRepository,
-    this.membersRepository,
-    this.membershipProgramsRepository,
+    required this.discountsRepository,
+    required this.paymentMethodsRepository,
+    required this.inventoryRepository,
+    required this.productUnitsRepository,
+    required this.outletsRepository,
+    required this.tableAreasRepository,
+    required this.tablesRepository,
+    required this.membersRepository,
+    required this.membershipProgramsRepository,
   });
 
   factory AppDependencies.create() {
@@ -105,7 +105,7 @@ class AppDependencies {
     );
     final apiBaseUrl = ApiConfig.baseUrl;
     final database = AppDatabase();
-    final masterDataCache = CashierMasterDataCache(database.cachedRecordsDao);
+    final masterDataCache = OfflineMasterDataCache(database.cachedRecordsDao);
     final remoteDataSource = AuthRemoteDataSource(client, apiBaseUrl);
     final localDataSource = AuthLocalDataSource(const FlutterSecureStorage());
     final authRepository = AuthRepositoryImpl(
@@ -141,7 +141,7 @@ class AppDependencies {
         membersRemoteDataSource: membersRemoteDataSource,
       ),
     );
-    final cashierOfflineSyncService = CashierOfflineSyncService(
+    final offlineTransactionSyncService = OfflineTransactionSyncService(
       checkoutRepository,
       database.offlineTransactionsDao,
       activeShiftsRepository: shiftsRepository,
@@ -221,7 +221,7 @@ class AppDependencies {
       shiftsRepository: shiftsRepository,
       catalogRepository: catalogRepository,
       checkoutRepository: checkoutRepository,
-      cashierOfflineSyncService: cashierOfflineSyncService,
+      offlineTransactionSyncService: offlineTransactionSyncService,
       balancesRepository: balancesRepository,
       storeSettingsRepository: storeSettingsRepository,
       userManagementRepository: userManagementRepository,
@@ -242,28 +242,28 @@ class AppDependencies {
 
   final String apiBaseUrl;
   final AppDatabase? database;
-  final CashierMasterDataCache? masterDataCache;
+  final OfflineMasterDataCache? masterDataCache;
   final AuthRepository authRepository;
   final AuthSessionExpiryHandler? sessionExpiryHandler;
   final ShiftsRepository shiftsRepository;
   final CatalogRepository catalogRepository;
   final CheckoutRepository checkoutRepository;
-  final CashierOfflineSyncService? cashierOfflineSyncService;
+  final OfflineTransactionSyncService? offlineTransactionSyncService;
   final BalancesRepository balancesRepository;
   final StoreSettingsRepository storeSettingsRepository;
   final UserManagementRepository userManagementRepository;
   final ProductManagementRepository productManagementRepository;
   final CategoriesRepository categoriesRepository;
-  final DiscountsRepository? discountsRepository;
-  final PaymentMethodsRepository? paymentMethodsRepository;
+  final DiscountsRepository discountsRepository;
+  final PaymentMethodsRepository paymentMethodsRepository;
   final VariantGroupsRepository variantGroupsRepository;
-  final InventoryRepository? inventoryRepository;
-  final ProductUnitsRepository? productUnitsRepository;
-  final OutletsRepository? outletsRepository;
-  final TableAreasRepository? tableAreasRepository;
-  final TablesRepository? tablesRepository;
-  final MembersRepository? membersRepository;
-  final MembershipProgramsRepository? membershipProgramsRepository;
+  final InventoryRepository inventoryRepository;
+  final ProductUnitsRepository productUnitsRepository;
+  final OutletsRepository outletsRepository;
+  final TableAreasRepository tableAreasRepository;
+  final TablesRepository tablesRepository;
+  final MembersRepository membersRepository;
+  final MembershipProgramsRepository membershipProgramsRepository;
 
   Future<void> close() async {
     await database?.close();

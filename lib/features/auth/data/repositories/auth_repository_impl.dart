@@ -11,7 +11,7 @@ import 'package:kawula_pos/features/auth/domain/repositories/auth_repository.dar
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 import 'package:kawula_pos/framework/core/network/auth_session_expiry_handler.dart';
 import 'package:kawula_pos/framework/core/network/platform_network_exception.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
@@ -25,13 +25,13 @@ class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
   final AuthLocalDataSource _localDataSource;
   final AuthSessionExpiryHandler? sessionExpiryHandler;
-  final CashierMasterDataCache? masterDataCache;
+  final OfflineMasterDataCache? masterDataCache;
 
   @override
   Future<AuthUser?> restoreSession() async {
     final token = await _localDataSource.readToken();
     if (token == null || token.isEmpty) {
-      await _localDataSource.clearVerifiedCashierUserId();
+      await _localDataSource.clearVerifiedOfflineSalesUserId();
       return null;
     }
 
@@ -45,13 +45,13 @@ class AuthRepositoryImpl implements AuthRepository {
         masterDataCache?.markOffline();
       }
       if (error.statusCode == 401) {
-        await _localDataSource.clearVerifiedCashierUserId();
+        await _localDataSource.clearVerifiedOfflineSalesUserId();
         await _localDataSource.deleteToken();
         sessionExpiryHandler?.markSessionEnded(token);
         return null;
       }
       if (error.statusCode == 403) {
-        await _localDataSource.clearVerifiedCashierUserId();
+        await _localDataSource.clearVerifiedOfflineSalesUserId();
       }
       rethrow;
     } on http.ClientException {
@@ -77,7 +77,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
   }) async {
     sessionExpiryHandler?.markSessionEnded();
-    await _localDataSource.clearVerifiedCashierUserId();
+    await _localDataSource.clearVerifiedOfflineSalesUserId();
     final token = await _remoteDataSource.login(
       email: email,
       password: password,
@@ -90,11 +90,11 @@ class AuthRepositoryImpl implements AuthRepository {
       return user;
     } on ApiException catch (error) {
       if (error.statusCode == 401) {
-        await _localDataSource.clearVerifiedCashierUserId();
+        await _localDataSource.clearVerifiedOfflineSalesUserId();
         await _localDataSource.deleteToken();
         sessionExpiryHandler?.markSessionEnded(token);
       } else if (error.statusCode == 403) {
-        await _localDataSource.clearVerifiedCashierUserId();
+        await _localDataSource.clearVerifiedOfflineSalesUserId();
       }
       rethrow;
     }
@@ -103,18 +103,18 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> logout() async {
     sessionExpiryHandler?.markSessionEnded();
-    await _localDataSource.clearVerifiedCashierUserId();
+    await _localDataSource.clearVerifiedOfflineSalesUserId();
     await _localDataSource.deleteToken();
   }
 
   Future<void> _saveVerifiedProfile(AuthUser user) async {
     final cache = masterDataCache;
     if (!canUseOfflineSales(user.role) || cache == null) {
-      await _localDataSource.clearVerifiedCashierUserId();
+      await _localDataSource.clearVerifiedOfflineSalesUserId();
       return;
     }
 
-    await cache.saveCashierProfile(
+    await cache.saveOfflineSalesProfile(
       userId: user.id,
       role: user.role,
       payload: AuthUserModel(
@@ -125,15 +125,18 @@ class AuthRepositoryImpl implements AuthRepository {
         hasPin: user.hasPin,
       ).toJson(),
     );
-    await _localDataSource.saveVerifiedCashierUserId(user.id);
+    await _localDataSource.saveVerifiedOfflineSalesUserId(user.id);
     masterDataCache?.markOnline();
   }
 
   Future<AuthUser?> _restoreOfflineCashierSession(String token) async {
-    final verifiedUserId = await _localDataSource.readVerifiedCashierUserId();
+    final verifiedUserId = await _localDataSource
+        .readVerifiedOfflineSalesUserId();
     if (verifiedUserId == null || verifiedUserId.trim().isEmpty) return null;
 
-    final cached = await masterDataCache?.readCashierProfile(verifiedUserId);
+    final cached = await masterDataCache?.readOfflineSalesProfile(
+      verifiedUserId,
+    );
     if (cached is! Map<String, dynamic>) return null;
     final user = AuthUserModel.fromJson(cached);
     if (user.id != verifiedUserId || !canUseOfflineSales(user.role)) {

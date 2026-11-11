@@ -12,6 +12,7 @@ import 'package:kawula_pos/features/products/domain/entities/cart_item.dart';
 import 'package:kawula_pos/features/transactions/data/models/checkout_models.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 import 'package:kawula_pos/framework/core/network/api_header_builder.dart';
+import 'package:kawula_pos/framework/core/network/api_response_decoder.dart';
 import 'package:kawula_pos/framework/core/network/api_url_builder.dart';
 
 class CheckoutRemoteDataSource {
@@ -220,34 +221,11 @@ class CheckoutRemoteDataSource {
   }
 
   Object? _decodeResponse(http.Response response) {
-    Object? decoded;
-    try {
-      decoded = jsonDecode(response.body);
-    } on FormatException {
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw ApiException(
-          'Permintaan gagal dengan kode ${response.statusCode}.',
-          statusCode: response.statusCode,
-        );
-      }
-      throw const ApiException('Respons server tidak valid.');
-    }
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = decoded is Map<String, dynamic>
-          ? decoded['message']
-          : null;
-      final errorMessage = message is String
-          ? message
-          : message is List
-          ? message.whereType<String>().join('\n')
-          : null;
-      throw ApiException(
-        errorMessage?.isNotEmpty == true
-            ? errorMessage!
-            : 'Permintaan gagal dengan kode ${response.statusCode}.',
-        statusCode: response.statusCode,
-      );
-    }
-    return decoded;
+    return decodeApiResponse(
+      response,
+      allowEmptySuccess: false,
+      allowErrorMessageLists: true,
+      emptyErrorMessageUsesFallback: true,
+    );
   }
 }

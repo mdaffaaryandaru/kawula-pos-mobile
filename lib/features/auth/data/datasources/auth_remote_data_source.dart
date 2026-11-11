@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 // Project imports:
 import 'package:kawula_pos/features/auth/data/models/auth_user_model.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
+import 'package:kawula_pos/framework/core/network/api_response_decoder.dart';
 import 'package:kawula_pos/framework/core/network/api_url_builder.dart';
 
 class AuthRemoteDataSource {
@@ -43,40 +44,13 @@ class AuthRemoteDataSource {
   Uri _uri(String path) => buildApiUri(_baseUrl, path);
 
   Map<String, dynamic> _decodeResponse(http.Response response) {
-    Object? decoded;
-    try {
-      decoded = jsonDecode(response.body);
-    } on FormatException {
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw ApiException(
-          'Permintaan gagal dengan kode ${response.statusCode}.',
-          statusCode: response.statusCode,
-        );
-      }
-      throw const ApiException('Respons server tidak valid.');
-    }
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = decoded is Map<String, dynamic>
-          ? decoded['message']
-          : null;
-      throw ApiException(
-        _errorMessage(message) ??
-            'Permintaan gagal dengan kode ${response.statusCode}.',
-        statusCode: response.statusCode,
-      );
-    }
-
+    final decoded = decodeApiResponse(
+      response,
+      allowEmptySuccess: false,
+      allowErrorMessageLists: true,
+      emptyErrorMessageUsesFallback: true,
+    );
     if (decoded is Map<String, dynamic>) return decoded;
     throw const ApiException('Respons server tidak valid.');
-  }
-
-  String? _errorMessage(Object? message) {
-    if (message is String && message.isNotEmpty) return message;
-    if (message is List) {
-      final messages = message.whereType<String>().toList();
-      if (messages.isNotEmpty) return messages.join('\n');
-    }
-    return null;
   }
 }

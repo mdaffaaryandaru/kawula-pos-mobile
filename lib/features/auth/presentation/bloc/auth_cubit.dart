@@ -17,21 +17,21 @@ class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _repository;
   final AuthSessionExpiryHandler? sessionExpiryHandler;
   int _operationGeneration = 0;
-  Future<bool>? _cashierVerificationInProgress;
+  Future<bool>? _offlineSalesVerificationInProgress;
 
-  Future<bool> verifyCashierSession() {
-    final inProgress = _cashierVerificationInProgress;
+  Future<bool> verifyOfflineSalesSession() {
+    final inProgress = _offlineSalesVerificationInProgress;
     if (inProgress != null) return inProgress;
-    final verification = _verifyCashierSession();
-    _cashierVerificationInProgress = verification;
+    final verification = _verifyOfflineSalesSession();
+    _offlineSalesVerificationInProgress = verification;
     return verification.whenComplete(() {
-      if (identical(_cashierVerificationInProgress, verification)) {
-        _cashierVerificationInProgress = null;
+      if (identical(_offlineSalesVerificationInProgress, verification)) {
+        _offlineSalesVerificationInProgress = null;
       }
     });
   }
 
-  Future<bool> _verifyCashierSession() async {
+  Future<bool> _verifyOfflineSalesSession() async {
     final currentState = state;
     if (currentState is! AuthAuthenticated ||
         !canUseOfflineSales(currentState.user.role)) {

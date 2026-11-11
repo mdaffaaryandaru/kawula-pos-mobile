@@ -36,6 +36,9 @@ class AppDatabase extends _$AppDatabase {
 
       if (from == 1 && to >= 2) {
         await migrator.createTable(offlineTransactionResolutions);
+        await migrator.createIndex(
+          offlineTransactionResolutionsLocalCreatedIdx,
+        );
         return;
       }
 

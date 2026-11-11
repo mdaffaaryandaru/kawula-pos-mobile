@@ -12,7 +12,7 @@ import 'package:kawula_pos/features/balances/domain/repositories/balances_reposi
 import 'package:kawula_pos/features/categories/domain/repositories/categories_repository.dart';
 import 'package:kawula_pos/features/dashboard/presentation/pages/admin_navigation_page.dart';
 import 'package:kawula_pos/features/dashboard/presentation/pages/cashier_navigation_page.dart';
-import 'package:kawula_pos/features/dashboard/presentation/widgets/cashier_tab.dart';
+import 'package:kawula_pos/features/dashboard/presentation/widgets/offline_sales_tab.dart';
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
 import 'package:kawula_pos/features/products/presentation/pages/catalog_page.dart';
@@ -26,7 +26,7 @@ import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/users/domain/repositories/user_management_repository.dart';
 import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 
 void main() {
@@ -261,7 +261,7 @@ void main() {
   ) async {
     final database = AppDatabase(executor: NativeDatabase.memory());
     addTearDown(database.close);
-    final cache = CashierMasterDataCache(database.cachedRecordsDao)
+    final cache = OfflineMasterDataCache(database.cachedRecordsDao)
       ..markOffline();
     final checkout = _TestCheckoutRepository();
 
@@ -342,7 +342,7 @@ CartCubit _cartCubit(WidgetTester tester) =>
     tester.element(find.byType(CatalogPage)).read<CartCubit>();
 
 ShiftsCubit _shiftsCubit(WidgetTester tester) =>
-    tester.element(find.byType(CashierTab)).read<ShiftsCubit>();
+    tester.element(find.byType(OfflineSalesTab)).read<ShiftsCubit>();
 
 Widget _adminApp({
   required AuthCubit authCubit,

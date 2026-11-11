@@ -4,26 +4,26 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:kawula_pos/features/products/data/repositories/cashier_cached_catalog_repository.dart';
+import 'package:kawula_pos/features/products/data/repositories/offline_cached_catalog_repository.dart';
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
 import 'package:kawula_pos/features/members/domain/entities/member.dart';
 import 'package:kawula_pos/features/store_settings/data/datasources/store_settings_remote_data_source.dart';
 import 'package:kawula_pos/features/store_settings/data/repositories/store_settings_repository_impl.dart';
-import 'package:kawula_pos/features/transactions/data/repositories/cashier_cached_checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/data/repositories/offline_cached_checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 
 void main() {
   late AppDatabase database;
-  late CashierMasterDataCache cache;
+  late OfflineMasterDataCache cache;
 
   setUp(() {
     database = AppDatabase(executor: NativeDatabase.memory());
-    cache = CashierMasterDataCache(database.cachedRecordsDao);
+    cache = OfflineMasterDataCache(database.cachedRecordsDao);
   });
 
   tearDown(() async {
@@ -34,7 +34,7 @@ void main() {
     'cashier catalog is cached, read offline, and updated from API',
     () async {
       final catalog = _CatalogRepository();
-      final repository = CashierCachedCatalogRepository(
+      final repository = OfflineCachedCatalogRepository(
         catalog,
         _scope(cache, outletId: 'outlet-a'),
       );
@@ -62,7 +62,7 @@ void main() {
       final catalog = _CatalogRepository()
         ..products = [_product(name: 'Cached')];
       final scopedCache = _scope(cache, outletId: 'outlet-a');
-      final repository = CashierCachedCatalogRepository(catalog, scopedCache);
+      final repository = OfflineCachedCatalogRepository(catalog, scopedCache);
 
       await repository.getProducts();
       scopedCache.markOffline();
@@ -70,7 +70,7 @@ void main() {
       expect(catalog.productRequests, 1);
 
       scopedCache.markChecking();
-      expect(scopedCache.networkStatus, CashierNetworkStatus.checking);
+      expect(scopedCache.networkStatus, OfflineNetworkStatus.checking);
       expect((await repository.getProducts()).single.name, 'Cached');
       expect(catalog.productRequests, 1);
 
@@ -83,7 +83,7 @@ void main() {
 
   test('catalog does not use cache for HTTP 400 or 401', () async {
     final catalog = _CatalogRepository()..products = [_product(name: 'Cached')];
-    final repository = CashierCachedCatalogRepository(
+    final repository = OfflineCachedCatalogRepository(
       catalog,
       _scope(cache, outletId: 'outlet-a'),
     );
@@ -100,15 +100,15 @@ void main() {
     final outletA = _scope(cache, userId: 'user-a', outletId: 'outlet-a');
     final outletB = _scope(cache, userId: 'user-a', outletId: 'outlet-b');
     final otherUser = _scope(cache, userId: 'user-b', outletId: 'outlet-a');
-    final repoA = CashierCachedCatalogRepository(
+    final repoA = OfflineCachedCatalogRepository(
       _CatalogRepository()..products = [_product(name: 'Outlet A')],
       outletA,
     );
-    final repoB = CashierCachedCatalogRepository(
+    final repoB = OfflineCachedCatalogRepository(
       _CatalogRepository()..products = [_product(name: 'Outlet B')],
       outletB,
     );
-    final repoOtherUser = CashierCachedCatalogRepository(
+    final repoOtherUser = OfflineCachedCatalogRepository(
       _CatalogRepository()..products = [_product(name: 'Other user')],
       otherUser,
     );
@@ -116,15 +116,15 @@ void main() {
     await repoB.getProducts();
     await repoOtherUser.getProducts();
 
-    final offlineA = CashierCachedCatalogRepository(
+    final offlineA = OfflineCachedCatalogRepository(
       _CatalogRepository()..productError = const SocketException('offline'),
       outletA,
     );
-    final offlineB = CashierCachedCatalogRepository(
+    final offlineB = OfflineCachedCatalogRepository(
       _CatalogRepository()..productError = const SocketException('offline'),
       outletB,
     );
-    final offlineOtherUser = CashierCachedCatalogRepository(
+    final offlineOtherUser = OfflineCachedCatalogRepository(
       _CatalogRepository()..productError = const SocketException('offline'),
       otherUser,
     );
@@ -196,14 +196,12 @@ void main() {
       payload: ['admin-data'],
     );
 
-    expect(
-      await cashier.read(cacheType: 'catalog_products', dataKey: 'all'),
-      ['cashier-data'],
-    );
-    expect(
-      await admin.read(cacheType: 'catalog_products', dataKey: 'all'),
-      ['admin-data'],
-    );
+    expect(await cashier.read(cacheType: 'catalog_products', dataKey: 'all'), [
+      'cashier-data',
+    ]);
+    expect(await admin.read(cacheType: 'catalog_products', dataKey: 'all'), [
+      'admin-data',
+    ]);
   });
 
   test('checkout settings can be cached and read offline', () async {
@@ -214,7 +212,7 @@ void main() {
         storeName: 'Kawula',
         address: 'Main Street',
       );
-    final repository = CashierCachedCheckoutRepository(
+    final repository = OfflineCachedCheckoutRepository(
       checkout,
       _scope(cache, outletId: 'outlet-a'),
     );
@@ -243,7 +241,7 @@ void main() {
             email: 'private@example.test',
           ),
         ];
-      final repository = CashierCachedCheckoutRepository(
+      final repository = OfflineCachedCheckoutRepository(
         checkout,
         _scope(cache, outletId: 'outlet-a'),
       );
@@ -286,8 +284,8 @@ void main() {
   });
 }
 
-CashierMasterDataCache _scope(
-  CashierMasterDataCache cache, {
+OfflineMasterDataCache _scope(
+  OfflineMasterDataCache cache, {
   String userId = 'cashier-1',
   required String outletId,
 }) {

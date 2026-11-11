@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Project imports:
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
-import 'package:kawula_pos/features/products/data/repositories/cashier_cached_catalog_repository.dart';
+import 'package:kawula_pos/features/products/data/repositories/offline_cached_catalog_repository.dart';
 import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/catalog_cubit.dart';
@@ -15,26 +15,26 @@ import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 import 'package:kawula_pos/features/shifts/presentation/widgets/shift_action_dialog.dart';
-import 'package:kawula_pos/features/transactions/data/repositories/cashier_cached_checkout_repository.dart';
-import 'package:kawula_pos/features/transactions/data/repositories/cashier_offline_checkout_repository.dart';
-import 'package:kawula_pos/features/transactions/data/services/cashier_offline_sync_service.dart';
+import 'package:kawula_pos/features/transactions/data/repositories/offline_cached_checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/data/repositories/offline_checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/data/services/offline_transaction_sync_service.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/offline_transaction_queue_page.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/admin_offline_reconciliation_page.dart';
 import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
 
-class CashierTab extends StatelessWidget {
-  const CashierTab({
+class OfflineSalesTab extends StatelessWidget {
+  const OfflineSalesTab({
     super.key,
     required this.admin,
     required this.catalogRepository,
     required this.checkoutRepository,
     this.offlineTransactionsDao,
-    this.cashierOfflineSyncService,
-    this.cashierMasterDataCache,
+    this.offlineTransactionSyncService,
+    this.offlineMasterDataCache,
     this.storeSettingsRepository,
     this.catalogPageKey,
   });
@@ -43,8 +43,8 @@ class CashierTab extends StatelessWidget {
   final CatalogRepository catalogRepository;
   final CheckoutRepository checkoutRepository;
   final OfflineTransactionsDao? offlineTransactionsDao;
-  final CashierOfflineSyncService? cashierOfflineSyncService;
-  final CashierMasterDataCache? cashierMasterDataCache;
+  final OfflineTransactionSyncService? offlineTransactionSyncService;
+  final OfflineMasterDataCache? offlineMasterDataCache;
   final StoreSettingsRepository? storeSettingsRepository;
   final GlobalKey<CatalogPageState>? catalogPageKey;
 
@@ -67,28 +67,28 @@ class CashierTab extends StatelessWidget {
 
   Widget _buildActiveShift(BuildContext context, ActiveShift shift) {
     final shiftsCubit = context.read<ShiftsCubit>();
-    final scopedCache = cashierMasterDataCache?.forRole(
+    final scopedCache = offlineMasterDataCache?.forRole(
       role: admin.role,
       userId: admin.id,
       outletId: shift.outletId,
     );
     final offlineTransactionsDao = this.offlineTransactionsDao;
-    final cashierOfflineSyncService = this.cashierOfflineSyncService;
+    final offlineTransactionSyncService = this.offlineTransactionSyncService;
 
     final scopedCatalogRepository = scopedCache == null
         ? catalogRepository
-        : CashierCachedCatalogRepository(
+        : OfflineCachedCatalogRepository(
             catalogRepository,
             scopedCache,
             offlineTransactionsDao: offlineTransactionsDao,
           );
     final cachedCheckoutRepository = scopedCache == null
         ? checkoutRepository
-        : CashierCachedCheckoutRepository(checkoutRepository, scopedCache);
+        : OfflineCachedCheckoutRepository(checkoutRepository, scopedCache);
     final scopedCheckoutRepository =
         scopedCache == null || offlineTransactionsDao == null
         ? cachedCheckoutRepository
-        : CashierOfflineCheckoutRepository(
+        : OfflineCheckoutRepository(
             cachedCheckoutRepository,
             scopedCache,
             offlineTransactionsDao,
@@ -115,9 +115,9 @@ class CashierTab extends StatelessWidget {
         outletId: shift.outletId,
         activeShift: shift,
         offlineTransactionsDao: offlineTransactionsDao,
-        cashierOfflineSyncService: cashierOfflineSyncService,
+        offlineTransactionSyncService: offlineTransactionSyncService,
         storeSettingsRepository: storeSettingsRepository,
-        cashierMasterDataCache: scopedCache,
+        offlineMasterDataCache: scopedCache,
         onOpenOfflineReconciliation:
             admin.role == 'Admin' &&
                 offlineTransactionsDao != null &&
@@ -140,7 +140,7 @@ class CashierTab extends StatelessWidget {
                         return state is ShiftsActive &&
                             state.shift.outletId == shift.outletId;
                       }),
-                      cashierMasterDataCache: scopedCache,
+                      offlineMasterDataCache: scopedCache,
                     ),
                   ),
                 );
@@ -148,7 +148,7 @@ class CashierTab extends StatelessWidget {
             : null,
         onManageShift: () {
           if (scopedCache != null &&
-              scopedCache.networkStatus != CashierNetworkStatus.online) {
+              scopedCache.networkStatus != OfflineNetworkStatus.online) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Pengelolaan shift memerlukan koneksi internet.'),
@@ -168,7 +168,7 @@ class CashierTab extends StatelessWidget {
             onOpenOfflineQueue:
                 canUseOfflineSales(admin.role) &&
                     offlineTransactionsDao != null &&
-                    cashierOfflineSyncService != null
+                    offlineTransactionSyncService != null
                 ? () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -177,8 +177,8 @@ class CashierTab extends StatelessWidget {
                           outletId: shift.outletId ?? '',
                           shiftId: shift.id,
                           dao: offlineTransactionsDao,
-                          syncService: cashierOfflineSyncService,
-                          cashierMasterDataCache: scopedCache,
+                          syncService: offlineTransactionSyncService,
+                          offlineMasterDataCache: scopedCache,
                         ),
                       ),
                     );
@@ -195,16 +195,16 @@ class CashierTab extends StatelessWidget {
     return BlocBuilder<ShiftsCubit, ShiftsState>(
       builder: (context, state) => switch (state) {
         ShiftsLoading() => const Scaffold(
-          appBar: CashierAppBar(),
+          appBar: OfflineSalesAppBar(),
           body: Center(child: CircularProgressIndicator()),
         ),
         ShiftsNeedsOpening()
-            when cashierMasterDataCache != null &&
-                cashierMasterDataCache!.networkStatus !=
-                    CashierNetworkStatus.online =>
+            when offlineMasterDataCache != null &&
+                offlineMasterDataCache!.networkStatus !=
+                    OfflineNetworkStatus.online =>
           _shiftRequiresConnection(context),
         ShiftsNeedsOpening() => Scaffold(
-          appBar: const CashierAppBar(),
+          appBar: const OfflineSalesAppBar(),
           body: Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -255,16 +255,16 @@ class CashierTab extends StatelessWidget {
           ),
         ),
         ShiftsOpening() => Scaffold(
-          appBar: const CashierAppBar(),
+          appBar: const OfflineSalesAppBar(),
           body: const Center(child: CircularProgressIndicator()),
         ),
         ShiftsActive() => _buildActiveShift(context, state.shift),
         ShiftsClosing() => Scaffold(
-          appBar: const CashierAppBar(),
+          appBar: const OfflineSalesAppBar(),
           body: const Center(child: CircularProgressIndicator()),
         ),
         ShiftsClosed() => Scaffold(
-          appBar: const CashierAppBar(),
+          appBar: const OfflineSalesAppBar(),
           body: Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -285,7 +285,7 @@ class CashierTab extends StatelessWidget {
           ),
         ),
         ShiftsFailure() => Scaffold(
-          appBar: const CashierAppBar(),
+          appBar: const OfflineSalesAppBar(),
           body: Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -315,7 +315,7 @@ class CashierTab extends StatelessWidget {
   }
 
   Widget _shiftRequiresConnection(BuildContext context) => Scaffold(
-    appBar: const CashierAppBar(),
+    appBar: const OfflineSalesAppBar(),
     body: Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -341,8 +341,9 @@ class CashierTab extends StatelessWidget {
   );
 }
 
-class CashierAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const CashierAppBar({super.key});
+class OfflineSalesAppBar extends StatelessWidget
+    implements PreferredSizeWidget {
+  const OfflineSalesAppBar({super.key});
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);

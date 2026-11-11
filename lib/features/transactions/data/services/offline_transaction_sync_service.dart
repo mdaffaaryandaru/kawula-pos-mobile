@@ -12,8 +12,8 @@ import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
 
-class CashierOfflineSyncSummary {
-  const CashierOfflineSyncSummary({
+class OfflineTransactionSyncSummary {
+  const OfflineTransactionSyncSummary({
     required this.successCount,
     required this.failedCount,
     required this.existingFailedCount,
@@ -43,8 +43,8 @@ enum _SyncResult {
   stopAuthorization,
 }
 
-class CashierOfflineSyncService {
-  CashierOfflineSyncService(
+class OfflineTransactionSyncService {
+  OfflineTransactionSyncService(
     this._repository,
     this._dao, {
     required this._activeShiftsRepository,
@@ -57,7 +57,7 @@ class CashierOfflineSyncService {
 
   bool get isSyncing => _isSyncing;
 
-  Future<CashierOfflineSyncSummary> syncForCashier({
+  Future<OfflineTransactionSyncSummary> syncOfflineTransactions({
     required String ownerUserId,
     required String outletId,
     required String role,
@@ -218,12 +218,14 @@ class CashierOfflineSyncService {
                 'Respons server tidak dapat dipastikan dan antrean dihentikan.';
             break;
           case _SyncResult.stopPin:
-            stopReason = 'PIN ditolak. Masukkan PIN yang benar untuk mencoba kembali.';
+            stopReason =
+                'PIN ditolak. Masukkan PIN yang benar untuk mencoba kembali.';
             break;
           case _SyncResult.stopAuthentication:
             stopReason = 'Sesi autentikasi kedaluwarsa.';
             break;
           case _SyncResult.stopAuthorization:
+            failedCount++;
             stopReason = 'Akses ditolak oleh server.';
             break;
         }
@@ -250,14 +252,14 @@ class CashierOfflineSyncService {
     }
   }
 
-  CashierOfflineSyncSummary _summaryFor(
+  OfflineTransactionSyncSummary _summaryFor(
     List<OfflineTransaction> queue, {
     int successCount = 0,
     int failedCount = 0,
     int? existingFailedCount,
     required bool stopped,
     required String? stopReason,
-  }) => CashierOfflineSyncSummary(
+  }) => OfflineTransactionSyncSummary(
     successCount: successCount,
     failedCount: failedCount,
     existingFailedCount:
@@ -343,14 +345,6 @@ class CashierOfflineSyncService {
         );
         return _SyncResult.stopAuthentication;
       }
-      if (error.statusCode == 403) {
-        await _dao.updateTransactionStatus(
-          localId: transaction.localId,
-          status: OfflineTransactionStatus.pendingSync,
-          lastError: 'Akses ditolak oleh server. Sinkronisasi dihentikan.',
-        );
-        return _SyncResult.stopAuthorization;
-      }
       if (message.contains('pin')) {
         await _dao.updateTransactionStatus(
           localId: transaction.localId,
@@ -358,6 +352,14 @@ class CashierOfflineSyncService {
           lastError: 'PIN kasir ditolak. Sinkronisasi dihentikan.',
         );
         return _SyncResult.stopPin;
+      }
+      if (error.statusCode == 403) {
+        await _dao.updateTransactionStatus(
+          localId: transaction.localId,
+          status: OfflineTransactionStatus.failed,
+          lastError: error.message,
+        );
+        return _SyncResult.stopAuthorization;
       }
       if (error.statusCode == 400) {
         await _dao.updateTransactionStatus(

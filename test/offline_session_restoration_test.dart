@@ -10,21 +10,21 @@ import 'package:kawula_pos/features/auth/data/datasources/auth_local_data_source
 import 'package:kawula_pos/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:kawula_pos/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:kawula_pos/features/shifts/data/models/active_shift_model.dart';
-import 'package:kawula_pos/features/shifts/data/repositories/cashier_cached_shifts_repository.dart';
+import 'package:kawula_pos/features/shifts/data/repositories/offline_cached_shifts_repository.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 
 void main() {
   late AppDatabase database;
-  late CashierMasterDataCache cache;
+  late OfflineMasterDataCache cache;
   late _MemoryAuthLocalDataSource localDataSource;
 
   setUp(() {
     database = AppDatabase(executor: NativeDatabase.memory());
-    cache = CashierMasterDataCache(database.cachedRecordsDao);
+    cache = OfflineMasterDataCache(database.cachedRecordsDao);
     localDataSource = _MemoryAuthLocalDataSource();
   });
 
@@ -47,7 +47,7 @@ void main() {
     expect(user.id, 'cashier-a');
     expect(user.isOfflineSession, isFalse);
     expect(localDataSource.verifiedCashierUserId, 'cashier-a');
-    final cached = await cache.readCashierProfile('cashier-a');
+    final cached = await cache.readOfflineSalesProfile('cashier-a');
     expect(cached, isA<Map<String, dynamic>>());
     expect(jsonEncode(cached), isNot(contains('password')));
     expect(jsonEncode(cached), isNot(contains('access_token')));
@@ -61,7 +61,7 @@ void main() {
     );
     await onlineAuth.login(email: 'cashier@example.test', password: 'password');
 
-    final onlineShifts = CashierCachedShiftsRepository(
+    final onlineShifts = OfflineCachedShiftsRepository(
       _FakeShiftsRepository(activeShift: _openShift()),
       cache,
       ownerUserId: 'cashier-a',
@@ -74,7 +74,7 @@ void main() {
       profileError: const SocketException('network unavailable'),
     );
     final restoredUser = await offlineAuth.restoreSession();
-    final offlineShifts = CashierCachedShiftsRepository(
+    final offlineShifts = OfflineCachedShiftsRepository(
       _FakeShiftsRepository(
         error: const SocketException('network unavailable'),
       ),
@@ -93,14 +93,14 @@ void main() {
   test(
     'active shift snapshot records owner, outlet, status and verification time',
     () async {
-      final repository = CashierCachedShiftsRepository(
+      final repository = OfflineCachedShiftsRepository(
         _FakeShiftsRepository(activeShift: _openShift()),
         cache,
         ownerUserId: 'cashier-a',
       );
 
       await repository.getActive();
-      final snapshot = await cache.readCashierShiftSnapshot('cashier-a');
+      final snapshot = await cache.readOfflineSalesShiftSnapshot('cashier-a');
 
       expect(snapshot?['user_id'], 'cashier-a');
       expect(snapshot?['outlet_id'], 'outlet-a');
@@ -128,7 +128,7 @@ void main() {
         profileError: const SocketException('network unavailable'),
       ).restoreSession();
       expect(offlineUser?.isOfflineSession, isTrue);
-      expect(cache.networkStatus, CashierNetworkStatus.offline);
+      expect(cache.networkStatus, OfflineNetworkStatus.offline);
 
       final restoredUser = await _authRepository(
         localDataSource: localDataSource,
@@ -138,8 +138,8 @@ void main() {
 
       expect(restoredUser?.name, 'Cashier A refreshed');
       expect(restoredUser?.isOfflineSession, isFalse);
-      expect(cache.networkStatus, CashierNetworkStatus.online);
-      final cachedProfile = await cache.readCashierProfile('cashier-a');
+      expect(cache.networkStatus, OfflineNetworkStatus.online);
+      final cachedProfile = await cache.readOfflineSalesProfile('cashier-a');
       expect(cachedProfile, isA<Map<String, dynamic>>());
       expect(
         (cachedProfile as Map<String, dynamic>)['name'],
@@ -151,7 +151,7 @@ void main() {
   test(
     'missing active shift snapshot is never treated as an open shift',
     () async {
-      final repository = CashierCachedShiftsRepository(
+      final repository = OfflineCachedShiftsRepository(
         _FakeShiftsRepository(error: const SocketException('offline')),
         cache,
         ownerUserId: 'cashier-a',
@@ -178,7 +178,7 @@ void main() {
       expect(await repository.restoreSession(), isNull);
       expect(localDataSource.token, isNull);
       expect(localDataSource.verifiedCashierUserId, isNull);
-      expect(cache.networkStatus, CashierNetworkStatus.online);
+      expect(cache.networkStatus, OfflineNetworkStatus.online);
     },
   );
 
@@ -199,7 +199,7 @@ void main() {
       throwsA(isA<ApiException>()),
     );
     expect(localDataSource.verifiedCashierUserId, isNull);
-    expect(cache.networkStatus, CashierNetworkStatus.online);
+    expect(cache.networkStatus, OfflineNetworkStatus.online);
   });
 
   test(
@@ -233,7 +233,7 @@ void main() {
       password: 'password',
     );
 
-    await CashierCachedShiftsRepository(
+    await OfflineCachedShiftsRepository(
       _FakeShiftsRepository(activeShift: _openShift()),
       cache,
       ownerUserId: 'cashier-a',
@@ -241,11 +241,11 @@ void main() {
     ).getActive();
 
     expect(
-      await cache.readCashierShiftSnapshot('cashier-a', role: 'Kasir'),
+      await cache.readOfflineSalesShiftSnapshot('cashier-a', role: 'Kasir'),
       isNull,
     );
     expect(
-      (await cache.readCashierShiftSnapshot(
+      (await cache.readOfflineSalesShiftSnapshot(
         'cashier-a',
         role: 'Admin',
       ))?['outlet_id'],
@@ -392,7 +392,7 @@ void main() {
 
 AuthRepositoryImpl _authRepository({
   required _MemoryAuthLocalDataSource localDataSource,
-  required CashierMasterDataCache cache,
+  required OfflineMasterDataCache cache,
   http.Response? profileResponse,
   Object? profileError,
 }) {
@@ -459,15 +459,16 @@ class _MemoryAuthLocalDataSource extends AuthLocalDataSource {
   }
 
   @override
-  Future<String?> readVerifiedCashierUserId() async => verifiedCashierUserId;
+  Future<String?> readVerifiedOfflineSalesUserId() async =>
+      verifiedCashierUserId;
 
   @override
-  Future<void> saveVerifiedCashierUserId(String userId) async {
+  Future<void> saveVerifiedOfflineSalesUserId(String userId) async {
     verifiedCashierUserId = userId;
   }
 
   @override
-  Future<void> clearVerifiedCashierUserId() async {
+  Future<void> clearVerifiedOfflineSalesUserId() async {
     verifiedCashierUserId = null;
   }
 }

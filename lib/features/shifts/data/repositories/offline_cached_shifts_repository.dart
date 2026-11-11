@@ -8,10 +8,10 @@ import 'package:kawula_pos/features/shifts/domain/entities/admin_shift_detail.da
 import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 import 'package:kawula_pos/framework/core/network/platform_network_exception.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 
-class CashierCachedShiftsRepository implements ShiftsRepository {
-  const CashierCachedShiftsRepository(
+class OfflineCachedShiftsRepository implements ShiftsRepository {
+  const OfflineCachedShiftsRepository(
     this._delegate,
     this._cache, {
     required this.ownerUserId,
@@ -19,7 +19,7 @@ class CashierCachedShiftsRepository implements ShiftsRepository {
   });
 
   final ShiftsRepository _delegate;
-  final CashierMasterDataCache _cache;
+  final OfflineMasterDataCache _cache;
   final String ownerUserId;
   final String role;
 
@@ -49,17 +49,17 @@ class CashierCachedShiftsRepository implements ShiftsRepository {
 
     _cache.markOnline();
     if (shift == null) {
-      await _cache.deleteCashierShiftSnapshot(ownerUserId, role: role);
+      await _cache.deleteOfflineSalesShiftSnapshot(ownerUserId, role: role);
       return null;
     }
 
     final outletId = shift.outletId;
     if (outletId == null || outletId.trim().isEmpty) {
-      await _cache.deleteCashierShiftSnapshot(ownerUserId, role: role);
+      await _cache.deleteOfflineSalesShiftSnapshot(ownerUserId, role: role);
       return shift;
     }
 
-    await _cache.saveCashierShiftSnapshot(
+    await _cache.saveOfflineSalesShiftSnapshot(
       userId: ownerUserId,
       outletId: outletId,
       status: shift.status,
@@ -71,7 +71,7 @@ class CashierCachedShiftsRepository implements ShiftsRepository {
   }
 
   Future<ActiveShift?> _readCachedActiveShift() async {
-    final snapshot = await _cache.readCashierShiftSnapshot(
+    final snapshot = await _cache.readOfflineSalesShiftSnapshot(
       ownerUserId,
       role: role,
     );
@@ -112,7 +112,7 @@ class CashierCachedShiftsRepository implements ShiftsRepository {
       pin: pin,
       notes: notes,
     );
-    await _cache.deleteCashierShiftSnapshot(ownerUserId, role: role);
+    await _cache.deleteOfflineSalesShiftSnapshot(ownerUserId, role: role);
     return closedShift;
   }
 

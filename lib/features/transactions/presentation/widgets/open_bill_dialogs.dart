@@ -7,7 +7,7 @@ import 'package:kawula_pos/features/products/presentation/pages/product_formatte
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/theme/app_colors.dart';
 
-Future<TransactionRecord?> showCashierOpenBillsDialog(
+Future<TransactionRecord?> showOpenBillsDialog(
   BuildContext context,
   List<TransactionRecord> transactions,
 ) {
@@ -17,20 +17,20 @@ Future<TransactionRecord?> showCashierOpenBillsDialog(
   );
 }
 
-Future<CashierOpenBillPaymentInput?> showCashierOpenBillPaymentDialog(
+Future<OpenBillPaymentInput?> showOpenBillPaymentDialog(
   BuildContext context, {
   required TransactionRecord transaction,
   required List<CheckoutPaymentMethod> methods,
 }) {
-  return showDialog<CashierOpenBillPaymentInput>(
+  return showDialog<OpenBillPaymentInput>(
     context: context,
     builder: (_) =>
         _OpenBillPaymentDialog(transaction: transaction, methods: methods),
   );
 }
 
-class CashierOpenBillPaymentInput {
-  const CashierOpenBillPaymentInput({
+class OpenBillPaymentInput {
+  const OpenBillPaymentInput({
     required this.paymentMethod,
     required this.paidAmount,
     required this.pin,
@@ -454,7 +454,7 @@ class _OpenBillPaymentDialogState extends State<_OpenBillPaymentDialog> {
       return;
     }
     Navigator.of(context).pop(
-      CashierOpenBillPaymentInput(
+      OpenBillPaymentInput(
         paymentMethod: _selectedMethod.code,
         paidAmount: paidAmount,
         pin: pin,

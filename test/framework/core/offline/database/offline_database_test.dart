@@ -58,6 +58,39 @@ void main() {
 
       expect(version.data['user_version'], 2);
       expect(await cachedRecordsDao.getCachesByType('products'), isEmpty);
+      final tables = await database
+          .customSelect("SELECT name FROM sqlite_master WHERE type = 'table'")
+          .get();
+      expect(
+        tables.map((row) => row.data['name']).toSet(),
+        containsAll([
+          'cached_records',
+          'offline_transactions',
+          'offline_transaction_resolutions',
+        ]),
+      );
+      final indexes = await database
+          .customSelect("PRAGMA index_list('offline_transactions')")
+          .get();
+      expect(
+        indexes.map((row) => row.data['name']),
+        containsAll([
+          'offline_transactions_owner_status_created_idx',
+          'offline_transactions_outlet_idx',
+          'offline_transactions_shift_idx',
+          'offline_transactions_status_idx',
+          'offline_transactions_created_idx',
+        ]),
+      );
+      expect(
+        await database
+            .customSelect(
+              "SELECT name FROM sqlite_master WHERE type = 'index' "
+              "AND name = 'offline_transaction_resolutions_local_created_idx'",
+            )
+            .getSingleOrNull(),
+        isNotNull,
+      );
     });
 
     test(
@@ -606,7 +639,7 @@ void main() {
     },
   );
 
-  test('schema version one migrates to the audit table without losing transactions', () async {
+  test('schema version one migrates all cache and transaction data to version two', () async {
     final previousWarningSetting =
         driftRuntimeOptions.dontWarnAboutMultipleDatabases;
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -616,45 +649,454 @@ void main() {
     final databaseFile = File(
       '${directory.path}${Platform.pathSeparator}version-one.sqlite',
     );
-    final versionOne = AppDatabase(executor: NativeDatabase(databaseFile));
-    var versionOneClosed = false;
-    try {
-      final saved = await versionOne.offlineTransactionsDao
-          .saveOfflineTransaction(
-            ownerUserId: 'cashier-v1',
-            outletId: 'outlet-1',
-            shiftId: 'shift-1',
-            transactionType: 'sale',
-            payload: {'amount': 7000},
-            receiptSnapshot: {'total': 7000},
-          );
-      await versionOne.customStatement(
-        'DROP TABLE offline_transaction_resolutions',
-      );
-      await versionOne.customStatement('PRAGMA user_version = 1');
-      await versionOne.close();
-      versionOneClosed = true;
+    final cacheRows = [
+      (
+        id: 101,
+        type: 'products',
+        key: 'outlet-1',
+        payload: '{"items":[{"id":"product-1","name":"Kopi"}]}',
+        updatedAt: DateTime.utc(2026, 11, 8, 10),
+      ),
+      (
+        id: 102,
+        type: 'categories',
+        key: 'outlet-1',
+        payload: '{"items":[{"id":"category-1","name":"Minuman"}]}',
+        updatedAt: DateTime.utc(2026, 11, 8, 11),
+      ),
+      (
+        id: 103,
+        type: 'checkout_settings',
+        key: 'outlet-1',
+        payload: '{"tax_percentage":10,"service_charge":2000}',
+        updatedAt: DateTime.utc(2026, 11, 8, 12),
+      ),
+    ];
+    final transactionRows = [
+      (
+        localId: 'OFF-v1-pending',
+        owner: 'cashier-v1',
+        outlet: 'outlet-1',
+        shift: 'shift-v1',
+        type: 'sale',
+        marker: 'marker-v1-pending',
+        payload: '{"total_amount":1000,"payment_method":"CASH"}',
+        receipt: '{"transaction_id":"OFF-v1-pending","total_amount":1000}',
+        status: 'pending_sync',
+        remoteId: null,
+        createdAt: DateTime.utc(2026, 11, 9, 8),
+        updatedAt: DateTime.utc(2026, 11, 9, 8, 1),
+        syncedAt: null,
+        attemptCount: 0,
+        lastError: null,
+      ),
+      (
+        localId: 'OFF-v1-failed',
+        owner: 'cashier-v1',
+        outlet: 'outlet-1',
+        shift: 'shift-v1',
+        type: 'sale',
+        marker: 'marker-v1-failed',
+        payload: '{"total_amount":2000,"payment_method":"CARD"}',
+        receipt: '{"transaction_id":"OFF-v1-failed","total_amount":2000}',
+        status: 'failed',
+        remoteId: null,
+        createdAt: DateTime.utc(2026, 11, 9, 9),
+        updatedAt: DateTime.utc(2026, 11, 9, 9, 1),
+        syncedAt: null,
+        attemptCount: 2,
+        lastError: 'Business rejection',
+      ),
+      (
+        localId: 'OFF-v1-reconciliation',
+        owner: 'cashier-v1',
+        outlet: 'outlet-2',
+        shift: 'shift-v2',
+        type: 'open_bill',
+        marker: 'marker-v1-reconciliation',
+        payload: '{"total_amount":3000,"payment_method":"OPEN_BILL"}',
+        receipt:
+            '{"transaction_id":"OFF-v1-reconciliation","total_amount":3000}',
+        status: 'needs_reconciliation',
+        remoteId: null,
+        createdAt: DateTime.utc(2026, 11, 9, 10),
+        updatedAt: DateTime.utc(2026, 11, 9, 10, 1),
+        syncedAt: null,
+        attemptCount: 1,
+        lastError: 'Response status unknown',
+      ),
+      (
+        localId: 'OFF-v1-synced',
+        owner: 'cashier-v1',
+        outlet: 'outlet-1',
+        shift: 'shift-v1',
+        type: 'sale',
+        marker: 'marker-v1-synced',
+        payload: '{"total_amount":4000,"payment_method":"CASH"}',
+        receipt: '{"transaction_id":"OFF-v1-synced","total_amount":4000}',
+        status: 'synced',
+        remoteId: 'remote-v1-synced',
+        createdAt: DateTime.utc(2026, 11, 9, 11),
+        updatedAt: DateTime.utc(2026, 11, 9, 11, 1),
+        syncedAt: DateTime.utc(2026, 11, 9, 11, 2),
+        attemptCount: 1,
+        lastError: null,
+      ),
+    ];
 
-      final migrated = AppDatabase(executor: NativeDatabase(databaseFile));
+    final fixture = AppDatabase(
+      executor: NativeDatabase(
+        databaseFile,
+        setup: (rawDatabase) {
+          rawDatabase.execute('''
+            CREATE TABLE cached_records (
+              id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+              cache_type TEXT NOT NULL,
+              cache_key TEXT NOT NULL,
+              payload_json TEXT NOT NULL,
+              updated_at INTEGER NOT NULL,
+              UNIQUE (cache_type, cache_key)
+            )
+          ''');
+          rawDatabase.execute('''
+            CREATE TABLE offline_transactions (
+              local_id TEXT NOT NULL PRIMARY KEY,
+              owner_user_id TEXT NOT NULL,
+              outlet_id TEXT NOT NULL,
+              shift_id TEXT NOT NULL,
+              transaction_type TEXT NOT NULL,
+              sync_marker TEXT NOT NULL UNIQUE,
+              payload_json TEXT NOT NULL,
+              receipt_snapshot_json TEXT NOT NULL,
+              status TEXT NOT NULL DEFAULT 'pending_sync',
+              remote_transaction_id TEXT,
+              created_at_local INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL,
+              synced_at INTEGER,
+              attempt_count INTEGER NOT NULL DEFAULT 0,
+              last_error TEXT
+            )
+          ''');
+          rawDatabase.execute(
+            'CREATE INDEX offline_transactions_owner_status_created_idx '
+            'ON offline_transactions (owner_user_id, status, created_at_local)',
+          );
+          rawDatabase.execute(
+            'CREATE INDEX offline_transactions_outlet_idx '
+            'ON offline_transactions (outlet_id)',
+          );
+          rawDatabase.execute(
+            'CREATE INDEX offline_transactions_shift_idx '
+            'ON offline_transactions (shift_id)',
+          );
+          rawDatabase.execute(
+            'CREATE INDEX offline_transactions_status_idx '
+            'ON offline_transactions (status)',
+          );
+          rawDatabase.execute(
+            'CREATE INDEX offline_transactions_created_idx '
+            'ON offline_transactions (created_at_local)',
+          );
+
+          for (final cache in cacheRows) {
+            rawDatabase.execute(
+              'INSERT INTO cached_records '
+              '(id, cache_type, cache_key, payload_json, updated_at) '
+              'VALUES (?, ?, ?, ?, ?)',
+              [
+                cache.id,
+                cache.type,
+                cache.key,
+                cache.payload,
+                cache.updatedAt.millisecondsSinceEpoch ~/ 1000,
+              ],
+            );
+          }
+          for (final record in transactionRows) {
+            rawDatabase.execute(
+              'INSERT INTO offline_transactions ('
+              'local_id, owner_user_id, outlet_id, shift_id, transaction_type, '
+              'sync_marker, payload_json, receipt_snapshot_json, status, '
+              'remote_transaction_id, created_at_local, updated_at, synced_at, '
+              'attempt_count, last_error) '
+              'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              [
+                record.localId,
+                record.owner,
+                record.outlet,
+                record.shift,
+                record.type,
+                record.marker,
+                record.payload,
+                record.receipt,
+                record.status,
+                record.remoteId,
+                record.createdAt.millisecondsSinceEpoch ~/ 1000,
+                record.updatedAt.millisecondsSinceEpoch ~/ 1000,
+                record.syncedAt == null
+                    ? null
+                    : record.syncedAt!.millisecondsSinceEpoch ~/ 1000,
+                record.attemptCount,
+                record.lastError,
+              ],
+            );
+          }
+          rawDatabase.execute('PRAGMA user_version = 1');
+        },
+      ),
+    );
+    await fixture.customSelect('PRAGMA user_version').getSingle();
+    await fixture.close();
+
+    var migratedClosed = false;
+    try {
+      var migrated = AppDatabase(executor: NativeDatabase(databaseFile));
       try {
-        final transaction = await migrated.offlineTransactionsDao
-            .getTransactionByLocalId(saved.localId);
-        final audit = await migrated.offlineTransactionsDao.getResolutionAudit(
-          saved.localId,
-        );
         final version = await migrated
             .customSelect('PRAGMA user_version')
             .getSingle();
-
-        expect(transaction, isNotNull);
-        expect(transaction!.payloadJson, saved.payloadJson);
-        expect(audit, isEmpty);
         expect(version.data['user_version'], 2);
-      } finally {
+
+        final tables = await migrated
+            .customSelect("SELECT name FROM sqlite_master WHERE type = 'table'")
+            .get();
+        expect(
+          tables.map((row) => row.data['name']).toSet(),
+          containsAll([
+            'cached_records',
+            'offline_transactions',
+            'offline_transaction_resolutions',
+          ]),
+        );
+
+        final caches = <CachedRecord>[];
+        for (final cache in cacheRows) {
+          final row = await migrated.cachedRecordsDao.getCache(
+            cache.type,
+            cache.key,
+          );
+          expect(row, isNotNull);
+          caches.add(row!);
+          expect(row.id, cache.id);
+          expect(row.payloadJson, cache.payload);
+          expect(
+            row.updatedAt.millisecondsSinceEpoch,
+            cache.updatedAt.millisecondsSinceEpoch,
+          );
+        }
+        expect(caches, hasLength(3));
+
+        final transactions = await migrated.offlineTransactionsDao
+            .getTransactionsByOwner('cashier-v1');
+        expect(transactions, hasLength(transactionRows.length));
+        for (final expected in transactionRows) {
+          final actual = transactions.singleWhere(
+            (record) => record.localId == expected.localId,
+          );
+          expect(actual.ownerUserId, expected.owner);
+          expect(actual.outletId, expected.outlet);
+          expect(actual.shiftId, expected.shift);
+          expect(actual.transactionType, expected.type);
+          expect(actual.syncMarker, expected.marker);
+          expect(actual.payloadJson, expected.payload);
+          expect(actual.receiptSnapshotJson, expected.receipt);
+          expect(actual.status, expected.status);
+          expect(actual.remoteTransactionId, expected.remoteId);
+          expect(
+            actual.createdAtLocal.millisecondsSinceEpoch,
+            expected.createdAt.millisecondsSinceEpoch,
+          );
+          expect(
+            actual.updatedAt.millisecondsSinceEpoch,
+            expected.updatedAt.millisecondsSinceEpoch,
+          );
+          expect(
+            actual.syncedAt?.millisecondsSinceEpoch,
+            expected.syncedAt?.millisecondsSinceEpoch,
+          );
+          expect(actual.attemptCount, expected.attemptCount);
+          expect(actual.lastError, expected.lastError);
+        }
+
+        final cacheIndexes = await migrated
+            .customSelect("PRAGMA index_list('cached_records')")
+            .get();
+        expect(cacheIndexes.any((row) => row.data['unique'] == 1), isTrue);
+        final cacheUniqueIndex = cacheIndexes.firstWhere(
+          (row) => row.data['unique'] == 1,
+        );
+        final cacheIndexColumns = await migrated
+            .customSelect(
+              "PRAGMA index_info('${cacheUniqueIndex.data['name']}')",
+            )
+            .get();
+        expect(cacheIndexColumns.map((row) => row.data['name']).toList(), [
+          'cache_type',
+          'cache_key',
+        ]);
+
+        final transactionIndexes = await migrated
+            .customSelect("PRAGMA index_list('offline_transactions')")
+            .get();
+        final transactionIndexNames = transactionIndexes
+            .map((row) => row.data['name'])
+            .toSet();
+        expect(
+          transactionIndexNames,
+          containsAll([
+            'offline_transactions_owner_status_created_idx',
+            'offline_transactions_outlet_idx',
+            'offline_transactions_shift_idx',
+            'offline_transactions_status_idx',
+            'offline_transactions_created_idx',
+          ]),
+        );
+        expect(
+          transactionIndexes.any((row) => row.data['unique'] == 1),
+          isTrue,
+        );
+        var hasUniqueSyncMarker = false;
+        for (final index in transactionIndexes.where(
+          (row) => row.data['unique'] == 1,
+        )) {
+          final columns = await migrated
+              .customSelect("PRAGMA index_info('${index.data['name']}')")
+              .get();
+          if (columns.length == 1 &&
+              columns.single.data['name'] == 'sync_marker') {
+            hasUniqueSyncMarker = true;
+          }
+        }
+        expect(hasUniqueSyncMarker, isTrue);
+        final transactionColumns = await migrated
+            .customSelect("PRAGMA table_info('offline_transactions')")
+            .get();
+        expect(
+          transactionColumns
+              .singleWhere((row) => row.data['name'] == 'local_id')
+              .data['pk'],
+          1,
+        );
+        expect(
+          transactionColumns
+              .singleWhere((row) => row.data['name'] == 'status')
+              .data['dflt_value'],
+          "'pending_sync'",
+        );
+        expect(
+          transactionColumns
+              .singleWhere((row) => row.data['name'] == 'attempt_count')
+              .data['dflt_value'],
+          '0',
+        );
+
+        final resolutionIndexes = await migrated
+            .customSelect(
+              "PRAGMA index_list('offline_transaction_resolutions')",
+            )
+            .get();
+        expect(
+          resolutionIndexes.map((row) => row.data['name']),
+          contains('offline_transaction_resolutions_local_created_idx'),
+        );
+
+        final linked = transactions.firstWhere(
+          (record) => record.status == 'needs_reconciliation',
+        );
+        final auditInserted = await migrated.offlineTransactionsDao
+            .resolveManually(
+              localId: linked.localId,
+              outletId: linked.outletId,
+              adminUserId: 'admin-v2',
+              adminRole: 'Admin',
+              resolutionType: 'matched_existing_remote',
+              remoteTransactionId: 'remote-after-migration',
+              resolvedAt: DateTime.utc(2026, 11, 10, 12),
+              reason: 'Linked after migration.',
+            );
+        expect(auditInserted, isTrue);
+        final linkedAudit = await migrated.offlineTransactionsDao
+            .getResolutionAudit(linked.localId);
+        expect(linkedAudit, hasLength(1));
+        expect(linkedAudit.single.localId, linked.localId);
+        expect(
+          linkedAudit.single.remoteTransactionId,
+          'remote-after-migration',
+        );
         await migrated.close();
+        migratedClosed = true;
+      } finally {
+        if (!migratedClosed) await migrated.close();
+      }
+
+      final reopened = AppDatabase(executor: NativeDatabase(databaseFile));
+      try {
+        final transactions = await reopened.offlineTransactionsDao
+            .getTransactionsByOwner('cashier-v1');
+        expect(transactions, hasLength(transactionRows.length));
+        for (final expected in transactionRows) {
+          final actual = transactions.singleWhere(
+            (record) => record.localId == expected.localId,
+          );
+          final wasLinked = expected.localId == 'OFF-v1-reconciliation';
+          expect(actual.ownerUserId, expected.owner);
+          expect(actual.outletId, expected.outlet);
+          expect(actual.shiftId, expected.shift);
+          expect(actual.transactionType, expected.type);
+          expect(actual.syncMarker, expected.marker);
+          expect(actual.payloadJson, expected.payload);
+          expect(actual.receiptSnapshotJson, expected.receipt);
+          expect(
+            actual.status,
+            wasLinked ? 'resolved_manually' : expected.status,
+          );
+          expect(
+            actual.remoteTransactionId,
+            wasLinked ? 'remote-after-migration' : expected.remoteId,
+          );
+          expect(actual.attemptCount, expected.attemptCount);
+          expect(actual.lastError, expected.lastError);
+          expect(
+            actual.createdAtLocal.millisecondsSinceEpoch,
+            expected.createdAt.millisecondsSinceEpoch,
+          );
+          expect(
+            actual.updatedAt.millisecondsSinceEpoch,
+            wasLinked
+                ? DateTime.utc(2026, 11, 10, 12).millisecondsSinceEpoch
+                : expected.updatedAt.millisecondsSinceEpoch,
+          );
+          expect(
+            actual.syncedAt?.millisecondsSinceEpoch,
+            expected.syncedAt?.millisecondsSinceEpoch,
+          );
+        }
+        final linked = transactions.singleWhere(
+          (record) => record.localId == 'OFF-v1-reconciliation',
+        );
+        expect(
+          await reopened.offlineTransactionsDao.getResolutionAudit(
+            linked.localId,
+          ),
+          hasLength(1),
+        );
+        for (final cache in cacheRows) {
+          final row = await reopened.cachedRecordsDao.getCache(
+            cache.type,
+            cache.key,
+          );
+          expect(row, isNotNull);
+          expect(row!.id, cache.id);
+          expect(row.payloadJson, cache.payload);
+          expect(
+            row.updatedAt.millisecondsSinceEpoch,
+            cache.updatedAt.millisecondsSinceEpoch,
+          );
+        }
+      } finally {
+        await reopened.close();
       }
     } finally {
-      if (!versionOneClosed) await versionOne.close();
       await directory.delete(recursive: true);
       driftRuntimeOptions.dontWarnAboutMultipleDatabases =
           previousWarningSetting;

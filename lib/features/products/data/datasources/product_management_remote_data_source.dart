@@ -10,6 +10,7 @@ import 'package:kawula_pos/features/products/data/models/product_management_mode
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 import 'package:kawula_pos/framework/core/network/api_header_builder.dart';
+import 'package:kawula_pos/framework/core/network/api_response_decoder.dart';
 import 'package:kawula_pos/framework/core/network/api_url_builder.dart';
 
 class ProductManagementRemoteDataSource {
@@ -162,10 +163,7 @@ class ProductManagementRemoteDataSource {
 
   Future<Map<String, String>> _authorizedHeaders() async {
     final token = await _readToken();
-    return {
-      ...buildAuthorizationHeaders(token),
-      'Accept': 'application/json',
-    };
+    return {...buildAuthorizationHeaders(token), 'Accept': 'application/json'};
   }
 
   Future<Map<String, String>> _authorizedJsonHeaders() async => {
@@ -180,36 +178,10 @@ class ProductManagementRemoteDataSource {
   }
 
   Object? _decodeResponse(http.Response response) {
-    Object? decoded;
-    if (response.body.trim().isNotEmpty) {
-      try {
-        decoded = jsonDecode(response.body);
-      } on FormatException {
-        if (response.statusCode < 200 || response.statusCode >= 300) {
-          throw ApiException(
-            'Permintaan gagal dengan kode ${response.statusCode}.',
-            statusCode: response.statusCode,
-          );
-        }
-        throw const ApiException('Respons server tidak valid.');
-      }
-    }
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = decoded is Map<String, dynamic>
-          ? decoded['message']
-          : null;
-      final errorMessage = message is String
-          ? message
-          : message is List
-          ? message.whereType<String>().join('\n')
-          : null;
-      throw ApiException(
-        errorMessage?.isNotEmpty == true
-            ? errorMessage!
-            : 'Permintaan gagal dengan kode ${response.statusCode}.',
-        statusCode: response.statusCode,
-      );
-    }
-    return decoded;
+    return decodeApiResponse(
+      response,
+      allowErrorMessageLists: true,
+      emptyErrorMessageUsesFallback: true,
+    );
   }
 }

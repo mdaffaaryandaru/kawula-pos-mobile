@@ -13,9 +13,9 @@ import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
 import 'package:kawula_pos/features/transactions/data/models/checkout_models.dart';
-import 'package:kawula_pos/features/transactions/data/repositories/cashier_cached_checkout_repository.dart';
-import 'package:kawula_pos/features/transactions/data/repositories/cashier_offline_checkout_repository.dart';
-import 'package:kawula_pos/features/transactions/data/services/cashier_offline_sync_service.dart';
+import 'package:kawula_pos/features/transactions/data/repositories/offline_cached_checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/data/repositories/offline_checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/data/services/offline_transaction_sync_service.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/presentation/bloc/checkout_cubit.dart';
@@ -25,15 +25,15 @@ import 'package:kawula_pos/features/transactions/presentation/pages/checkout_pag
 import 'package:kawula_pos/features/transactions/presentation/services/transaction_receipt_pdf.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 import 'package:kawula_pos/framework/core/network/timeout_http_client.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 
 void main() {
   late AppDatabase database;
-  late CashierMasterDataCache cache;
+  late OfflineMasterDataCache cache;
   late _CheckoutDelegate delegate;
-  late CashierOfflineCheckoutRepository repository;
+  late OfflineCheckoutRepository repository;
   late CartItem item;
   var databaseClosed = false;
 
@@ -65,7 +65,7 @@ void main() {
         isOfflineSnapshot: offline,
       );
 
-  Future<void> cacheMasterData(CashierMasterDataCache target) async {
+  Future<void> cacheMasterData(OfflineMasterDataCache target) async {
     await target.save(
       cacheType: 'catalog_products',
       dataKey: 'all',
@@ -97,7 +97,7 @@ void main() {
 
   setUp(() async {
     database = AppDatabase(executor: NativeDatabase.memory());
-    final rootCache = CashierMasterDataCache(database.cachedRecordsDao);
+    final rootCache = OfflineMasterDataCache(database.cachedRecordsDao);
     cache = rootCache.forRole(
       role: 'Kasir',
       userId: 'cashier-1',
@@ -120,8 +120,8 @@ void main() {
     );
     delegate = _CheckoutDelegate();
     await cacheMasterData(cache);
-    repository = CashierOfflineCheckoutRepository(
-      CashierCachedCheckoutRepository(delegate, cache),
+    repository = OfflineCheckoutRepository(
+      OfflineCachedCheckoutRepository(delegate, cache),
       cache,
       database.offlineTransactionsDao,
       user: cashier(),
@@ -149,14 +149,13 @@ void main() {
     openBill: openBill,
   );
 
-  CashierOfflineCheckoutRepository onlineRepository() =>
-      CashierOfflineCheckoutRepository(
-        CashierCachedCheckoutRepository(delegate, cache),
-        cache,
-        database.offlineTransactionsDao,
-        user: cashier(offline: false),
-        shift: shift(offline: false),
-      );
+  OfflineCheckoutRepository onlineRepository() => OfflineCheckoutRepository(
+    OfflineCachedCheckoutRepository(delegate, cache),
+    cache,
+    database.offlineTransactionsDao,
+    user: cashier(offline: false),
+    shift: shift(offline: false),
+  );
 
   test(
     'saves cash sale with local ID, pending status and receipt snapshot',
@@ -165,26 +164,68 @@ void main() {
       final rows = await database.offlineTransactionsDao.getTransactionsByOwner(
         'cashier-1',
       );
+      final row = rows.single;
+      final payload = jsonDecode(row.payloadJson) as Map<String, dynamic>;
       final receipt =
-          jsonDecode(rows.single.receiptSnapshotJson) as Map<String, dynamic>;
+          jsonDecode(row.receiptSnapshotJson) as Map<String, dynamic>;
 
       expect(result.id, matches(RegExp(r'^OFF-[0-9a-f-]{36}$')));
       expect(result.status, OfflineTransactionStatus.pendingSync.databaseValue);
       expect(result.isOffline, isTrue);
       expect(result.totalAmount, 1150);
       expect(result.changeAmount, 50);
-      expect(rows.single.attemptCount, 0);
-      expect(rows.single.syncMarker, startsWith('OFFLINE_SYNC:'));
-      expect(receipt['store_name'], 'Kawula');
-      expect(receipt['outlet_name'], 'Outlet Utama');
-      expect(receipt['cashier_name'], 'Sari');
-      expect(receipt['created_at_local'], isA<String>());
-      expect(receipt['items'].single['product_name'], 'Kopi');
-      expect(receipt['total_amount'], 1150);
-      expect(receipt['payment_method'], 'CASH');
-      expect(receipt['paid_amount'], 1200);
-      expect(receipt['change_amount'], 50);
-      expect(receipt['sync_status'], 'pending_sync');
+      expect(row.attemptCount, 0);
+      expect(row.syncMarker, startsWith('OFFLINE_SYNC:'));
+      expect(payload, {
+        'outlet_id': 'outlet-1',
+        'items': [
+          {
+            'product_id': 'product-1',
+            'quantity': 1,
+            'selected_variants': <Object>[],
+          },
+        ],
+        'total_amount': 1150,
+        'service_charge': 50,
+        'payment_method': 'CASH',
+        'paid_amount': 1200,
+      });
+      expect(receipt, {
+        'transaction_id': result.id,
+        'status': OfflineTransactionStatus.pendingSync.databaseValue,
+        'store_name': 'Kawula',
+        'address': 'Jl. Utama',
+        'logo_url': '',
+        'outlet_id': 'outlet-1',
+        'outlet_name': 'Outlet Utama',
+        'cashier_id': 'cashier-1',
+        'cashier_name': 'Sari',
+        'created_at_local': result.createdAt!.toIso8601String(),
+        'items': [
+          {
+            'product_id': 'product-1',
+            'product_name': 'Kopi',
+            'quantity': 1,
+            'unit_price': 1000,
+            'discount_amount': 0,
+            'notes': '',
+            'selected_variants': <Object>[],
+          },
+        ],
+        'subtotal': 1000,
+        'tax_amount': 100,
+        'service_charge': 50,
+        'discount_amount': 0,
+        'total_amount': 1150,
+        'payment_method': 'CASH',
+        'paid_amount': 1200,
+        'change_amount': 50,
+        'member_id': null,
+        'member_name': '',
+        'table_number': '',
+        'sync_marker': row.syncMarker,
+        'sync_status': OfflineTransactionStatus.pendingSync.databaseValue,
+      });
       expect(delegate.createCalls, 0);
     },
   );
@@ -330,12 +371,12 @@ void main() {
     await create(paymentMethod: 'BANK_TRANSFER', paidAmount: 1150);
     await create(paymentMethod: 'OPEN_BILL', paidAmount: 0, openBill: true);
 
-    final syncService = CashierOfflineSyncService(
+    final syncService = OfflineTransactionSyncService(
       delegate,
       database.offlineTransactionsDao,
       activeShiftsRepository: _SyncShiftRepository(shift(offline: false)),
     );
-    final summary = await syncService.syncForCashier(
+    final summary = await syncService.syncOfflineTransactions(
       ownerUserId: 'cashier-1',
       outletId: 'outlet-1',
       role: 'Kasir',
@@ -408,7 +449,7 @@ void main() {
   );
 
   test('rejects offline checkout when no open shift is available', () async {
-    final noShiftRepository = CashierOfflineCheckoutRepository(
+    final noShiftRepository = OfflineCheckoutRepository(
       repository,
       cache,
       database.offlineTransactionsDao,
@@ -447,49 +488,58 @@ void main() {
   });
 
   test('Admin can create an offline sale owned by the Admin account', () async {
-    final adminCache = CashierMasterDataCache(
-      database.cachedRecordsDao,
-    ).forRole(role: 'Admin', userId: 'admin-1', outletId: 'outlet-1')!;
+    final adminCache = OfflineMasterDataCache(database.cachedRecordsDao)
+        .forRole(role: 'Admin', userId: 'admin-1', outletId: 'outlet-1')!;
     adminCache.markOffline();
     await cacheMasterData(adminCache);
-    final adminRepository = CashierOfflineCheckoutRepository(
-      CashierCachedCheckoutRepository(delegate, adminCache),
+    final adminRepository = OfflineCheckoutRepository(
+      OfflineCachedCheckoutRepository(delegate, adminCache),
       adminCache,
       database.offlineTransactionsDao,
       user: cashier(id: 'admin-1', role: 'Admin'),
       shift: shift(),
     );
-      for (final paymentMethod in [
-        'CASH',
-        'QRIS',
-        'BANK_TRANSFER',
-        'OPEN_BILL',
-      ]) {
-        await adminRepository.createTransaction(
-          outletId: 'outlet-1',
-          items: [item],
-          estimatedTotal: 1150,
-          serviceCharge: 50,
-          paymentMethod: paymentMethod,
-          paidAmount: paymentMethod == 'OPEN_BILL' ? 0 : 1150,
-          pin: null,
-          openBill: paymentMethod == 'OPEN_BILL',
-        );
-      }
-    final transactions =
-        await database.offlineTransactionsDao.getTransactionsByOwner('admin-1');
+    for (final paymentMethod in [
+      'CASH',
+      'QRIS',
+      'BANK_TRANSFER',
+      'OPEN_BILL',
+    ]) {
+      await adminRepository.createTransaction(
+        outletId: 'outlet-1',
+        items: [item],
+        estimatedTotal: 1150,
+        serviceCharge: 50,
+        paymentMethod: paymentMethod,
+        paidAmount: paymentMethod == 'OPEN_BILL' ? 0 : 1150,
+        pin: null,
+        openBill: paymentMethod == 'OPEN_BILL',
+      );
+    }
+    final transactions = await database.offlineTransactionsDao
+        .getTransactionsByOwner('admin-1');
 
     expect(transactions, hasLength(4));
-    expect(transactions.every((transaction) => transaction.ownerUserId == 'admin-1'), isTrue);
-    expect(transactions.every((transaction) => transaction.localId.startsWith('OFF-')), isTrue);
     expect(
-      transactions.any((transaction) => transaction.transactionType == 'open_bill'),
+      transactions.every((transaction) => transaction.ownerUserId == 'admin-1'),
+      isTrue,
+    );
+    expect(
+      transactions.every(
+        (transaction) => transaction.localId.startsWith('OFF-'),
+      ),
+      isTrue,
+    );
+    expect(
+      transactions.any(
+        (transaction) => transaction.transactionType == 'open_bill',
+      ),
       isTrue,
     );
   });
 
   test('rejects checkout for management roles', () async {
-    final managerRepository = CashierOfflineCheckoutRepository(
+    final managerRepository = OfflineCheckoutRepository(
       repository,
       cache,
       database.offlineTransactionsDao,
@@ -547,7 +597,7 @@ void main() {
     'another cashier cannot read or create against this scoped cache',
     () async {
       await create();
-      final otherCashierRepository = CashierOfflineCheckoutRepository(
+      final otherCashierRepository = OfflineCheckoutRepository(
         repository,
         cache,
         database.offlineTransactionsDao,
@@ -656,8 +706,8 @@ void main() {
 
   test('preserves PIN on the online path', () async {
     cache.markOnline();
-    final onlineRepository = CashierOfflineCheckoutRepository(
-      CashierCachedCheckoutRepository(delegate, cache),
+    final onlineRepository = OfflineCheckoutRepository(
+      OfflineCachedCheckoutRepository(delegate, cache),
       cache,
       database.offlineTransactionsDao,
       user: cashier(offline: false),

@@ -9,7 +9,7 @@ import 'package:kawula_pos/bootstrap/app_dependencies.dart';
 import 'package:kawula_pos/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:kawula_pos/features/auth/presentation/pages/auth_gate.dart';
 import 'package:kawula_pos/features/splash/presentation/pages/kawula_splash_screen.dart';
-import 'package:kawula_pos/framework/core/offline/cashier_master_data_cache.dart';
+import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 import 'package:kawula_pos/theme/app_theme.dart';
 
 class KawulaPosApp extends StatelessWidget {
@@ -19,10 +19,10 @@ class KawulaPosApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RepositoryProvider<CashierMasterDataCache>.value(
+    return RepositoryProvider<OfflineMasterDataCache>.value(
       value:
           dependencies.masterDataCache ??
-          const CashierMasterDataCache.disabled(),
+          const OfflineMasterDataCache.disabled(),
       child: BlocProvider(
         create: (_) => AuthCubit(
           dependencies.authRepository,
@@ -39,7 +39,8 @@ class KawulaPosApp extends StatelessWidget {
               masterDataCache: dependencies.masterDataCache,
               offlineTransactionsDao:
                   dependencies.database?.offlineTransactionsDao,
-              cashierOfflineSyncService: dependencies.cashierOfflineSyncService,
+              offlineTransactionSyncService:
+                  dependencies.offlineTransactionSyncService,
               catalogRepository: dependencies.catalogRepository,
               checkoutRepository: dependencies.checkoutRepository,
               balancesRepository: dependencies.balancesRepository,

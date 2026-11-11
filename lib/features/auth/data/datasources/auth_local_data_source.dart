@@ -7,7 +7,9 @@ class AuthLocalDataSource {
   static const _tokenKey = 'access_token';
   static const _verifiedOfflineSalesUserIdKey =
       'verified_offline_sales_user_id';
-  static const _legacyVerifiedCashierUserIdKey = 'verified_cashier_user_id';
+  // TODO: Keep this legacy key until the minimum supported app version is known.
+  static const _legacyVerifiedOfflineSalesUserIdKey =
+      'verified_cashier_user_id';
 
   final FlutterSecureStorage _storage;
 
@@ -18,19 +20,19 @@ class AuthLocalDataSource {
 
   Future<void> deleteToken() => _storage.delete(key: _tokenKey);
 
-  Future<String?> readVerifiedCashierUserId() async {
+  Future<String?> readVerifiedOfflineSalesUserId() async {
     final verifiedUserId = await _storage.read(
       key: _verifiedOfflineSalesUserIdKey,
     );
     return verifiedUserId ??
-        await _storage.read(key: _legacyVerifiedCashierUserIdKey);
+        await _storage.read(key: _legacyVerifiedOfflineSalesUserIdKey);
   }
 
-  Future<void> saveVerifiedCashierUserId(String userId) =>
+  Future<void> saveVerifiedOfflineSalesUserId(String userId) =>
       _storage.write(key: _verifiedOfflineSalesUserIdKey, value: userId);
 
-  Future<void> clearVerifiedCashierUserId() async {
+  Future<void> clearVerifiedOfflineSalesUserId() async {
     await _storage.delete(key: _verifiedOfflineSalesUserIdKey);
-    await _storage.delete(key: _legacyVerifiedCashierUserIdKey);
+    await _storage.delete(key: _legacyVerifiedOfflineSalesUserIdKey);
   }
 }
