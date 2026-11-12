@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Variable;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kawula_pos/features/members/domain/entities/member.dart';
@@ -506,8 +508,27 @@ void main() {
         },
         receiptSnapshot: {'store_name': 'Kawula'},
       );
+      await insertTransaction(
+        localId: 'OFF-after-400',
+        ownerUserId: 'cashier-1',
+        outletId: 'outlet-1',
+        status: OfflineTransactionStatus.pendingSync,
+        payload: {
+          'items': [
+            {
+              'product_id': 'product-after-400',
+              'product_name': 'Teh',
+              'quantity': 1,
+              'unit_price': 600,
+            },
+          ],
+          'total_amount': 600,
+          'payment_method': 'CASH',
+          'paid_amount': 600,
+        },
+      );
       delegate.failures[1] = const ApiException(
-        'Stok tidak mencukupi.',
+        'PIN produk tidak tersedia.',
         statusCode: 400,
       );
 
@@ -517,18 +538,188 @@ void main() {
         role: 'Kasir',
         pin: '1234',
       );
-      final row = (await database.offlineTransactionsDao.getTransactionsByOwner(
+      final rows = await database.offlineTransactionsDao.getTransactionsByOwner(
         'cashier-1',
-      )).single;
+      );
 
       expect(summary.failedCount, 1);
+      expect(summary.successCount, 1);
       expect(summary.stopped, isFalse);
-      expect(row.status, 'failed');
-      expect(row.lastError, contains('Stok tidak mencukupi'));
+      expect(rows.first.status, 'failed');
+      expect(rows.first.lastError, contains('PIN produk'));
+      expect(rows.last.status, 'synced');
+      expect(delegate.calls, ['product-after-400']);
     },
   );
 
-  test('stops sync when PIN is rejected and keeps queue intact', () async {
+  test(
+    'fails malformed local payloads before sending and continues in FIFO order',
+    () async {
+      const invalidJson = '{invalid-json';
+      const invalidItemsPayload = {
+        'items': ['not-an-item'],
+        'total_amount': 1000,
+        'service_charge': 0,
+        'payment_method': 'CASH',
+        'paid_amount': 1000,
+      };
+      const invalidVariantPayload = {
+        'items': [
+          {
+            'product_id': 'product-with-invalid-variant',
+            'quantity': 1,
+            'selected_variants': ['not-a-variant'],
+          },
+        ],
+        'total_amount': 1000,
+        'service_charge': 0,
+        'payment_method': 'CASH',
+        'paid_amount': 1000,
+      };
+      const invalidTotalPayload = {
+        'items': [
+          {
+            'product_id': 'product-with-invalid-total',
+            'quantity': 1,
+            'selected_variants': [],
+          },
+        ],
+        'total_amount': '1000',
+        'service_charge': 0,
+        'payment_method': 'CASH',
+        'paid_amount': 1000,
+      };
+      const inconsistentPaymentPayload = {
+        'items': [
+          {
+            'product_id': 'product-with-inconsistent-payment',
+            'quantity': 1,
+            'selected_variants': [],
+          },
+        ],
+        'total_amount': 1000,
+        'service_charge': 0,
+        'payment_method': 'OPEN_BILL',
+      };
+      const invalidJsonReceipt = {'store_name': 'JSON receipt'};
+      const invalidItemsReceipt = {'store_name': 'Items receipt'};
+      const invalidVariantReceipt = {'store_name': 'Variant receipt'};
+      const invalidTotalReceipt = {'store_name': 'Total receipt'};
+      const inconsistentPaymentReceipt = {'store_name': 'Payment receipt'};
+
+      await insertTransaction(
+        localId: 'OFF-invalid-json',
+        ownerUserId: 'cashier-1',
+        outletId: 'outlet-1',
+        status: OfflineTransactionStatus.pendingSync,
+        receiptSnapshot: invalidJsonReceipt,
+      );
+      await database.customUpdate(
+        'UPDATE offline_transactions SET payload_json = ? WHERE local_id = ?',
+        variables: [
+          Variable.withString(invalidJson),
+          Variable.withString('OFF-invalid-json'),
+        ],
+        updates: {database.offlineTransactions},
+      );
+      await insertTransaction(
+        localId: 'OFF-invalid-items',
+        ownerUserId: 'cashier-1',
+        outletId: 'outlet-1',
+        status: OfflineTransactionStatus.pendingSync,
+        payload: invalidItemsPayload,
+        receiptSnapshot: invalidItemsReceipt,
+      );
+      await insertTransaction(
+        localId: 'OFF-invalid-variant',
+        ownerUserId: 'cashier-1',
+        outletId: 'outlet-1',
+        status: OfflineTransactionStatus.pendingSync,
+        payload: invalidVariantPayload,
+        receiptSnapshot: invalidVariantReceipt,
+      );
+      await insertTransaction(
+        localId: 'OFF-invalid-total',
+        ownerUserId: 'cashier-1',
+        outletId: 'outlet-1',
+        status: OfflineTransactionStatus.pendingSync,
+        payload: invalidTotalPayload,
+        receiptSnapshot: invalidTotalReceipt,
+      );
+      await insertTransaction(
+        localId: 'OFF-inconsistent-payment',
+        ownerUserId: 'cashier-1',
+        outletId: 'outlet-1',
+        status: OfflineTransactionStatus.pendingSync,
+        payload: inconsistentPaymentPayload,
+        receiptSnapshot: inconsistentPaymentReceipt,
+      );
+      await insertTransaction(
+        localId: 'OFF-after-invalid',
+        ownerUserId: 'cashier-1',
+        outletId: 'outlet-1',
+        status: OfflineTransactionStatus.pendingSync,
+        payload: {
+          'items': [
+            {
+              'product_id': 'product-after-invalid',
+              'product_name': 'Teh',
+              'quantity': 1,
+              'unit_price': 600,
+            },
+          ],
+          'total_amount': 600,
+          'service_charge': 0,
+          'payment_method': 'CASH',
+          'paid_amount': 600,
+        },
+      );
+
+      final summary = await service.syncOfflineTransactions(
+        ownerUserId: 'cashier-1',
+        outletId: 'outlet-1',
+        role: 'Kasir',
+        pin: '1234',
+      );
+      final rows = await database.offlineTransactionsDao.getTransactionsByOwner(
+        'cashier-1',
+      );
+
+      expect(summary.failedCount, 5);
+      expect(summary.successCount, 1);
+      expect(summary.stopped, isFalse);
+      expect(rows.map((row) => row.status), [
+        'failed',
+        'failed',
+        'failed',
+        'failed',
+        'failed',
+        'synced',
+      ]);
+      expect(rows[0].payloadJson, invalidJson);
+      expect(rows[0].lastError, contains('belum dikirim'));
+      expect(rows[1].payloadJson, jsonEncode(invalidItemsPayload));
+      expect(rows[1].lastError, contains('belum dikirim'));
+      expect(rows[2].payloadJson, jsonEncode(invalidVariantPayload));
+      expect(rows[2].lastError, contains('belum dikirim'));
+      expect(rows[3].payloadJson, jsonEncode(invalidTotalPayload));
+      expect(rows[3].lastError, contains('belum dikirim'));
+      expect(rows[4].payloadJson, jsonEncode(inconsistentPaymentPayload));
+      expect(rows[4].lastError, contains('belum dikirim'));
+      expect(jsonDecode(rows[0].receiptSnapshotJson), invalidJsonReceipt);
+      expect(jsonDecode(rows[1].receiptSnapshotJson), invalidItemsReceipt);
+      expect(jsonDecode(rows[2].receiptSnapshotJson), invalidVariantReceipt);
+      expect(jsonDecode(rows[3].receiptSnapshotJson), invalidTotalReceipt);
+      expect(
+        jsonDecode(rows[4].receiptSnapshotJson),
+        inconsistentPaymentReceipt,
+      );
+      expect(delegate.calls, ['product-after-invalid']);
+      expect(delegate.createTransactionCalls, 1);
+    },
+  );
+
+  test('stops the batch when PIN is rejected and keeps queue intact', () async {
     await insertTransaction(
       localId: 'OFF-pin',
       ownerUserId: 'cashier-1',
@@ -552,6 +743,25 @@ void main() {
       },
       receiptSnapshot: {'store_name': 'Kawula'},
     );
+    await insertTransaction(
+      localId: 'OFF-after-pin',
+      ownerUserId: 'cashier-1',
+      outletId: 'outlet-1',
+      status: OfflineTransactionStatus.pendingSync,
+      payload: {
+        'items': [
+          {
+            'product_id': 'product-after-pin',
+            'product_name': 'Teh',
+            'quantity': 1,
+            'unit_price': 600,
+          },
+        ],
+        'total_amount': 600,
+        'payment_method': 'CASH',
+        'paid_amount': 600,
+      },
+    );
     delegate.failures[1] = const ApiException('PIN salah.', statusCode: 403);
 
     final summary = await service.syncOfflineTransactions(
@@ -560,71 +770,101 @@ void main() {
       role: 'Kasir',
       pin: '1111',
     );
-    final row = (await database.offlineTransactionsDao.getTransactionsByOwner(
+    final rows = await database.offlineTransactionsDao.getTransactionsByOwner(
       'cashier-1',
-    )).single;
+    );
 
     expect(summary.failedCount, 0);
     expect(summary.stopped, isTrue);
     expect(summary.stopReason, contains('PIN ditolak'));
-    expect(row.status, 'pending_sync');
-    expect(row.lastError, contains('PIN kasir ditolak'));
-  });
-
-  test('marks forbidden transactions failed and never retries them', () async {
-    await insertTransaction(
-      localId: 'OFF-forbidden',
-      ownerUserId: 'cashier-1',
-      outletId: 'outlet-1',
-      status: OfflineTransactionStatus.pendingSync,
-      payload: {
-        'outlet_id': 'outlet-1',
-        'items': [
-          {
-            'product_id': 'product-1',
-            'product_name': 'Kopi',
-            'quantity': 1,
-            'unit_price': 1000,
-            'selected_variants': const [],
-          },
-        ],
-        'total_amount': 1100,
-        'service_charge': 50,
-        'payment_method': 'CASH',
-        'paid_amount': 1100,
-      },
-      receiptSnapshot: {'store_name': 'Kawula'},
-    );
-    delegate.failures[1] = const ApiException(
-      'Akses ditolak oleh server.',
-      statusCode: 403,
-    );
-
-    final summary = await service.syncOfflineTransactions(
-      ownerUserId: 'cashier-1',
-      outletId: 'outlet-1',
-      role: 'Kasir',
-      pin: '1234',
-    );
-    final row = (await database.offlineTransactionsDao.getTransactionsByOwner(
-      'cashier-1',
-    )).single;
-
-    expect(summary.failedCount, 1);
-    expect(summary.stopped, isTrue);
-    expect(summary.stopReason, contains('Akses ditolak'));
-    expect(row.status, 'failed');
-    expect(row.lastError, contains('Akses ditolak'));
-
-    await service.syncOfflineTransactions(
-      ownerUserId: 'cashier-1',
-      outletId: 'outlet-1',
-      role: 'Kasir',
-      pin: '1234',
-    );
-
+    expect(rows.map((row) => row.status), ['pending_sync', 'pending_sync']);
+    expect(rows.first.lastError, contains('PIN kasir ditolak'));
     expect(delegate.calls, isEmpty);
   });
+
+  test(
+    'marks forbidden transactions failed and stops the current batch',
+    () async {
+      await insertTransaction(
+        localId: 'OFF-forbidden',
+        ownerUserId: 'cashier-1',
+        outletId: 'outlet-1',
+        status: OfflineTransactionStatus.pendingSync,
+        payload: {
+          'outlet_id': 'outlet-1',
+          'items': [
+            {
+              'product_id': 'product-1',
+              'product_name': 'Kopi',
+              'quantity': 1,
+              'unit_price': 1000,
+              'selected_variants': const [],
+            },
+          ],
+          'total_amount': 1100,
+          'service_charge': 50,
+          'payment_method': 'CASH',
+          'paid_amount': 1100,
+        },
+        receiptSnapshot: {'store_name': 'Kawula'},
+      );
+      await insertTransaction(
+        localId: 'OFF-after-forbidden',
+        ownerUserId: 'cashier-1',
+        outletId: 'outlet-1',
+        status: OfflineTransactionStatus.pendingSync,
+        payload: {
+          'items': [
+            {
+              'product_id': 'product-after-forbidden',
+              'product_name': 'Teh',
+              'quantity': 1,
+              'unit_price': 600,
+            },
+          ],
+          'total_amount': 600,
+          'payment_method': 'CASH',
+          'paid_amount': 600,
+        },
+      );
+      delegate.failures[1] = const ApiException(
+        'Akses ditolak oleh server.',
+        statusCode: 403,
+      );
+
+      final summary = await service.syncOfflineTransactions(
+        ownerUserId: 'cashier-1',
+        outletId: 'outlet-1',
+        role: 'Kasir',
+        pin: '1234',
+      );
+      var rows = await database.offlineTransactionsDao.getTransactionsByOwner(
+        'cashier-1',
+      );
+
+      expect(summary.failedCount, 1);
+      expect(summary.stopped, isTrue);
+      expect(summary.stopReason, contains('Akses ditolak'));
+      expect(rows.first.status, 'failed');
+      expect(rows.first.lastError, contains('Akses ditolak'));
+      expect(rows.last.status, 'pending_sync');
+      expect(delegate.calls, isEmpty);
+
+      await service.syncOfflineTransactions(
+        ownerUserId: 'cashier-1',
+        outletId: 'outlet-1',
+        role: 'Kasir',
+        pin: '1234',
+      );
+
+      rows = await database.offlineTransactionsDao.getTransactionsByOwner(
+        'cashier-1',
+      );
+      expect(rows.first.status, 'failed');
+      expect(rows.last.status, 'synced');
+      expect(delegate.calls, ['product-after-forbidden']);
+    },
+  );
 
   test('stops for expired token without clearing the queue', () async {
     await insertTransaction(
@@ -721,6 +961,7 @@ class _FakeCheckoutRepository implements CheckoutRepository {
   Completer<void>? createStarted;
   String? resultId;
   int _callCount = 0;
+  int get createTransactionCalls => _callCount;
 
   @override
   Future<List<CheckoutPaymentMethod>> getPaymentMethods() async => const [];

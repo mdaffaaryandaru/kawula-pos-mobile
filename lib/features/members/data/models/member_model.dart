@@ -41,12 +41,14 @@ class MemberModel extends Member {
     phoneNumber: member.phoneNumber,
     currentStamps: member.currentStamps,
     isActive: member.isActive,
+    email: member.email,
   );
 
   Map<String, Object> toJson() => {
     'id': id,
     'name': name,
     'phone_number': phoneNumber,
+    'email': email,
     'current_stamps': currentStamps,
     'is_active': isActive,
   };

@@ -57,24 +57,6 @@ key.jks
 android/key.properties
 
 test/
-!test/
-test/*
-!test/transaction_report_csv_test.dart
-!test/api_url_builder_test.dart
-!test/api_config_test.dart
-!test/api_header_builder_test.dart
-!test/framework/
-!test/framework/core/
-!test/framework/core/network/
-!test/framework/core/network/timeout_http_client_test.dart
-!test/features/
-!test/features/products/
-!test/features/products/cart_item_selection_test.dart
-!test/offline_session_restoration_test.dart
-!test/cashier_offline_checkout_repository_test.dart
-!test/admin_navigation_refresh_test.dart
-!test/widget_test.dart
-!test/offline_transaction_queue_page_test.dart
 
 
 # FVM Version Cache

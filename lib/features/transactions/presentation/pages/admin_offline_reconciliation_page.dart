@@ -215,6 +215,7 @@ class _AdminOfflineReconciliationPageState
       final selectedId = await showReconciliationCandidateDialog(
         context,
         candidates,
+        localCreatedAt: record.createdAtLocal,
       );
       if (selectedId == null || !mounted) return;
       final candidate = candidates.singleWhere(

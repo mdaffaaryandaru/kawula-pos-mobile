@@ -17,6 +17,7 @@ import 'package:kawula_pos/features/transactions/data/repositories/offline_cache
 import 'package:kawula_pos/features/transactions/data/repositories/offline_checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/data/services/offline_transaction_sync_service.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
+import 'package:kawula_pos/features/transactions/domain/exceptions/offline_checkout_exception.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/presentation/bloc/checkout_cubit.dart';
 import 'package:kawula_pos/features/transactions/presentation/bloc/checkout_state.dart';
@@ -393,7 +394,16 @@ void main() {
   });
 
   test('rejects underpayment', () async {
-    await expectLater(create(paidAmount: 1149), throwsA(isA<StateError>()));
+    await expectLater(
+      create(paidAmount: 1149),
+      throwsA(
+        isA<OfflineCheckoutException>().having(
+          (error) => error.message,
+          'message',
+          'Nominal pembayaran tidak boleh kurang dari total transaksi.',
+        ),
+      ),
+    );
   });
 
   test(
@@ -433,7 +443,7 @@ void main() {
           pin: null,
           openBill: false,
         ),
-        throwsA(isA<StateError>()),
+        throwsA(isA<OfflineCheckoutException>()),
       );
       expect(
         await database.offlineTransactionsDao.getTransactionsByOwner(
@@ -465,6 +475,53 @@ void main() {
       ),
       throwsA(isA<StateError>()),
     );
+  });
+
+  test(
+    'rejects a selected variant that is not in the cached catalog',
+    () async {
+      final invalidVariantItem = CartItem(
+        product: item.product,
+        quantity: 1,
+        selectedVariants: const [
+          SelectedProductVariant(
+            groupName: 'Ukuran',
+            optionName: 'Besar',
+            priceAdjustment: 0,
+          ),
+        ],
+      );
+
+      await expectLater(
+        repository.createTransaction(
+          outletId: 'outlet-1',
+          items: [invalidVariantItem],
+          estimatedTotal: 1150,
+          serviceCharge: 50,
+          paymentMethod: 'CASH',
+          paidAmount: 1200,
+          pin: null,
+          openBill: false,
+        ),
+        throwsA(isA<OfflineCheckoutException>()),
+      );
+    },
+  );
+
+  test('malformed cached tax settings remain a data error', () async {
+    await cache.save(
+      cacheType: 'checkout_settings',
+      dataKey: 'store',
+      payload: {
+        'tax_percentage': 'ten',
+        'service_charge': 50,
+        'store_name': 'Kawula',
+        'address': 'Jl. Utama',
+        'logo_url': '',
+      },
+    );
+
+    await expectLater(create(), throwsA(isA<FormatException>()));
   });
 
   test('rejects a checkout for a different outlet', () async {

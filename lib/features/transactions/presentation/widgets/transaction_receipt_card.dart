@@ -11,10 +11,12 @@ class TransactionReceiptCard extends StatelessWidget {
     super.key,
     required this.receipt,
     this.showPaymentStatus = false,
+    this.showUnitPrice = false,
   });
 
   final TransactionReceiptData receipt;
   final bool showPaymentStatus;
+  final bool showUnitPrice;
 
   @override
   Widget build(BuildContext context) {
@@ -100,10 +102,30 @@ class TransactionReceiptCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: Text('${item.quantity} × ${item.productName}'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${item.quantity} × ${item.productName}'),
+                          if (showUnitPrice)
+                            Text(
+                              'Harga satuan: ${formatRupiah(item.price)}',
+                              style: theme.textTheme.bodySmall,
+                            ),
+                        ],
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Text(formatRupiah(item.price * item.quantity)),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(formatRupiah(item.price * item.quantity)),
+                        if (showUnitPrice)
+                          Text(
+                            'Subtotal item',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                      ],
+                    ),
                   ],
                 ),
                 for (final variant in item.variants)

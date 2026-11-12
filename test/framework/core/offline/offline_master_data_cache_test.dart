@@ -8,6 +8,7 @@ import 'package:kawula_pos/features/products/data/repositories/offline_cached_ca
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
 import 'package:kawula_pos/features/members/domain/entities/member.dart';
+import 'package:kawula_pos/features/members/data/models/member_model.dart';
 import 'package:kawula_pos/features/store_settings/data/datasources/store_settings_remote_data_source.dart';
 import 'package:kawula_pos/features/store_settings/data/repositories/store_settings_repository_impl.dart';
 import 'package:kawula_pos/features/transactions/data/repositories/offline_cached_checkout_repository.dart';
@@ -18,6 +19,19 @@ import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 
 void main() {
+  test('member cache decoding defaults a null email to an empty string', () {
+    final member = MemberModel.fromJson({
+      'id': 'member-1',
+      'name': 'Member One',
+      'phone_number': '08123456789',
+      'email': null,
+      'current_stamps': 3,
+      'is_active': true,
+    });
+
+    expect(member.email, isEmpty);
+  });
+
   late AppDatabase database;
   late OfflineMasterDataCache cache;
 
@@ -254,7 +268,7 @@ void main() {
       expect((await repository.getPaymentMethods()).single.name, 'Tunai');
       final offlineMember = (await repository.searchMembers('Member')).single;
       expect(offlineMember.id, 'member-1');
-      expect(offlineMember.email, isEmpty);
+      expect(offlineMember.email, 'private@example.test');
     },
   );
 

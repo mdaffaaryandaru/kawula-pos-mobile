@@ -30,6 +30,7 @@ void main() {
     String outletId = 'outlet-1',
     OfflineTransactionStatus status =
         OfflineTransactionStatus.needsReconciliation,
+    DateTime? createdAtLocal,
   }) async {
     return dao.saveOfflineTransaction(
       ownerUserId: 'cashier-1',
@@ -54,7 +55,7 @@ void main() {
       lastError: status == OfflineTransactionStatus.failed
           ? 'Business rejection'
           : null,
-      createdAtLocal: DateTime.utc(2026, 11, 10, 10),
+      createdAtLocal: createdAtLocal ?? DateTime.utc(2026, 11, 10, 10),
     );
   }
 
@@ -112,11 +113,12 @@ void main() {
   }
 
   test(
-    'candidate matching requires outlet, cashier, total, payment and items',
+    'candidate matching uses transaction details and leaves amount for review',
     () async {
       final local = await saveTransaction();
       final repository = _CheckoutRepositoryFake([
         remote(id: 'matching'),
+        remote(id: 'rounding-difference', total: 11999),
         remote(id: 'wrong-outlet', outletId: 'outlet-2'),
         remote(id: 'wrong-owner', cashierId: 'cashier-2'),
         remote(id: 'same-total-only', productId: 'product-2'),
@@ -132,13 +134,52 @@ void main() {
             verifyAdminSession: currentVerifier,
           );
 
-      expect(candidates.map((candidate) => candidate.id), ['matching']);
+      expect(candidates.map((candidate) => candidate.id), [
+        'matching',
+        'rounding-difference',
+      ]);
       expect(
         (await dao.getTransactionByLocalId(local.localId))!.status,
         'needs_reconciliation',
       );
     },
   );
+
+  test('candidate time window prioritizes nearby candidates but retains older ones', () async {
+    final local = await saveTransaction(
+      createdAtLocal: DateTime.parse('2026-11-10T23:59:00-05:00'),
+    );
+    final repository = _CheckoutRepositoryFake([
+      remote(
+        id: 'outside-window',
+        createdAt: DateTime.parse('2026-11-12T05:00:01Z'),
+      ),
+      remote(
+        id: 'near-midnight',
+        total: 11999,
+        createdAt: DateTime.parse('2026-11-11T00:01:00-05:00'),
+      ),
+    ]);
+
+    final candidates =
+        await service(
+          repository: repository,
+          verify: () async => admin(),
+        ).findCandidates(
+          localId: local.localId,
+          activeOutletId: 'outlet-1',
+          verifyAdminSession: currentVerifier,
+        );
+
+    expect(candidates.map((candidate) => candidate.id), [
+      'near-midnight',
+      'outside-window',
+    ]);
+    expect(
+      (await dao.getTransactionByLocalId(local.localId))!.status,
+      'needs_reconciliation',
+    );
+  });
 
   test(
     'transaction history parser retains server IDs needed for safe matching',
@@ -227,6 +268,135 @@ void main() {
     expect(audit.single.resolvingAdminUserId, 'admin-1');
     expect(audit.single.resolvingAdminRole, 'Admin');
   });
+
+  test(
+    'remote ID already used by another local transaction is rejected',
+    () async {
+      final existingOwner = await saveTransaction(
+        status: OfflineTransactionStatus.pendingSync,
+      );
+      await dao.updateTransactionStatus(
+        localId: existingOwner.localId,
+        status: OfflineTransactionStatus.synced,
+        remoteTransactionId: 'already-used',
+      );
+      final local = await saveTransaction();
+      await dao.updateTransactionStatus(
+        localId: local.localId,
+        status: OfflineTransactionStatus.needsReconciliation,
+        lastError: 'Preserve this error.',
+      );
+      final before = await dao.getTransactionByLocalId(local.localId);
+      final repository = _CheckoutRepositoryFake([remote(id: 'already-used')]);
+
+      await expectLater(
+        service(
+          repository: repository,
+          verify: () async => admin(),
+        ).matchExistingRemote(
+          localId: local.localId,
+          activeOutletId: 'outlet-1',
+          remoteTransactionId: 'already-used',
+          reason: 'Reviewed.',
+          verifyAdminSession: currentVerifier,
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            contains('sudah terhubung'),
+          ),
+        ),
+      );
+
+      final after = await dao.getTransactionByLocalId(local.localId);
+      expect(after!.status, before!.status);
+      expect(after.remoteTransactionId, before.remoteTransactionId);
+      expect(after.payloadJson, before.payloadJson);
+      expect(after.receiptSnapshotJson, before.receiptSnapshotJson);
+      expect(after.lastError, before.lastError);
+      expect(await dao.getResolutionAudit(local.localId), isEmpty);
+      expect(
+        (await dao.getTransactionByLocalId(existingOwner.localId))!
+            .remoteTransactionId,
+        'already-used',
+      );
+    },
+  );
+
+  test('concurrent resolutions cannot share a remote ID', () async {
+    final first = await saveTransaction();
+    final second = await saveTransaction();
+
+    Future<bool> attempt(String localId) async {
+      try {
+        return await queueRepository.resolveManually(
+          localId: localId,
+          outletId: 'outlet-1',
+          adminUserId: 'admin-1',
+          adminRole: 'Admin',
+          resolutionType: 'matched_existing_remote',
+          remoteTransactionId: 'shared-concurrent-id',
+          resolvedAt: DateTime.utc(2026, 11, 10, 11),
+          reason: 'Manually verified.',
+        );
+      } on StateError {
+        return false;
+      }
+    }
+
+    final results = await Future.wait([
+      attempt(first.localId),
+      attempt(second.localId),
+    ]);
+    final firstAfter = await dao.getTransactionByLocalId(first.localId);
+    final secondAfter = await dao.getTransactionByLocalId(second.localId);
+    final audits = [
+      ...await dao.getResolutionAudit(first.localId),
+      ...await dao.getResolutionAudit(second.localId),
+    ];
+
+    expect(results.where((result) => result).length, 1);
+    expect(
+      [
+        firstAfter!.remoteTransactionId,
+        secondAfter!.remoteTransactionId,
+      ].where((id) => id == 'shared-concurrent-id').length,
+      1,
+    );
+    expect(audits, hasLength(1));
+  });
+
+  test(
+    'resolving the same local transaction and remote ID is idempotent',
+    () async {
+      final local = await saveTransaction();
+      final resolutionService = service(
+        repository: _CheckoutRepositoryFake([
+          remote(id: 'same-local-remote-id'),
+        ]),
+        verify: () async => admin(),
+      );
+
+      Future<void> resolve() => resolutionService.matchExistingRemote(
+        localId: local.localId,
+        activeOutletId: 'outlet-1',
+        remoteTransactionId: 'same-local-remote-id',
+        reason: 'Manually verified again.',
+        verifyAdminSession: currentVerifier,
+      );
+
+      await resolve();
+      await resolve();
+      final updated = await dao.getTransactionByLocalId(local.localId);
+
+      expect(updated!.status, 'resolved_manually');
+      expect(updated.remoteTransactionId, 'same-local-remote-id');
+      expect(updated.payloadJson, local.payloadJson);
+      expect(updated.receiptSnapshotJson, local.receiptSnapshotJson);
+      expect(await dao.getResolutionAudit(local.localId), hasLength(1));
+    },
+  );
 
   test('no candidate leaves unknown outcome unresolved', () async {
     final local = await saveTransaction();

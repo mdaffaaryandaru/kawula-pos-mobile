@@ -6,9 +6,11 @@ import 'package:kawula_pos/features/members/domain/entities/member.dart';
 import 'package:kawula_pos/features/members/domain/entities/member_reward_claim.dart';
 import 'package:kawula_pos/features/products/domain/entities/cart_item.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
+import 'package:kawula_pos/features/transactions/domain/exceptions/offline_checkout_exception.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart'
     show CheckoutModeProvider, CheckoutRepository;
 import 'package:kawula_pos/features/transactions/presentation/bloc/checkout_state.dart';
+import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 
 class CheckoutCubit extends Cubit<CheckoutState> {
   CheckoutCubit(this._repository) : super(const CheckoutLoading());
@@ -39,7 +41,8 @@ class CheckoutCubit extends Cubit<CheckoutState> {
           isOffline: isOffline,
         ),
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _reportUnexpectedError(error, stackTrace);
       emit(CheckoutFailure(_messageFor(error)));
     }
   }
@@ -104,7 +107,8 @@ class CheckoutCubit extends Cubit<CheckoutState> {
         tableNumber: tableNumber,
       );
       emit(CheckoutCompleted(result, currentState.settings));
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _reportUnexpectedError(error, stackTrace);
       emit(
         CheckoutReady(
           paymentMethods: currentState.paymentMethods,
@@ -119,7 +123,15 @@ class CheckoutCubit extends Cubit<CheckoutState> {
   }
 
   String _messageFor(Object error) {
-    if (error is FormatException) return error.message;
-    return error.toString();
+    if (error is OfflineCheckoutException) return error.message;
+    if (error is ApiException) return error.message;
+    return 'Checkout tidak dapat diselesaikan karena terjadi kesalahan teknis.';
+  }
+
+  void _reportUnexpectedError(Object error, StackTrace stackTrace) {
+    if (error is OfflineCheckoutException || error is ApiException) {
+      return;
+    }
+    addError(error, stackTrace);
   }
 }

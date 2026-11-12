@@ -36,14 +36,12 @@ class AdminOfflineResolutionService
         .where((transaction) => _matches(local, transaction))
         .toList();
     candidates.sort((a, b) {
-      final localTime = local.createdAtLocal;
-      final aTime = a.createdAt;
-      final bTime = b.createdAt;
-      if (aTime == null || bTime == null) return 0;
-      return aTime
-          .difference(localTime)
-          .abs()
-          .compareTo(bTime.difference(localTime).abs());
+      final timeComparison = _timeDistance(
+        local,
+        a,
+      ).compareTo(_timeDistance(local, b));
+      if (timeComparison != 0) return timeComparison;
+      return a.id.compareTo(b.id);
     });
     return candidates;
   }
@@ -61,6 +59,7 @@ class AdminOfflineResolutionService
     final local = await _getScopedResolvableTransaction(
       localId: localId,
       activeOutletId: activeOutletId,
+      allowAlreadyResolved: true,
     );
     final transactions = await _checkoutRepository.getTransactions();
     final remote = transactions.where(
@@ -140,14 +139,20 @@ class AdminOfflineResolutionService
   Future<OfflineTransactionQueueItem> _getScopedResolvableTransaction({
     required String localId,
     required String activeOutletId,
+    bool allowAlreadyResolved = false,
   }) async {
     if (activeOutletId.trim().isEmpty) {
       throw ArgumentError.value(activeOutletId, 'activeOutletId');
     }
     final transaction = await _queueRepository.getTransactionByLocalId(localId);
+    final allowedStatuses = {
+      'failed',
+      'needs_reconciliation',
+      if (allowAlreadyResolved) 'resolved_manually',
+    };
     if (transaction == null ||
         transaction.outletId != activeOutletId ||
-        !{'failed', 'needs_reconciliation'}.contains(transaction.status)) {
+        !allowedStatuses.contains(transaction.status)) {
       throw StateError('Transaksi tidak tersedia dalam scope outlet aktif.');
     }
     return transaction;
@@ -158,8 +163,7 @@ class AdminOfflineResolutionService
         remote.cashierId != local.ownerUserId ||
         remote.createdAt == null ||
         remote.paymentMethod.trim().toUpperCase() !=
-            _localPaymentMethod(local).toUpperCase() ||
-        remote.totalAmount != _localTotal(local)) {
+            _localPaymentMethod(local).toUpperCase()) {
       return false;
     }
 
@@ -179,16 +183,19 @@ class AdminOfflineResolutionService
     return _sameValues(localItems, remoteItems.cast<String>().toList());
   }
 
+  int _timeDistance(
+    OfflineTransactionQueueItem local,
+    TransactionRecord remote,
+  ) => remote.createdAt!
+      .toUtc()
+      .difference(local.createdAtLocal.toUtc())
+      .inMilliseconds
+      .abs();
+
   String _localPaymentMethod(OfflineTransactionQueueItem local) {
     final payload = _decodeMap(local.payloadJson);
     final method = payload?['payment_method'];
     return method is String ? method.trim() : '';
-  }
-
-  num? _localTotal(OfflineTransactionQueueItem local) {
-    final payload = _decodeMap(local.payloadJson);
-    final amount = payload?['total_amount'];
-    return amount is num ? amount : null;
   }
 
   List<String>? _localItemKeys(OfflineTransactionQueueItem local) {

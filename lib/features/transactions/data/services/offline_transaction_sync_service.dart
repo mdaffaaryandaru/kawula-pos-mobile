@@ -177,7 +177,22 @@ class OfflineTransactionSyncService implements OfflineTransactionSync {
           await _dao.updateTransactionStatus(
             localId: record.localId,
             status: OfflineTransactionStatus.failed,
-            lastError: 'Payload transaksi lokal tidak valid.',
+            lastError: 'Payload transaksi lokal tidak valid dan belum dikirim.',
+          );
+          failedCount++;
+          continue;
+        }
+
+        final List<CartItem> items;
+        try {
+          _validatePayload(record, payload);
+          items = _buildCartItems(payload['items']);
+        } on FormatException catch (error) {
+          await _dao.updateTransactionStatus(
+            localId: record.localId,
+            status: OfflineTransactionStatus.failed,
+            lastError:
+                'Payload transaksi lokal tidak valid dan belum dikirim: ${error.message}',
           );
           failedCount++;
           continue;
@@ -189,7 +204,7 @@ class OfflineTransactionSyncService implements OfflineTransactionSync {
           incrementAttemptCount: true,
         );
 
-        final result = await _sendRecord(record, payload, pin);
+        final result = await _sendRecord(record, payload, items, pin);
         switch (result) {
           case _SyncResult.success:
             successCount++;
@@ -277,9 +292,9 @@ class OfflineTransactionSyncService implements OfflineTransactionSync {
   Future<_SyncResult> _sendRecord(
     OfflineTransaction transaction,
     Map<String, dynamic> payload,
+    List<CartItem> items,
     String pin,
   ) async {
-    final items = _buildCartItems(payload['items']);
     final totalAmount = _asNum(payload['total_amount']) ?? 0;
     final serviceCharge = _asNum(payload['service_charge']) ?? 0;
     final paymentMethod = _asString(payload['payment_method']) ?? 'CASH';
@@ -329,7 +344,7 @@ class OfflineTransactionSyncService implements OfflineTransactionSync {
         );
         return _SyncResult.stopAuthentication;
       }
-      if (message.contains('pin')) {
+      if (error.statusCode == 403 && _isPinRejectedMessage(message)) {
         await _dao.updateTransactionStatus(
           localId: transaction.localId,
           status: OfflineTransactionStatus.pendingSync,
@@ -399,7 +414,7 @@ class OfflineTransactionSyncService implements OfflineTransactionSync {
   }
 
   List<CartItem> _buildCartItems(Object? rawItems) {
-    if (rawItems is! List) {
+    if (rawItems is! List || rawItems.isEmpty) {
       throw const FormatException('Payload item transaksi tidak valid.');
     }
 
@@ -410,7 +425,12 @@ class OfflineTransactionSyncService implements OfflineTransactionSync {
       }
       final productId = rawItem['product_id'];
       final quantity = rawItem['quantity'];
-      if (productId is! String || quantity is! num) {
+      if (productId is! String ||
+          productId.trim().isEmpty ||
+          quantity is! num ||
+          !quantity.isFinite ||
+          quantity <= 0 ||
+          quantity != quantity.toInt()) {
         throw const FormatException(
           'Rincian item transaksi lokal tidak valid.',
         );
@@ -428,20 +448,36 @@ class OfflineTransactionSyncService implements OfflineTransactionSync {
       );
       final selectedVariants = <SelectedProductVariant>[];
       final variantPayload = rawItem['selected_variants'];
+      if (variantPayload != null && variantPayload is! List) {
+        throw const FormatException(
+          'Daftar varian transaksi lokal tidak valid.',
+        );
+      }
       if (variantPayload is List) {
         for (final rawVariant in variantPayload) {
-          if (rawVariant is! Map<String, dynamic>) {
-            continue;
+          if (rawVariant is! Map<String, dynamic> ||
+              rawVariant['group_name'] is! String ||
+              rawVariant['option_name'] is! String ||
+              (rawVariant['option_id'] != null &&
+                  rawVariant['option_id'] is! String)) {
+            throw const FormatException(
+              'Rincian varian transaksi lokal tidak valid.',
+            );
           }
           selectedVariants.add(
             SelectedProductVariant(
-              groupName: _asString(rawVariant['group_name']) ?? '',
-              optionName: _asString(rawVariant['option_name']) ?? '',
+              groupName: rawVariant['group_name'] as String,
+              optionName: rawVariant['option_name'] as String,
               optionId: _asString(rawVariant['option_id']),
               priceAdjustment: _asNum(rawVariant['price_adjustment']) ?? 0,
             ),
           );
         }
+      }
+      if (rawItem['notes'] != null && rawItem['notes'] is! String) {
+        throw const FormatException(
+          'Catatan item transaksi lokal tidak valid.',
+        );
       }
 
       items.add(
@@ -456,7 +492,53 @@ class OfflineTransactionSyncService implements OfflineTransactionSync {
     return items;
   }
 
+  void _validatePayload(
+    OfflineTransaction transaction,
+    Map<String, dynamic> payload,
+  ) {
+    final totalAmount = payload['total_amount'];
+    final serviceCharge = payload['service_charge'];
+    final paymentMethod = payload['payment_method'];
+    if (totalAmount is! num ||
+        !totalAmount.isFinite ||
+        paymentMethod is! String ||
+        paymentMethod.trim().isEmpty ||
+        (serviceCharge != null &&
+            (serviceCharge is! num || !serviceCharge.isFinite))) {
+      throw const FormatException(
+        'Total, biaya layanan, atau metode pembayaran lokal tidak valid.',
+      );
+    }
+
+    final isOpenBill = transaction.transactionType == 'open_bill';
+    if (!isOpenBill && transaction.transactionType != 'sale') {
+      throw const FormatException('Jenis transaksi lokal tidak valid.');
+    }
+    if (isOpenBill != (paymentMethod.trim().toUpperCase() == 'OPEN_BILL')) {
+      throw const FormatException(
+        'Jenis transaksi tidak sesuai metode pembayaran lokal.',
+      );
+    }
+
+    final paidAmount = payload['paid_amount'];
+    if ((!isOpenBill && paidAmount is! num) ||
+        (paidAmount != null && (paidAmount is! num || !paidAmount.isFinite))) {
+      throw const FormatException('Nominal pembayaran lokal tidak valid.');
+    }
+
+    for (final optionalField in ['member_id', 'table_number']) {
+      if (payload[optionalField] != null && payload[optionalField] is! String) {
+        throw FormatException(
+          'Data $optionalField transaksi lokal tidak valid.',
+        );
+      }
+    }
+  }
+
   String? _asString(Object? value) => value is String ? value : null;
 
   num? _asNum(Object? value) => value is num ? value : null;
+
+  bool _isPinRejectedMessage(String normalizedMessage) =>
+      normalizedMessage.trim() == 'pin salah.';
 }

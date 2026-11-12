@@ -189,22 +189,57 @@ class OfflineTransactionsDao extends DatabaseAccessor<AppDatabase> {
           await (select(_database.offlineTransactions)..where(
                 (record) =>
                     record.localId.equals(localId) &
-                    record.outletId.equals(outletId) &
-                    record.status.isIn([
-                      OfflineTransactionStatus.failed.databaseValue,
-                      OfflineTransactionStatus
-                          .needsReconciliation
-                          .databaseValue,
-                    ]),
+                    record.outletId.equals(outletId),
               ))
               .getSingleOrNull();
       if (current == null) return false;
+      if (current.status ==
+          OfflineTransactionStatus.resolvedManually.databaseValue) {
+        if (resolutionType != 'matched_existing_remote' ||
+            current.remoteTransactionId != remoteTransactionId) {
+          return false;
+        }
+        await _ensureRemoteTransactionIdAvailable(
+          localId: localId,
+          remoteTransactionId: remoteTransactionId!,
+        );
+        return true;
+      }
+      if (!{
+        OfflineTransactionStatus.failed.databaseValue,
+        OfflineTransactionStatus.needsReconciliation.databaseValue,
+      }.contains(current.status)) {
+        return false;
+      }
       if (resolutionType == 'handled_outside_server' &&
           current.status != OfflineTransactionStatus.failed.databaseValue) {
         throw StateError(
           'Transaksi dengan status belum pasti tidak dapat ditangani di luar server.',
         );
       }
+
+      if (resolutionType == 'matched_existing_remote') {
+        final requestedRemoteId = remoteTransactionId!;
+        if (current.remoteTransactionId != null &&
+            current.remoteTransactionId != requestedRemoteId) {
+          throw StateError(
+            'Transaksi lokal sudah terhubung ke ID server lain.',
+          );
+        }
+        await _ensureRemoteTransactionIdAvailable(
+          localId: localId,
+          remoteTransactionId: requestedRemoteId,
+        );
+      }
+
+      final existingAudit = resolutionType == 'matched_existing_remote'
+          ? await (select(_database.offlineTransactionResolutions)..where(
+                  (entry) =>
+                      entry.localId.equals(localId) &
+                      entry.remoteTransactionId.equals(remoteTransactionId!),
+                ))
+                .get()
+          : null;
 
       final updatedCount =
           await (update(_database.offlineTransactions)..where(
@@ -227,22 +262,24 @@ class OfflineTransactionsDao extends DatabaseAccessor<AppDatabase> {
               );
       if (updatedCount == 0) return false;
 
-      await into(_database.offlineTransactionResolutions).insert(
-        OfflineTransactionResolutionsCompanion.insert(
-          localId: localId,
-          outletId: outletId,
-          previousStatus: current.status,
-          resultingStatus:
-              OfflineTransactionStatus.resolvedManually.databaseValue,
-          resolutionType: resolutionType,
-          remoteTransactionId: Value(remoteTransactionId),
-          resolvingAdminUserId: adminUserId,
-          resolvingAdminRole: adminRole,
-          resolvedAt: resolvedAt,
-          reason: reason.trim(),
-          notes: Value(notes?.trim().isEmpty == true ? null : notes?.trim()),
-        ),
-      );
+      if (existingAudit == null || existingAudit.isEmpty) {
+        await into(_database.offlineTransactionResolutions).insert(
+          OfflineTransactionResolutionsCompanion.insert(
+            localId: localId,
+            outletId: outletId,
+            previousStatus: current.status,
+            resultingStatus:
+                OfflineTransactionStatus.resolvedManually.databaseValue,
+            resolutionType: resolutionType,
+            remoteTransactionId: Value(remoteTransactionId),
+            resolvingAdminUserId: adminUserId,
+            resolvingAdminRole: adminRole,
+            resolvedAt: resolvedAt,
+            reason: reason.trim(),
+            notes: Value(notes?.trim().isEmpty == true ? null : notes?.trim()),
+          ),
+        );
+      }
       return true;
     });
   }
@@ -378,40 +415,54 @@ class OfflineTransactionsDao extends DatabaseAccessor<AppDatabase> {
       );
     }
 
-    final current = await getTransactionByLocalId(localId);
-    if (current == null) {
-      return false;
-    }
-
-    final now = updatedAt ?? DateTime.now();
-    final updatedCount =
-        await (update(
-          _database.offlineTransactions,
-        )..where((record) => record.localId.equals(localId))).write(
-          OfflineTransactionsCompanion(
-            status: Value(status.databaseValue),
-            remoteTransactionId: remoteTransactionId == null
-                ? const Value.absent()
-                : Value(remoteTransactionId),
-            updatedAt: Value(now),
-            syncedAt: status == OfflineTransactionStatus.synced
-                ? Value(now)
-                : status == OfflineTransactionStatus.pendingSync
-                ? const Value(null)
-                : Value(current.syncedAt),
-            attemptCount:
-                incrementAttemptCount ||
-                    status == OfflineTransactionStatus.syncing
-                ? Value(current.attemptCount + 1)
-                : const Value.absent(),
-            lastError: lastError == null
-                ? status == OfflineTransactionStatus.synced
-                      ? const Value(null)
-                      : const Value.absent()
-                : Value(lastError),
-          ),
+    return transaction(() async {
+      final current = await getTransactionByLocalId(localId);
+      if (current == null) {
+        return false;
+      }
+      if (remoteTransactionId != null) {
+        if (current.remoteTransactionId != null &&
+            current.remoteTransactionId != remoteTransactionId) {
+          throw StateError(
+            'Transaksi lokal sudah terhubung ke ID server lain.',
+          );
+        }
+        await _ensureRemoteTransactionIdAvailable(
+          localId: localId,
+          remoteTransactionId: remoteTransactionId,
         );
-    return updatedCount > 0;
+      }
+
+      final now = updatedAt ?? DateTime.now();
+      final updatedCount =
+          await (update(
+            _database.offlineTransactions,
+          )..where((record) => record.localId.equals(localId))).write(
+            OfflineTransactionsCompanion(
+              status: Value(status.databaseValue),
+              remoteTransactionId: remoteTransactionId == null
+                  ? const Value.absent()
+                  : Value(remoteTransactionId),
+              updatedAt: Value(now),
+              syncedAt: status == OfflineTransactionStatus.synced
+                  ? Value(now)
+                  : status == OfflineTransactionStatus.pendingSync
+                  ? const Value(null)
+                  : Value(current.syncedAt),
+              attemptCount:
+                  incrementAttemptCount ||
+                      status == OfflineTransactionStatus.syncing
+                  ? Value(current.attemptCount + 1)
+                  : const Value.absent(),
+              lastError: lastError == null
+                  ? status == OfflineTransactionStatus.synced
+                        ? const Value(null)
+                        : const Value.absent()
+                  : Value(lastError),
+            ),
+          );
+      return updatedCount > 0;
+    });
   }
 
   Future<bool> updateSyncStatus({
@@ -429,6 +480,34 @@ class OfflineTransactionsDao extends DatabaseAccessor<AppDatabase> {
       updatedAt: updatedAt,
       incrementAttemptCount: status == OfflineTransactionStatus.syncing,
     );
+  }
+
+  Future<void> _ensureRemoteTransactionIdAvailable({
+    required String localId,
+    required String remoteTransactionId,
+  }) async {
+    final transactions =
+        await (select(_database.offlineTransactions)..where(
+              (record) =>
+                  record.remoteTransactionId.equals(remoteTransactionId),
+            ))
+            .get();
+    final otherTransactionUsesId = transactions.any(
+      (record) => record.localId != localId,
+    );
+    final auditEntries =
+        await (select(_database.offlineTransactionResolutions)..where(
+              (entry) => entry.remoteTransactionId.equals(remoteTransactionId),
+            ))
+            .get();
+    final otherAuditUsesId = auditEntries.any(
+      (entry) => entry.localId != localId,
+    );
+    if (otherTransactionUsesId || otherAuditUsesId) {
+      throw StateError(
+        'ID transaksi server sudah terhubung ke transaksi lokal lain.',
+      );
+    }
   }
 
   void _validateRequiredValue(String value, String argumentName) {

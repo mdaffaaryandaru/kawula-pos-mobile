@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/offline_transaction_queue_item.dart';
+import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_reconciliation.dart';
 import 'package:kawula_pos/features/transactions/presentation/widgets/offline_transaction_formatters.dart';
 
 String offlineReconciliationStatusLabel(String status) => switch (status) {
@@ -39,8 +40,9 @@ num offlineReceiptTotal(OfflineTransactionQueueItem record) {
 
 Future<String?> showReconciliationCandidateDialog(
   BuildContext context,
-  List<TransactionRecord> candidates,
-) => showDialog<String>(
+  List<TransactionRecord> candidates, {
+  required DateTime localCreatedAt,
+}) => showDialog<String>(
   context: context,
   builder: (context) => AlertDialog(
     title: const Text('Kandidat transaksi server'),
@@ -49,20 +51,49 @@ Future<String?> showReconciliationCandidateDialog(
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: candidates
-              .map(
-                (candidate) => ListTile(
-                  title: Text(candidate.id),
-                  subtitle: Text(
-                    '${candidate.cashierName} · ${candidate.status} · '
-                    '${candidate.createdAt == null ? 'Waktu tidak tersedia' : formatOfflineTransactionDate(candidate.createdAt!)} · '
-                    '${formatRupiah(candidate.totalAmount)}',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.pop(context, candidate.id),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'Daftar ini berasal dari histori yang dikembalikan server dan '
+                'mungkin tidak mencakup semua transaksi. Kandidat di luar '
+                'rentang utama ±24 jam tetap ditampilkan untuk pemeriksaan manual.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+            ...candidates.map((candidate) {
+              final withinTimeWindow =
+                  isWithinOfflineReconciliationCandidateTimeWindow(
+                    localCreatedAt: localCreatedAt,
+                    remoteCreatedAt: candidate.createdAt,
+                  );
+              return ListTile(
+                title: Text(candidate.id),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${candidate.cashierName} · ${candidate.status} · '
+                      '${candidate.createdAt == null ? 'Waktu tidak tersedia' : formatOfflineTransactionDate(candidate.createdAt!)} · '
+                      '${formatRupiah(candidate.totalAmount)}',
+                    ),
+                    if (!withinTimeWindow)
+                      Text(
+                        candidate.createdAt == null
+                            ? 'Waktu server tidak tersedia.'
+                            : 'Di luar rentang relevansi utama ±24 jam.',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                  ],
                 ),
-              )
-              .toList(growable: false),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.pop(context, candidate.id),
+              );
+            }),
+          ],
         ),
       ),
     ),
@@ -192,6 +223,7 @@ class _ReconciliationMatchDialogState
   Widget build(BuildContext context) {
     final local = widget.local;
     final remote = widget.remote;
+    final localTotal = offlineReceiptTotal(local);
     return AlertDialog(
       title: const Text('Periksa dan tautkan transaksi'),
       content: SizedBox(
@@ -209,9 +241,19 @@ class _ReconciliationMatchDialogState
                 'Waktu server: ${remote.createdAt == null ? 'Tidak tersedia' : formatOfflineTransactionDate(remote.createdAt!)}\n'
                 'Kasir: ${local.ownerUserId} / ${remote.cashierId}\n'
                 'Outlet: ${local.outletId} / ${remote.outletId}\n'
-                'Total: ${formatRupiah(offlineReceiptTotal(local))} / ${formatRupiah(remote.totalAmount)}\n'
+                'Total lokal/server: ${formatRupiah(localTotal)} / ${formatRupiah(remote.totalAmount)}\n'
+                'Selisih total: ${formatRupiah((remote.totalAmount - localTotal).abs())}\n'
                 'Pembayaran: ${offlineReceiptField(local, 'payment_method')} / ${remote.paymentMethod}',
               ),
+              if (!isWithinOfflineReconciliationCandidateTimeWindow(
+                localCreatedAt: local.createdAtLocal,
+                remoteCreatedAt: remote.createdAt,
+              ))
+                Text(
+                  'Peringatan: kandidat di luar rentang relevansi utama ±24 jam.',
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: Theme.of(context).colorScheme.error),
+                ),
               const SizedBox(height: 12),
               const Text('Snapshot lokal:'),
               SelectableText(

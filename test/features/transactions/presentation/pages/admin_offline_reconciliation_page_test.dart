@@ -7,8 +7,11 @@ import 'package:kawula_pos/features/auth/domain/repositories/auth_repository.dar
 import 'package:kawula_pos/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:kawula_pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:kawula_pos/features/transactions/data/repositories/offline_transaction_queue_repository_impl.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/offline_transaction_queue_item.dart';
 import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_reconciliation.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/admin_offline_reconciliation_page.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/offline_transaction_reconciliation_widgets.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 
@@ -93,6 +96,111 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1));
     },
   );
+
+  testWidgets(
+    'candidate dialog shows endpoint warning and outside-window candidates',
+    (tester) async {
+      final localCreatedAt = DateTime.utc(2026, 11, 10, 10);
+      final remote = TransactionRecord(
+        id: 'remote-1',
+        status: 'completed',
+        totalAmount: 12000,
+        paymentMethod: 'CASH',
+        paidAmount: 12000,
+        changeAmount: 0,
+        createdAt: DateTime.utc(2026, 11, 10, 10),
+        items: const [],
+      );
+      final olderRemote = TransactionRecord(
+        id: 'remote-older',
+        status: 'completed',
+        totalAmount: 12000,
+        paymentMethod: 'CASH',
+        paidAmount: 12000,
+        changeAmount: 0,
+        createdAt: DateTime.utc(2026, 11, 11, 11),
+        items: const [],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => showReconciliationCandidateDialog(context, [
+                  remote,
+                  olderRemote,
+                ], localCreatedAt: localCreatedAt),
+                child: const Text('Open candidates'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open candidates'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('mungkin tidak mencakup semua transaksi'),
+        findsOneWidget,
+      );
+      expect(find.text('remote-1'), findsOneWidget);
+      expect(find.text('remote-older'), findsOneWidget);
+      expect(
+        find.text('Di luar rentang relevansi utama ±24 jam.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('match dialog shows local/server time and total difference', (
+    tester,
+  ) async {
+    final local = OfflineTransactionQueueItem(
+      localId: 'OFF-local',
+      ownerUserId: 'cashier-1',
+      outletId: 'outlet-1',
+      shiftId: 'shift-1',
+      transactionType: 'sale',
+      payloadJson: '{"total_amount":12000}',
+      receiptSnapshotJson: '{"total_amount":12000}',
+      status: 'needs_reconciliation',
+      createdAtLocal: DateTime.utc(2026, 11, 10, 10),
+    );
+    final remote = TransactionRecord(
+      id: 'remote-1',
+      status: 'completed',
+      totalAmount: 11999,
+      paymentMethod: 'CASH',
+      paidAmount: 11999,
+      changeAmount: 0,
+      createdAt: DateTime.utc(2026, 11, 10, 10, 1),
+      items: const [],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => showReconciliationMatchDialog(
+                context,
+                local: local,
+                remote: remote,
+              ),
+              child: const Text('Open match'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open match'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Waktu lokal:'), findsOneWidget);
+    expect(find.textContaining('Waktu server:'), findsOneWidget);
+    expect(find.textContaining('Selisih total:'), findsOneWidget);
+  });
 }
 
 class _AuthRepositoryFake extends Fake implements AuthRepository {}

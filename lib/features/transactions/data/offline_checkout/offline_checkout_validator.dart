@@ -6,6 +6,7 @@ import 'package:kawula_pos/features/products/domain/entities/cart_item.dart';
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 import 'package:kawula_pos/features/transactions/data/models/checkout_models.dart';
+import 'package:kawula_pos/features/transactions/domain/exceptions/offline_checkout_exception.dart';
 import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
@@ -109,7 +110,9 @@ class OfflineCheckoutValidator {
         .whereType<Map<String, dynamic>>()
         .map(CheckoutPaymentMethodModel.fromJson)
         .toList(growable: false);
-    if (items.isEmpty) throw StateError('Keranjang masih kosong.');
+    if (items.isEmpty) {
+      throw const OfflineCheckoutException('Keranjang masih kosong.');
+    }
 
     CheckoutPaymentMethodModel? selectedMethod;
     for (final method in methods) {
@@ -119,7 +122,7 @@ class OfflineCheckoutValidator {
       }
     }
     if (!openBill && selectedMethod == null) {
-      throw StateError(
+      throw const OfflineCheckoutException(
         'Metode pembayaran tidak tersedia dalam cache checkout.',
       );
     }
@@ -153,11 +156,15 @@ class OfflineCheckoutValidator {
     final quantitiesByProduct = <String, int>{};
     for (final item in items) {
       if (item.quantity <= 0) {
-        throw StateError('Kuantitas produk harus lebih dari nol.');
+        throw const OfflineCheckoutException(
+          'Kuantitas produk harus lebih dari nol.',
+        );
       }
       final product = products[item.product.id];
       if (product == null || !product.isActive) {
-        throw StateError('Produk tidak tersedia pada cache katalog.');
+        throw const OfflineCheckoutException(
+          'Produk tidak tersedia pada cache katalog.',
+        );
       }
       final validatedVariants = _validateVariants(
         product,
@@ -180,11 +187,13 @@ class OfflineCheckoutValidator {
     for (final entry in quantitiesByProduct.entries) {
       final stock = products[entry.key]!.stock;
       if (stock == null || !stock.isFinite || stock < 0) {
-        throw StateError('Estimasi stok produk tidak tersedia.');
+        throw const OfflineCheckoutException(
+          'Estimasi stok produk tidak tersedia.',
+        );
       }
       final available = stock - (alreadySold[entry.key] ?? 0);
       if (entry.value > available) {
-        throw StateError(
+        throw OfflineCheckoutException(
           'Estimasi stok ${products[entry.key]!.name} tidak mencukupi. '
           'Stok aktual harus diverifikasi server.',
         );
@@ -197,16 +206,20 @@ class OfflineCheckoutValidator {
     );
     final taxAmount = (subtotal * settings.taxPercentage / 100).round();
     if (serviceCharge != 0 && serviceCharge != settings.serviceCharge) {
-      throw StateError('Biaya layanan tidak sesuai pengaturan checkout.');
+      throw const OfflineCheckoutException(
+        'Biaya layanan tidak sesuai pengaturan checkout.',
+      );
     }
     final total = (subtotal + taxAmount + serviceCharge).round();
     if (!openBill && (paidAmount < total || paidAmount < 0)) {
-      throw StateError(
+      throw const OfflineCheckoutException(
         'Nominal pembayaran tidak boleh kurang dari total transaksi.',
       );
     }
     if (openBill && paymentMethod.toUpperCase() != 'OPEN_BILL') {
-      throw StateError('Metode pembayaran Open Bill tidak valid.');
+      throw const OfflineCheckoutException(
+        'Metode pembayaran Open Bill tidak valid.',
+      );
     }
 
     final itemDiscountAmounts = validatedItems
@@ -246,7 +259,9 @@ class OfflineCheckoutValidator {
       (groupName) =>
           !product.variantGroups.any((group) => group.name == groupName),
     )) {
-      throw StateError('Varian yang dipilih tidak sesuai katalog.');
+      throw const OfflineCheckoutException(
+        'Varian yang dipilih tidak sesuai katalog.',
+      );
     }
 
     final validated = <SelectedProductVariant>[];
@@ -255,7 +270,9 @@ class OfflineCheckoutValidator {
       if (selected.length < group.minSelection ||
           selected.length > group.maxSelection ||
           (group.isRequired && selected.isEmpty)) {
-        throw StateError('Pilihan varian ${group.name} tidak valid.');
+        throw OfflineCheckoutException(
+          'Pilihan varian ${group.name} tidak valid.',
+        );
       }
       final selectedOptions = <String>{};
       for (final variant in selected) {
@@ -271,11 +288,15 @@ class OfflineCheckoutValidator {
         if (option == null ||
             option.name != variant.optionName ||
             option.priceAdjustment != variant.priceAdjustment) {
-          throw StateError('Harga varian tidak sesuai katalog.');
+          throw const OfflineCheckoutException(
+            'Harga varian tidak sesuai katalog.',
+          );
         }
         final selectionId = option.id ?? option.name;
         if (!selectedOptions.add(selectionId)) {
-          throw StateError('Varian yang sama dipilih lebih dari sekali.');
+          throw const OfflineCheckoutException(
+            'Varian yang sama dipilih lebih dari sekali.',
+          );
         }
         validated.add(
           SelectedProductVariant(

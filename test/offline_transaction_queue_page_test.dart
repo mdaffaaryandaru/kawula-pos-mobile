@@ -13,7 +13,9 @@ import 'package:kawula_pos/features/transactions/data/services/offline_transacti
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
 import 'package:kawula_pos/features/transactions/data/repositories/offline_transaction_queue_repository_impl.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/offline_transaction_queue_item.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/offline_transaction_queue_page.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/offline_transaction_queue_widgets.dart';
 import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
@@ -87,27 +89,68 @@ void main() {
     DateTime? createdAtLocal,
     OfflineTransactionStatus status = OfflineTransactionStatus.pendingSync,
     String? lastError,
+    bool openBill = false,
+    Map<String, Object?>? receiptSnapshot,
   }) async {
     await dao.saveOfflineTransaction(
       ownerUserId: 'cashier-1',
       outletId: 'outlet-1',
       shiftId: 'shift-1',
-      transactionType: 'sale',
+      transactionType: openBill ? 'open_bill' : 'sale',
       payload: {
         'items': [
           {
             'product_id': 'product-1',
-            'product_name': 'Kopi',
-            'quantity': 1,
+            'product_name': 'Kopi Susu',
+            'quantity': 2,
             'unit_price': 1000,
             'selected_variants': const [],
           },
         ],
-        'total_amount': 1000,
-        'payment_method': 'CASH',
-        'paid_amount': 1000,
+        'total_amount': 2000,
+        'payment_method': openBill ? 'OPEN_BILL' : 'CASH',
+        'paid_amount': openBill ? 0 : 2000,
       },
-      receiptSnapshot: {'total_amount': 1000},
+      receiptSnapshot:
+          receiptSnapshot ??
+          {
+            'transaction_id': localId,
+            'status': status.databaseValue,
+            'store_name': 'Kawula Store',
+            'address': 'Jl. Contoh 1',
+            'logo_url': '',
+            'outlet_id': 'outlet-1',
+            'outlet_name': 'Outlet Utama',
+            'cashier_id': 'cashier-1',
+            'cashier_name': 'Kasir A',
+            'created_at_local': DateTime(2026, 11, 12).toIso8601String(),
+            'items': [
+              {
+                'product_id': 'product-1',
+                'product_name': 'Kopi Susu',
+                'quantity': 2,
+                'unit_price': 1000,
+                'discount_amount': 0,
+                'notes': '',
+                'selected_variants': [
+                  {'group_name': 'Ukuran', 'option_name': 'Besar'},
+                ],
+              },
+            ],
+            'subtotal': 2000,
+            'tax_amount': 0,
+            'service_charge': 0,
+            'discount_amount': 0,
+            'total_amount': 2000,
+            'payment_method': openBill ? 'OPEN_BILL' : 'CASH',
+            'paid_amount': openBill ? 0 : 2000,
+            'change_amount': 0,
+            'member_id': null,
+            'member_name': '',
+            'table_number': '',
+            'sync_marker': 'OFFLINE_SYNC:$localId',
+            'sync_status': status.databaseValue,
+          },
       localId: localId,
       syncMarker: 'OFFLINE_SYNC:$localId',
       createdAtLocal: createdAtLocal,
@@ -171,7 +214,7 @@ void main() {
     expect(find.text('2'), findsWidgets);
   });
 
-  testWidgets('opens transaction details from the local receipt snapshot', (
+  testWidgets('shows structured receipt details from the local snapshot', (
     tester,
   ) async {
     await saveTransaction(localId: 'OFF-receipt');
@@ -180,13 +223,138 @@ void main() {
     await tester.tap(find.textContaining('OFF-receipt'));
     await pumpAnimations(tester);
 
-    expect(find.text('OFF-receipt'), findsOneWidget);
-    expect(find.textContaining('Status: Menunggu'), findsOneWidget);
-    expect(find.textContaining('"total_amount": 1000'), findsOneWidget);
+    expect(find.text('Detail Transaksi'), findsOneWidget);
+    expect(find.text('OFF-receipt'), findsWidgets);
+    expect(find.textContaining('Kopi Susu'), findsOneWidget);
+    expect(find.text('2 × Kopi Susu'), findsOneWidget);
+    expect(find.text('Harga satuan: Rp 1.000'), findsOneWidget);
+    expect(find.text('Subtotal item'), findsOneWidget);
+    expect(find.text('Rp 2.000'), findsWidgets);
+    expect(find.text('Ukuran: Besar'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Menunggu'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('"total_amount":'), findsNothing);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('Tutup'));
     await pumpAnimations(tester);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('receipt detail dialog fits a narrow screen', (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final record = OfflineTransactionQueueItem(
+      localId: 'OFF-small-screen',
+      ownerUserId: 'cashier-1',
+      outletId: 'outlet-1',
+      shiftId: 'shift-1',
+      transactionType: 'sale',
+      payloadJson: '{}',
+      receiptSnapshotJson:
+          '{"store_name":"Kawula","payment_method":"CASH",'
+          '"total_amount":1000,"paid_amount":1000,"change_amount":0,'
+          '"items":[{"product_name":"Kopi","quantity":1,"unit_price":1000}]}',
+      status: 'pending_sync',
+      createdAtLocal: DateTime(2026, 11, 12),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: OfflineQueueTransactionDetailDialog(
+            record: record,
+            audit: const [],
+          ),
+        ),
+      ),
+    );
+    await pumpAnimations(tester);
+
+    expect(find.textContaining('Kopi'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Tutup'));
+    await pumpAnimations(tester);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shows Open Bill as unpaid without paid or change rows', (
+    tester,
+  ) async {
+    await saveTransaction(localId: 'OFF-open-bill', openBill: true);
+    await pumpQueuePage(tester);
+
+    await tester.tap(find.textContaining('OFF-open-bill'));
+    await pumpAnimations(tester);
+
+    expect(find.text('Open Bill · Belum lunas'), findsOneWidget);
+    expect(find.text('Belum lunas'), findsOneWidget);
+    expect(find.text('Dibayar'), findsNothing);
+    expect(find.text('Kembalian'), findsNothing);
+    expect(find.textContaining('"total_amount":'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('unsupported receipt snapshot displays a safe fallback', (
+    tester,
+  ) async {
+    await saveTransaction(
+      localId: 'OFF-unsupported',
+      receiptSnapshot: const {'total_amount': 1000},
+    );
+    await pumpQueuePage(tester);
+
+    await tester.tap(find.textContaining('OFF-unsupported'));
+    await pumpAnimations(tester);
+
+    expect(find.text('Detail struk tidak tersedia'), findsOneWidget);
+    expect(find.textContaining('"total_amount":'), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Tutup'));
+    await pumpAnimations(tester);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('invalid receipt JSON does not prevent dialog closing', (
+    tester,
+  ) async {
+    final record = OfflineTransactionQueueItem(
+      localId: 'OFF-invalid-json',
+      ownerUserId: 'cashier-1',
+      outletId: 'outlet-1',
+      shiftId: 'shift-1',
+      transactionType: 'sale',
+      payloadJson: '{}',
+      receiptSnapshotJson: '{invalid',
+      status: 'pending_sync',
+      createdAtLocal: DateTime(2026, 11, 12),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: OfflineQueueTransactionDetailDialog(
+            record: record,
+            audit: const [],
+          ),
+        ),
+      ),
+    );
+    await pumpAnimations(tester);
+
+    expect(find.text('Detail struk tidak tersedia'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Tutup'));
+    await pumpAnimations(tester);
+    expect(find.byType(OfflineQueueTransactionDetailDialog), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
