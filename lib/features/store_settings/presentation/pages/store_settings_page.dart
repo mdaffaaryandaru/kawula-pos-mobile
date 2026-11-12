@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 // Project imports:
+import 'package:kawula_pos/features/shared/domain/value_objects/image_upload_input.dart';
 import 'package:kawula_pos/features/store_settings/domain/entities/store_settings.dart';
 import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
 import 'package:kawula_pos/features/store_settings/presentation/widgets/store_settings_form.dart';
@@ -131,7 +132,12 @@ class _StoreSettingsPageState extends State<StoreSettingsPage> {
         _isUploadingLogo = true;
         _errorMessage = null;
       });
-      final url = await widget.repository.uploadLogo(image);
+      final upload = ImageUploadInput(
+        path: image.path,
+        fileName: image.name,
+        mimeType: image.mimeType,
+      );
+      final url = await widget.repository.uploadLogo(upload);
       final bytes = await image.readAsBytes();
       if (!mounted) return;
       setState(() {

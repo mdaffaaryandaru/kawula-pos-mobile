@@ -1,4 +1,5 @@
 // Project imports:
+import 'package:kawula_pos/features/tables/domain/constants/table_statuses.dart';
 import 'package:kawula_pos/features/tables/domain/entities/managed_table.dart';
 
 class ManagedTableModel extends ManagedTable {
@@ -44,5 +45,3 @@ class ManagedTableModel extends ManagedTable {
     );
   }
 }
-
-const tableStatuses = ['available', 'occupied', 'reserved'];

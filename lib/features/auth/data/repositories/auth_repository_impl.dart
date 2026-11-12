@@ -56,14 +56,14 @@ class AuthRepositoryImpl implements AuthRepository {
       rethrow;
     } on http.ClientException {
       masterDataCache?.markOffline();
-      return _restoreOfflineCashierSession(token);
+      return _restoreOfflineSalesSession(token);
     } on TimeoutException {
       masterDataCache?.markOffline();
-      return _restoreOfflineCashierSession(token);
+      return _restoreOfflineSalesSession(token);
     } on Exception catch (error) {
       if (!isPlatformNetworkException(error)) rethrow;
       masterDataCache?.markOffline();
-      return _restoreOfflineCashierSession(token);
+      return _restoreOfflineSalesSession(token);
     }
 
     await _saveVerifiedProfile(user);
@@ -129,7 +129,7 @@ class AuthRepositoryImpl implements AuthRepository {
     masterDataCache?.markOnline();
   }
 
-  Future<AuthUser?> _restoreOfflineCashierSession(String token) async {
+  Future<AuthUser?> _restoreOfflineSalesSession(String token) async {
     final verifiedUserId = await _localDataSource
         .readVerifiedOfflineSalesUserId();
     if (verifiedUserId == null || verifiedUserId.trim().isEmpty) return null;

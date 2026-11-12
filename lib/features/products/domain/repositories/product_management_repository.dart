@@ -1,12 +1,10 @@
-// Package imports:
-import 'package:image_picker/image_picker.dart';
-
 // Project imports:
 import 'package:kawula_pos/features/categories/domain/entities/managed_category.dart';
 import 'package:kawula_pos/features/inventories/domain/entities/inventory_item.dart';
 import 'package:kawula_pos/features/product_units/domain/entities/product_unit.dart';
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 import 'package:kawula_pos/features/products/domain/entities/product_management.dart';
+import 'package:kawula_pos/features/shared/domain/value_objects/image_upload_input.dart';
 
 abstract interface class ProductManagementRepository {
   Future<List<ManagedProduct>> getProducts();
@@ -19,7 +17,7 @@ abstract interface class ProductManagementRepository {
 
   Future<List<ProductUnit>> getProductUnits();
 
-  Future<List<String>> uploadProductImages(List<XFile> images);
+  Future<List<String>> uploadProductImages(List<ImageUploadInput> images);
 
   Future<ManagedProduct> saveProduct({
     String? productId,

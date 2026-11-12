@@ -3,9 +3,9 @@ import 'dart:convert';
 
 // Package imports:
 import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
 
 // Project imports:
+import 'package:kawula_pos/features/shared/domain/value_objects/image_upload_input.dart';
 import 'package:kawula_pos/features/store_settings/data/models/store_settings_model.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 import 'package:kawula_pos/framework/core/network/api_header_builder.dart';
@@ -36,10 +36,8 @@ class StoreSettingsRemoteDataSource {
     return StoreSettingsModel.fromJson(_decodeObject(response));
   }
 
-  Future<String> uploadLogo(XFile image) async {
-    final namedExtension = image.name.contains('.')
-        ? image.name.split('.').last.toLowerCase()
-        : '';
+  Future<String> uploadLogo(ImageUploadInput image) async {
+    final namedExtension = image.extension;
     final mimeExtension = switch (image.mimeType?.toLowerCase()) {
       'image/jpeg' => 'jpg',
       'image/png' => 'png',
@@ -56,10 +54,6 @@ class StoreSettingsRemoteDataSource {
         'Format logo harus JPG, JPEG, PNG, WEBP, atau GIF.',
       );
     }
-    final bytes = await image.readAsBytes();
-    if (bytes.length > 2 * 1024 * 1024) {
-      throw const ApiException('Ukuran logo maksimal 2 MB.');
-    }
     final request = http.MultipartRequest(
       'POST',
       _uri('store-settings/upload-logo'),
@@ -67,11 +61,14 @@ class StoreSettingsRemoteDataSource {
     request.headers.addAll(await _authorizedHeaders());
     final filename =
         const {'jpg', 'jpeg', 'png', 'webp', 'gif'}.contains(namedExtension)
-        ? image.name
+        ? image.fileName
         : 'store-logo.$extension';
-    request.files.add(
-      http.MultipartFile.fromBytes('logo', bytes, filename: filename),
+    final file = await http.MultipartFile.fromPath(
+      'logo',
+      image.path,
+      filename: filename,
     );
+    request.files.add(file);
     final streamedResponse = await _client.send(request);
     final response = await http.Response.fromStream(streamedResponse);
     final body = _decodeObject(response);

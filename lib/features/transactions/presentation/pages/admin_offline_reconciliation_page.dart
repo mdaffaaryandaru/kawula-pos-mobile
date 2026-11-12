@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -7,12 +6,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
 import 'package:kawula_pos/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:kawula_pos/features/auth/presentation/bloc/auth_state.dart';
-import 'package:kawula_pos/features/transactions/data/services/admin_offline_resolution_service.dart';
-import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
-import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/offline_transaction_queue_item.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/offline_transaction_queue_repository.dart';
+import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_reconciliation.dart';
 import 'package:kawula_pos/features/products/presentation/pages/product_formatters.dart';
-import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
-import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/offline_transaction_formatters.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/offline_transaction_reconciliation_widgets.dart';
 import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 
 class AdminOfflineReconciliationPage extends StatefulWidget {
@@ -20,8 +19,8 @@ class AdminOfflineReconciliationPage extends StatefulWidget {
     super.key,
     required this.admin,
     required this.outletId,
-    required this.dao,
-    required this.checkoutRepository,
+    required this.queueRepository,
+    required this.reconciliation,
     required this.isOutletActive,
     required this.outletActiveStream,
     this.offlineMasterDataCache,
@@ -29,8 +28,8 @@ class AdminOfflineReconciliationPage extends StatefulWidget {
 
   final AuthUser admin;
   final String outletId;
-  final OfflineTransactionsDao dao;
-  final CheckoutRepository checkoutRepository;
+  final OfflineTransactionQueueRepository queueRepository;
+  final OfflineTransactionReconciliation reconciliation;
   final bool Function() isOutletActive;
   final Stream<bool> outletActiveStream;
   final OfflineMasterDataCache? offlineMasterDataCache;
@@ -106,12 +105,6 @@ class _AdminOfflineReconciliationPageState
     if (mounted) setState(() {});
   }
 
-  AdminOfflineResolutionService get _service => AdminOfflineResolutionService(
-    dao: widget.dao,
-    checkoutRepository: widget.checkoutRepository,
-    verifyAdminSession: _verifyAdminSession,
-  );
-
   Future<AuthUser?> _verifyAdminSession() async {
     if (!_outletActive || !widget.isOutletActive()) return null;
     final cubit = context.read<AuthCubit>();
@@ -126,45 +119,6 @@ class _AdminOfflineReconciliationPageState
     return state.user;
   }
 
-  String _statusLabel(String status) => switch (status) {
-    'pending_sync' => 'Menunggu sinkronisasi',
-    'syncing' => 'Sedang disinkronkan',
-    'synced' => 'Tersinkron',
-    'failed' => 'Gagal',
-    'needs_reconciliation' => 'Perlu rekonsiliasi',
-    'resolved_manually' => 'Diselesaikan manual',
-    _ => status,
-  };
-
-  num _total(OfflineTransaction record) {
-    final snapshot = _snapshot(record);
-    final value =
-        snapshot['total_amount'] ?? snapshot['total'] ?? snapshot['amount'];
-    if (value is num) return value;
-    if (value is String) return num.tryParse(value) ?? 0;
-    return 0;
-  }
-
-  Map<String, dynamic> _snapshot(OfflineTransaction record) {
-    final decoded = jsonDecode(record.receiptSnapshotJson);
-    return decoded is Map<String, dynamic> ? decoded : const {};
-  }
-
-  String _snapshotString(OfflineTransaction record, String key) {
-    final value = _snapshot(record)[key];
-    return value is String ? value : '';
-  }
-
-  String _formatDate(DateTime value) {
-    final date = value.toLocal();
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final year = date.year.toString().padLeft(4, '0');
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
-    return '$day-$month-$year $hour:$minute';
-  }
-
   int _statusPriority(String status) => switch (status) {
     'needs_reconciliation' => 0,
     'failed' => 1,
@@ -175,7 +129,9 @@ class _AdminOfflineReconciliationPageState
     _ => 6,
   };
 
-  List<OfflineTransaction> _filterRecords(List<OfflineTransaction> records) {
+  List<OfflineTransactionQueueItem> _filterRecords(
+    List<OfflineTransactionQueueItem> records,
+  ) {
     final ownerQuery = _ownerController.text.trim().toLowerCase();
     final filtered = records.where((record) {
       if (_statusFilter == 'unresolved' &&
@@ -188,7 +144,10 @@ class _AdminOfflineReconciliationPageState
           record.status != _statusFilter) {
         return false;
       }
-      final ownerName = _snapshotString(record, 'cashier_name').toLowerCase();
+      final ownerName = offlineReceiptField(
+        record,
+        'cashier_name',
+      ).toLowerCase();
       if (ownerQuery.isNotEmpty &&
           !record.ownerUserId.toLowerCase().contains(ownerQuery) &&
           !ownerName.contains(ownerQuery)) {
@@ -236,13 +195,14 @@ class _AdminOfflineReconciliationPageState
     }
   }
 
-  Future<void> _searchCandidates(OfflineTransaction record) async {
+  Future<void> _searchCandidates(OfflineTransactionQueueItem record) async {
     if (_readOnly) return;
     setState(() => _isWorking = true);
     try {
-      final candidates = await _service.findCandidates(
+      final candidates = await widget.reconciliation.findCandidates(
         localId: record.localId,
         activeOutletId: widget.outletId,
+        verifyAdminSession: _verifyAdminSession,
       );
       if (!mounted) return;
       if (candidates.isEmpty) {
@@ -252,51 +212,26 @@ class _AdminOfflineReconciliationPageState
         );
         return;
       }
-      final selectedId = await showDialog<String>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Kandidat transaksi server'),
-          content: SizedBox(
-            width: 520,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: candidates
-                    .map(
-                      (candidate) => ListTile(
-                        title: Text(candidate.id),
-                        subtitle: Text(
-                          '${candidate.cashierName} · ${candidate.status} · '
-                          '${candidate.createdAt == null ? 'Waktu tidak tersedia' : _formatDate(candidate.createdAt!)} · '
-                          '${formatRupiah(candidate.totalAmount)}',
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => Navigator.pop(context, candidate.id),
-                      ),
-                    )
-                    .toList(growable: false),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Tutup'),
-            ),
-          ],
-        ),
+      final selectedId = await showReconciliationCandidateDialog(
+        context,
+        candidates,
       );
       if (selectedId == null || !mounted) return;
       final candidate = candidates.singleWhere(
         (transaction) => transaction.id == selectedId,
       );
-      final reason = await _confirmMatch(record, candidate);
+      final reason = await showReconciliationMatchDialog(
+        context,
+        local: record,
+        remote: candidate,
+      );
       if (reason == null || !mounted) return;
-      await _service.matchExistingRemote(
+      await widget.reconciliation.matchExistingRemote(
         localId: record.localId,
         activeOutletId: widget.outletId,
         remoteTransactionId: candidate.id,
         reason: reason,
+        verifyAdminSession: _verifyAdminSession,
       );
       if (mounted) {
         _showMessage('Transaksi ditautkan ke ID server ${candidate.id}.');
@@ -308,90 +243,23 @@ class _AdminOfflineReconciliationPageState
     }
   }
 
-  Future<String?> _confirmMatch(
-    OfflineTransaction local,
-    TransactionRecord remote,
-  ) {
-    final reasonController = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Periksa dan tautkan transaksi'),
-          content: SizedBox(
-            width: 620,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Lokal: ${local.localId}'),
-                  Text('Server: ${remote.id}'),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Waktu lokal: ${_formatDate(local.createdAtLocal)}\n'
-                    'Waktu server: ${remote.createdAt == null ? 'Tidak tersedia' : _formatDate(remote.createdAt!)}\n'
-                    'Kasir: ${local.ownerUserId} / ${remote.cashierId}\n'
-                    'Outlet: ${local.outletId} / ${remote.outletId}\n'
-                    'Total: ${formatRupiah(_total(local))} / ${formatRupiah(remote.totalAmount)}\n'
-                    'Pembayaran: ${_snapshotString(local, 'payment_method')} / ${remote.paymentMethod}',
-                  ),
-                  const SizedBox(height: 12),
-                  const Text('Snapshot lokal:'),
-                  SelectableText(
-                    const JsonEncoder.withIndent('  ')
-                        .convert(_snapshot(local)),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text('Transaksi server:'),
-                  SelectableText(
-                    const JsonEncoder.withIndent('  ')
-                        .convert(_remoteAsJson(remote)),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: reasonController,
-                    decoration: const InputDecoration(
-                      labelText: 'Alasan keputusan Admin (wajib)',
-                    ),
-                    minLines: 2,
-                    maxLines: 4,
-                    onChanged: (_) => setDialogState(() {}),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: reasonController.text.trim().isEmpty
-                  ? null
-                  : () => Navigator.pop(context, reasonController.text.trim()),
-              child: const Text('Tautkan transaksi'),
-            ),
-          ],
-        ),
-      ),
-    ).whenComplete(reasonController.dispose);
-  }
-
-  Future<void> _handleFailedOutsideServer(OfflineTransaction record) async {
+  Future<void> _handleFailedOutsideServer(
+    OfflineTransactionQueueItem record,
+  ) async {
     if (_readOnly) return;
-    final reason = await _requestReason(
+    final reason = await showReconciliationReasonDialog(
+      context,
       title: 'Tandai ditangani di luar sistem',
       message: 'Tindakan ini hanya untuk penolakan server yang pasti. Transaksi tidak dianggap tersinkron dan tidak dihapus.',
     );
     if (reason == null || !mounted) return;
     setState(() => _isWorking = true);
     try {
-      await _service.handleFailedOutsideServer(
+      await widget.reconciliation.handleFailedOutsideServer(
         localId: record.localId,
         activeOutletId: widget.outletId,
         reason: reason,
+        verifyAdminSession: _verifyAdminSession,
       );
       if (mounted) {
         _showMessage(
@@ -405,109 +273,16 @@ class _AdminOfflineReconciliationPageState
     }
   }
 
-  Future<String?> _requestReason({
-    required String title,
-    required String message,
-  }) {
-    final controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(title),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(message),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  labelText: 'Alasan keputusan Admin (wajib)',
-                ),
-                minLines: 2,
-                maxLines: 4,
-                onChanged: (_) => setDialogState(() {}),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: controller.text.trim().isEmpty
-                  ? null
-                  : () => Navigator.pop(context, controller.text.trim()),
-              child: const Text('Konfirmasi'),
-            ),
-          ],
-        ),
-      ),
-    ).whenComplete(controller.dispose);
-  }
-
-  Future<void> _showDetail(OfflineTransaction record) async {
-    final audit = await widget.dao.getResolutionAudit(record.localId);
+  Future<void> _showDetail(OfflineTransactionQueueItem record) async {
+    final audit = await widget.queueRepository.getResolutionAudit(
+      record.localId,
+    );
     if (!mounted) return;
     await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(record.localId),
-        content: SizedBox(
-          width: 600,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Kasir: ${_snapshotString(record, 'cashier_name')}'),
-                Text('User ID: ${record.ownerUserId}'),
-                Text(
-                  'Outlet: ${_snapshotString(record, 'outlet_name')} (${record.outletId})',
-                ),
-                Text('Shift asal: ${record.shiftId}'),
-                Text('Waktu lokal: ${_formatDate(record.createdAtLocal)}'),
-                Text('Total: ${formatRupiah(_total(record))}'),
-                Text(
-                  'Metode pembayaran: ${_snapshotString(record, 'payment_method')}',
-                ),
-                Text('Jenis transaksi: ${record.transactionType}'),
-                Text('Status: ${_statusLabel(record.status)}'),
-                if (record.remoteTransactionId != null)
-                  Text('ID transaksi server: ${record.remoteTransactionId}'),
-                if (record.status == 'resolved_manually' &&
-                    record.remoteTransactionId == null)
-                  const Text('Transaksi tidak tersinkron ke server.'),
-                if (record.lastError != null)
-                  Text('Alasan gagal: ${record.lastError}'),
-                const SizedBox(height: 12),
-                const Text('Snapshot struk:'),
-                SelectableText(
-                  const JsonEncoder.withIndent('  ').convert(_snapshot(record)),
-                ),
-                if (audit.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  const Text('Audit penyelesaian:'),
-                  for (final entry in audit)
-                    Text(
-                      '${entry.resolutionType} · Admin ${entry.resolvingAdminUserId} '
-                      '(${entry.resolvingAdminRole}) · ${_formatDate(entry.resolvedAt)}\n'
-                      '${entry.reason}'
-                      '${entry.notes == null ? '' : '\n${entry.notes}'}',
-                    ),
-                ],
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup'),
-          ),
-        ],
+      builder: (context) => OfflineReconciliationTransactionDetailDialog(
+        record: record,
+        audit: audit,
       ),
     );
   }
@@ -628,8 +403,8 @@ class _AdminOfflineReconciliationPageState
           ),
           if (_isWorking) const LinearProgressIndicator(),
           Expanded(
-            child: StreamBuilder<List<OfflineTransaction>>(
-              stream: widget.dao.watchTransactionsByOutletLatest(
+            child: StreamBuilder<List<OfflineTransactionQueueItem>>(
+              stream: widget.queueRepository.watchTransactionsByOutletLatest(
                 widget.outletId,
               ),
               builder: (context, snapshot) {
@@ -642,7 +417,7 @@ class _AdminOfflineReconciliationPageState
                   return const Center(child: CircularProgressIndicator());
                 }
                 final records = _filterRecords(
-                  snapshot.data ?? const <OfflineTransaction>[],
+                  snapshot.data ?? const <OfflineTransactionQueueItem>[],
                 );
                 if (records.isEmpty) {
                   return const Center(
@@ -655,16 +430,16 @@ class _AdminOfflineReconciliationPageState
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final record = records[index];
-                    final cashier = _snapshotString(record, 'cashier_name');
+                    final cashier = offlineReceiptField(record, 'cashier_name');
                     return Card(
                       child: ListTile(
                         title: Text(
-                          '${record.localId} · ${_statusLabel(record.status)}',
+                          '${record.localId} · ${offlineReconciliationStatusLabel(record.status)}',
                         ),
                         subtitle: Text(
                           '${cashier.isEmpty ? record.ownerUserId : cashier} · '
-                          '${_formatDate(record.createdAtLocal)} · '
-                          '${formatRupiah(_total(record))} · ${record.transactionType}',
+                          '${formatOfflineTransactionDate(record.createdAtLocal)} · '
+                          '${formatRupiah(offlineReceiptTotal(record))} · ${record.transactionType}',
                         ),
                         trailing: PopupMenuButton<String>(
                           enabled: !_isWorking && !_readOnly,
@@ -708,31 +483,3 @@ class _AdminOfflineReconciliationPageState
     );
   }
 }
-
-Map<String, Object?> _remoteAsJson(TransactionRecord transaction) => {
-  'id': transaction.id,
-  'status': transaction.status,
-  'outlet_id': transaction.outletId,
-  'created_by': transaction.cashierId,
-  'created_at': transaction.createdAt?.toIso8601String(),
-  'total_amount': transaction.totalAmount,
-  'payment_method': transaction.paymentMethod,
-  'items': transaction.items
-      .map(
-        (item) => {
-          'product_id': item.productId,
-          'product_name': item.productName,
-          'quantity': item.quantity,
-          'price': item.price,
-          'selected_variants': item.selectedVariants
-              .map(
-                (variant) => {
-                  'group_name': variant.groupName,
-                  'option_name': variant.optionName,
-                },
-              )
-              .toList(growable: false),
-        },
-      )
-      .toList(growable: false),
-};

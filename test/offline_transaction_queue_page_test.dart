@@ -12,6 +12,7 @@ import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository
 import 'package:kawula_pos/features/transactions/data/services/offline_transaction_sync_service.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/data/repositories/offline_transaction_queue_repository_impl.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/offline_transaction_queue_page.dart';
 import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
@@ -61,7 +62,7 @@ void main() {
           ),
           outletId: 'outlet-1',
           shiftId: 'shift-1',
-          dao: dao,
+          queueRepository: OfflineTransactionQueueRepositoryImpl(dao),
           syncService:
               syncService ??
               OfflineTransactionSyncService(
@@ -169,6 +170,87 @@ void main() {
     expect(find.text('Sinkronkan Antrean'), findsOneWidget);
     expect(find.text('2'), findsWidgets);
   });
+
+  testWidgets('opens transaction details from the local receipt snapshot', (
+    tester,
+  ) async {
+    await saveTransaction(localId: 'OFF-receipt');
+    await pumpQueuePage(tester);
+
+    await tester.tap(find.textContaining('OFF-receipt'));
+    await pumpAnimations(tester);
+
+    expect(find.text('OFF-receipt'), findsOneWidget);
+    expect(find.textContaining('Status: Menunggu'), findsOneWidget);
+    expect(find.textContaining('"total_amount": 1000'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Tutup'));
+    await pumpAnimations(tester);
+    expect(tester.takeException(), isNull);
+  });
+
+  test(
+    'counts unresolved transactions within owner, outlet, and shift scope',
+    () async {
+      await saveTransaction(localId: 'OFF-pending');
+      await saveTransaction(
+        localId: 'OFF-syncing',
+        status: OfflineTransactionStatus.syncing,
+      );
+      await saveTransaction(
+        localId: 'OFF-failed',
+        status: OfflineTransactionStatus.failed,
+      );
+      await saveTransaction(
+        localId: 'OFF-reconciliation',
+        status: OfflineTransactionStatus.needsReconciliation,
+      );
+      await saveTransaction(
+        localId: 'OFF-synced',
+        status: OfflineTransactionStatus.synced,
+      );
+      await dao.saveOfflineTransaction(
+        ownerUserId: 'cashier-2',
+        outletId: 'outlet-1',
+        shiftId: 'shift-1',
+        transactionType: 'sale',
+        payload: const {},
+        receiptSnapshot: const {},
+        localId: 'OFF-other-owner',
+        syncMarker: 'OFFLINE_SYNC:OFF-other-owner',
+      );
+      await dao.saveOfflineTransaction(
+        ownerUserId: 'cashier-1',
+        outletId: 'outlet-2',
+        shiftId: 'shift-1',
+        transactionType: 'sale',
+        payload: const {},
+        receiptSnapshot: const {},
+        localId: 'OFF-other-outlet',
+        syncMarker: 'OFFLINE_SYNC:OFF-other-outlet',
+      );
+      await dao.saveOfflineTransaction(
+        ownerUserId: 'cashier-1',
+        outletId: 'outlet-1',
+        shiftId: 'shift-2',
+        transactionType: 'sale',
+        payload: const {},
+        receiptSnapshot: const {},
+        localId: 'OFF-other-shift',
+        syncMarker: 'OFFLINE_SYNC:OFF-other-shift',
+      );
+
+      final repository = OfflineTransactionQueueRepositoryImpl(dao);
+      final count = await repository.getUnresolvedTransactionCount(
+        ownerUserId: 'cashier-1',
+        outletId: 'outlet-1',
+        shiftId: 'shift-1',
+      );
+
+      expect(count, 4);
+    },
+  );
 
   testWidgets('PIN dialog cannot be opened twice and can be cancelled', (
     tester,

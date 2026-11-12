@@ -6,8 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Project imports:
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
-import 'package:kawula_pos/features/products/data/repositories/offline_cached_catalog_repository.dart';
-import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
+import 'package:kawula_pos/features/transactions/application/offline_sales_repository_factory.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/catalog_cubit.dart';
 import 'package:kawula_pos/features/products/presentation/pages/catalog_page.dart';
@@ -15,112 +14,86 @@ import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 import 'package:kawula_pos/features/shifts/presentation/widgets/shift_action_dialog.dart';
-import 'package:kawula_pos/features/transactions/data/repositories/offline_cached_checkout_repository.dart';
-import 'package:kawula_pos/features/transactions/data/repositories/offline_checkout_repository.dart';
-import 'package:kawula_pos/features/transactions/data/services/offline_transaction_sync_service.dart';
-import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/offline_transaction_queue_repository.dart';
+import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_sync.dart';
+import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_reconciliation.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/offline_transaction_queue_page.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/admin_offline_reconciliation_page.dart';
-import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
+import 'package:kawula_pos/features/store_settings/domain/repositories/auto_close_settings_provider.dart';
 import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
-import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
 
 class OfflineSalesTab extends StatelessWidget {
   const OfflineSalesTab({
     super.key,
     required this.admin,
-    required this.catalogRepository,
-    required this.checkoutRepository,
-    this.offlineTransactionsDao,
+    required this.offlineSalesRepositoryFactory,
+    required this.offlineTransactionQueueRepository,
+    this.offlineTransactionReconciliation,
     this.offlineTransactionSyncService,
     this.offlineMasterDataCache,
-    this.storeSettingsRepository,
+    required this.autoCloseSettingsProvider,
     this.catalogPageKey,
   });
 
   final AuthUser admin;
-  final CatalogRepository catalogRepository;
-  final CheckoutRepository checkoutRepository;
-  final OfflineTransactionsDao? offlineTransactionsDao;
-  final OfflineTransactionSyncService? offlineTransactionSyncService;
+  final OfflineSalesRepositoryFactory offlineSalesRepositoryFactory;
+  final OfflineTransactionQueueRepository offlineTransactionQueueRepository;
+  final OfflineTransactionReconciliation? offlineTransactionReconciliation;
+  final OfflineTransactionSync? offlineTransactionSyncService;
   final OfflineMasterDataCache? offlineMasterDataCache;
-  final StoreSettingsRepository? storeSettingsRepository;
+  final AutoCloseSettingsProvider autoCloseSettingsProvider;
   final GlobalKey<CatalogPageState>? catalogPageKey;
 
-  Future<int> _loadUnresolvedCount(
-    ActiveShift activeShift,
-    OfflineTransactionsDao dao,
-  ) {
+  Future<int> _loadUnresolvedCount(ActiveShift activeShift) {
     final outletId = activeShift.outletId;
     if (outletId == null || outletId.trim().isEmpty) {
       throw StateError('Outlet shift tidak tersedia untuk memeriksa antrean.');
     }
-    return dao
-        .getUnresolvedTransactions(
-          ownerUserId: admin.id,
-          outletId: outletId,
-          shiftId: activeShift.id,
-        )
-        .then((records) => records.length);
+    return offlineTransactionQueueRepository.getUnresolvedTransactionCount(
+      ownerUserId: admin.id,
+      outletId: outletId,
+      shiftId: activeShift.id,
+    );
   }
 
   Widget _buildActiveShift(BuildContext context, ActiveShift shift) {
     final shiftsCubit = context.read<ShiftsCubit>();
-    final scopedCache = offlineMasterDataCache?.forRole(
-      role: admin.role,
-      userId: admin.id,
-      outletId: shift.outletId,
+    final scope = offlineSalesRepositoryFactory.createScope(
+      user: admin,
+      shift: shift,
     );
-    final offlineTransactionsDao = this.offlineTransactionsDao;
+    final scopedCache = scope.masterDataCache;
     final offlineTransactionSyncService = this.offlineTransactionSyncService;
-
-    final scopedCatalogRepository = scopedCache == null
-        ? catalogRepository
-        : OfflineCachedCatalogRepository(
-            catalogRepository,
-            scopedCache,
-            offlineTransactionsDao: offlineTransactionsDao,
-          );
-    final cachedCheckoutRepository = scopedCache == null
-        ? checkoutRepository
-        : OfflineCachedCheckoutRepository(checkoutRepository, scopedCache);
-    final scopedCheckoutRepository =
-        scopedCache == null || offlineTransactionsDao == null
-        ? cachedCheckoutRepository
-        : OfflineCheckoutRepository(
-            cachedCheckoutRepository,
-            scopedCache,
-            offlineTransactionsDao,
-            user: admin,
-            shift: shift,
-          );
+    final offlineTransactionReconciliation =
+        this.offlineTransactionReconciliation;
 
     return MultiBlocProvider(
-      key: ValueKey<(String, String, String?)>((
+      key: ValueKey<(String, String, String?, String)>((
         admin.id,
         admin.role,
         shift.outletId,
+        shift.id,
       )),
       providers: [
         BlocProvider(
-          create: (_) => CatalogCubit(scopedCatalogRepository)..load(),
+          create: (_) => CatalogCubit(scope.catalogRepository)..load(),
         ),
         BlocProvider(create: (_) => CartCubit()),
       ],
       child: CatalogPage(
         key: catalogPageKey,
         user: admin,
-        checkoutRepository: scopedCheckoutRepository,
+        checkoutRepository: scope.checkoutRepository,
+        offlineTransactionQueueRepository: offlineTransactionQueueRepository,
         outletId: shift.outletId,
         activeShift: shift,
-        offlineTransactionsDao: offlineTransactionsDao,
         offlineTransactionSyncService: offlineTransactionSyncService,
-        storeSettingsRepository: storeSettingsRepository,
+        autoCloseSettingsProvider: autoCloseSettingsProvider,
         offlineMasterDataCache: scopedCache,
         onOpenOfflineReconciliation:
             admin.role == 'Admin' &&
-                offlineTransactionsDao != null &&
+                offlineTransactionReconciliation != null &&
                 shift.outletId != null &&
                 shift.outletId!.isNotEmpty
             ? () {
@@ -129,8 +102,8 @@ class OfflineSalesTab extends StatelessWidget {
                     builder: (_) => AdminOfflineReconciliationPage(
                       admin: admin,
                       outletId: shift.outletId!,
-                      dao: offlineTransactionsDao,
-                      checkoutRepository: checkoutRepository,
+                      queueRepository: offlineTransactionQueueRepository,
+                      reconciliation: offlineTransactionReconciliation,
                       isOutletActive: () {
                         final currentState = shiftsCubit.state;
                         return currentState is ShiftsActive &&
@@ -161,13 +134,9 @@ class OfflineSalesTab extends StatelessWidget {
             user: admin,
             mode: ShiftDialogMode.closing,
             loadUnresolvedOfflineTransactionCount:
-                canUseOfflineSales(admin.role) && offlineTransactionsDao != null
-                ? (activeShift) =>
-                      _loadUnresolvedCount(activeShift, offlineTransactionsDao)
-                : null,
+                canUseOfflineSales(admin.role) ? _loadUnresolvedCount : null,
             onOpenOfflineQueue:
                 canUseOfflineSales(admin.role) &&
-                    offlineTransactionsDao != null &&
                     offlineTransactionSyncService != null
                 ? () {
                     Navigator.of(context).push(
@@ -176,7 +145,7 @@ class OfflineSalesTab extends StatelessWidget {
                           user: admin,
                           outletId: shift.outletId ?? '',
                           shiftId: shift.id,
-                          dao: offlineTransactionsDao,
+                          queueRepository: offlineTransactionQueueRepository,
                           syncService: offlineTransactionSyncService,
                           offlineMasterDataCache: scopedCache,
                         ),

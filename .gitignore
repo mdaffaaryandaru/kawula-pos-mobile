@@ -61,6 +61,7 @@ test/
 test/*
 !test/transaction_report_csv_test.dart
 !test/api_url_builder_test.dart
+!test/api_config_test.dart
 !test/api_header_builder_test.dart
 !test/framework/
 !test/framework/core/
@@ -75,7 +76,6 @@ test/*
 !test/widget_test.dart
 !test/offline_transaction_queue_page_test.dart
 
-AGENTS.md
 
 # FVM Version Cache
 .fvm/

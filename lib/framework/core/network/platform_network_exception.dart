@@ -1,6 +1,4 @@
-import 'package:kawula_pos/framework/core/network/platform_network_exception_stub.dart'
-    if (dart.library.io) 'package:kawula_pos/framework/core/network/platform_network_exception_io.dart'
-    as platform;
+import 'dart:io';
 
 bool isPlatformNetworkException(Object error) =>
-    platform.isPlatformNetworkException(error);
+    error is SocketException || error is HandshakeException;

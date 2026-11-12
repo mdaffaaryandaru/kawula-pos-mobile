@@ -1,6 +1,3 @@
-// Package imports:
-import 'package:image_picker/image_picker.dart';
-
 // Project imports:
 import 'package:kawula_pos/features/categories/domain/entities/managed_category.dart';
 import 'package:kawula_pos/features/categories/domain/repositories/categories_repository.dart';
@@ -12,6 +9,7 @@ import 'package:kawula_pos/features/products/data/datasources/product_management
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 import 'package:kawula_pos/features/products/domain/entities/product_management.dart';
 import 'package:kawula_pos/features/products/domain/repositories/product_management_repository.dart';
+import 'package:kawula_pos/features/shared/domain/value_objects/image_upload_input.dart';
 import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
 
 class ProductManagementRepositoryImpl implements ProductManagementRepository {
@@ -73,7 +71,7 @@ class ProductManagementRepositoryImpl implements ProductManagementRepository {
       _productUnitsRepository.getProductUnits();
 
   @override
-  Future<List<String>> uploadProductImages(List<XFile> images) =>
+  Future<List<String>> uploadProductImages(List<ImageUploadInput> images) =>
       _remoteDataSource.uploadProductImages(images);
 
   @override

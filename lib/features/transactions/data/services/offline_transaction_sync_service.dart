@@ -6,33 +6,15 @@ import 'package:http/http.dart' as http;
 import 'package:kawula_pos/features/products/domain/entities/cart_item.dart';
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/offline_transaction_sync_summary.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_sync.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
 
-class OfflineTransactionSyncSummary {
-  const OfflineTransactionSyncSummary({
-    required this.successCount,
-    required this.failedCount,
-    required this.existingFailedCount,
-    required this.pendingCount,
-    required this.needsReconciliationCount,
-    required this.unresolvedCount,
-    required this.stopped,
-    required this.stopReason,
-  });
-
-  final int successCount;
-  final int failedCount;
-  final int existingFailedCount;
-  final int pendingCount;
-  final int needsReconciliationCount;
-  final int unresolvedCount;
-  final bool stopped;
-  final String? stopReason;
-}
+export 'package:kawula_pos/features/transactions/domain/entities/offline_transaction_sync_summary.dart';
 
 enum _SyncResult {
   success,
@@ -43,7 +25,7 @@ enum _SyncResult {
   stopAuthorization,
 }
 
-class OfflineTransactionSyncService {
+class OfflineTransactionSyncService implements OfflineTransactionSync {
   OfflineTransactionSyncService(
     this._repository,
     this._dao, {
@@ -55,8 +37,10 @@ class OfflineTransactionSyncService {
   final ShiftsRepository _activeShiftsRepository;
   bool _isSyncing = false;
 
+  @override
   bool get isSyncing => _isSyncing;
 
+  @override
   Future<OfflineTransactionSyncSummary> syncOfflineTransactions({
     required String ownerUserId,
     required String outletId,

@@ -6,8 +6,8 @@ import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
 import 'package:kawula_pos/features/auth/domain/repositories/auth_repository.dart';
 import 'package:kawula_pos/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:kawula_pos/features/auth/presentation/bloc/auth_state.dart';
-import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
-import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/data/repositories/offline_transaction_queue_repository_impl.dart';
+import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_reconciliation.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/admin_offline_reconciliation_page.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
@@ -74,8 +74,8 @@ void main() {
                 isOfflineSession: true,
               ),
               outletId: 'outlet-1',
-              dao: dao,
-              checkoutRepository: _CheckoutRepositoryFake(),
+              queueRepository: OfflineTransactionQueueRepositoryImpl(dao),
+              reconciliation: _OfflineTransactionReconciliationFake(),
               isOutletActive: () => true,
               outletActiveStream: const Stream<bool>.empty(),
             ),
@@ -116,7 +116,5 @@ class _TestAuthCubit extends AuthCubit {
   }
 }
 
-class _CheckoutRepositoryFake extends Fake implements CheckoutRepository {
-  @override
-  Future<List<TransactionRecord>> getTransactions() async => const [];
-}
+class _OfflineTransactionReconciliationFake extends Fake
+    implements OfflineTransactionReconciliation {}

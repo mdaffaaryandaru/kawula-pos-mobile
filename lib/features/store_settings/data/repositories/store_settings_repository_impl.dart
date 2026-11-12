@@ -1,7 +1,7 @@
-// Package imports:
-import 'package:image_picker/image_picker.dart';
+// ignore_for_file: prefer_initializing_formals
 
 // Project imports:
+import 'package:kawula_pos/features/shared/domain/value_objects/image_upload_input.dart';
 import 'package:kawula_pos/features/store_settings/data/datasources/store_settings_remote_data_source.dart';
 import 'package:kawula_pos/features/store_settings/data/models/store_settings_model.dart';
 import 'package:kawula_pos/features/store_settings/domain/entities/store_settings.dart';
@@ -34,7 +34,8 @@ class StoreSettingsRepositoryImpl implements StoreSettingsRepository {
   }
 
   @override
-  Future<String> uploadLogo(XFile image) => _remoteDataSource.uploadLogo(image);
+  Future<String> uploadLogo(ImageUploadInput image) =>
+      _remoteDataSource.uploadLogo(image);
 
   Future<void> _saveSettings(StoreSettings settings) async {
     await _cacheDao?.saveCache(

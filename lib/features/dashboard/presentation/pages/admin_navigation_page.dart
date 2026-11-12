@@ -10,87 +10,49 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 // Project imports:
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
 import 'package:kawula_pos/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:kawula_pos/features/dashboard/application/admin_dependencies.dart';
 import 'package:kawula_pos/features/balances/domain/repositories/balances_repository.dart';
-import 'package:kawula_pos/features/categories/domain/repositories/categories_repository.dart';
 import 'package:kawula_pos/features/dashboard/presentation/pages/admin_dashboard_page.dart';
 import 'package:kawula_pos/features/dashboard/presentation/pages/admin_management_page.dart';
 import 'package:kawula_pos/features/dashboard/presentation/widgets/offline_sales_tab.dart';
-import 'package:kawula_pos/features/discounts/domain/repositories/discounts_repository.dart';
-import 'package:kawula_pos/features/inventories/domain/repositories/inventory_repository.dart';
-import 'package:kawula_pos/features/members/domain/repositories/members_repository.dart';
-import 'package:kawula_pos/features/membership_programs/domain/repositories/membership_programs_repository.dart';
-import 'package:kawula_pos/features/outlets/domain/repositories/outlets_repository.dart';
-import 'package:kawula_pos/features/payment_method/domain/repositories/payment_methods_repository.dart';
-import 'package:kawula_pos/features/product_units/domain/repositories/product_units_repository.dart';
-import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
-import 'package:kawula_pos/features/products/domain/repositories/product_management_repository.dart';
 import 'package:kawula_pos/features/products/presentation/pages/catalog_page.dart';
 import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
-import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
-import 'package:kawula_pos/features/table_areas/domain/repositories/table_areas_repository.dart';
-import 'package:kawula_pos/features/tables/domain/repositories/tables_repository.dart';
+import 'package:kawula_pos/features/store_settings/domain/repositories/auto_close_settings_provider.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/offline_transaction_queue_repository.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/admin_transaction_report_page.dart';
-import 'package:kawula_pos/features/users/domain/repositories/user_management_repository.dart';
-import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
-import 'package:kawula_pos/features/transactions/data/services/offline_transaction_sync_service.dart';
+import 'package:kawula_pos/features/transactions/application/offline_sales_repository_factory.dart';
 import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
-import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
+import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_sync.dart';
 
 class AdminNavigationPage extends StatefulWidget {
   const AdminNavigationPage({
     super.key,
     required this.admin,
+    required this.adminDependencies,
     required this.shiftsRepository,
     this.masterDataCache,
-    this.offlineTransactionsDao,
     this.offlineTransactionSyncService,
-    required this.catalogRepository,
     required this.checkoutRepository,
+    required this.offlineTransactionQueueRepository,
+    required this.offlineSalesRepositoryFactory,
     required this.balancesRepository,
-    required this.storeSettingsRepository,
-    required this.apiBaseUrl,
-    required this.userManagementRepository,
-    required this.productManagementRepository,
-    required this.categoriesRepository,
-    required this.variantGroupsRepository,
-    this.discountsRepository,
-    this.paymentMethodsRepository,
-    this.inventoryRepository,
-    this.productUnitsRepository,
-    this.outletsRepository,
-    this.tableAreasRepository,
-    this.tablesRepository,
-    this.membersRepository,
-    this.membershipProgramsRepository,
+    required this.autoCloseSettingsProvider,
   });
 
   final AuthUser admin;
+  final AdminDependencies adminDependencies;
   final ShiftsRepository shiftsRepository;
   final OfflineMasterDataCache? masterDataCache;
-  final OfflineTransactionsDao? offlineTransactionsDao;
-  final OfflineTransactionSyncService? offlineTransactionSyncService;
-  final CatalogRepository catalogRepository;
+  final OfflineTransactionSync? offlineTransactionSyncService;
   final CheckoutRepository checkoutRepository;
+  final OfflineTransactionQueueRepository offlineTransactionQueueRepository;
+  final OfflineSalesRepositoryFactory offlineSalesRepositoryFactory;
   final BalancesRepository balancesRepository;
-  final StoreSettingsRepository storeSettingsRepository;
-  final String apiBaseUrl;
-  final UserManagementRepository userManagementRepository;
-  final ProductManagementRepository productManagementRepository;
-  final CategoriesRepository categoriesRepository;
-  final VariantGroupsRepository variantGroupsRepository;
-  final DiscountsRepository? discountsRepository;
-  final PaymentMethodsRepository? paymentMethodsRepository;
-  final InventoryRepository? inventoryRepository;
-  final ProductUnitsRepository? productUnitsRepository;
-  final OutletsRepository? outletsRepository;
-  final TableAreasRepository? tableAreasRepository;
-  final TablesRepository? tablesRepository;
-  final MembersRepository? membersRepository;
-  final MembershipProgramsRepository? membershipProgramsRepository;
+  final AutoCloseSettingsProvider autoCloseSettingsProvider;
 
   @override
   State<AdminNavigationPage> createState() => _AdminNavigationPageState();
@@ -321,36 +283,45 @@ class _AdminNavigationPageState extends State<AdminNavigationPage>
       1 => OfflineSalesTab(
         key: ValueKey<(String, String)>((widget.admin.id, widget.admin.role)),
         admin: widget.admin,
-        catalogRepository: widget.catalogRepository,
-        checkoutRepository: widget.checkoutRepository,
+        offlineSalesRepositoryFactory: widget.offlineSalesRepositoryFactory,
+        offlineTransactionQueueRepository:
+            widget.offlineTransactionQueueRepository,
+        offlineTransactionReconciliation:
+            widget.adminDependencies.offlineTransactionReconciliation,
         offlineMasterDataCache: widget.masterDataCache,
-        offlineTransactionsDao: widget.offlineTransactionsDao,
         offlineTransactionSyncService: widget.offlineTransactionSyncService,
-        storeSettingsRepository: widget.storeSettingsRepository,
+        autoCloseSettingsProvider: widget.autoCloseSettingsProvider,
         catalogPageKey: _catalogPageKey,
       ),
       2 => _onlineOnly(
         AdminManagementPage(
           admin: widget.admin,
-          apiBaseUrl: widget.apiBaseUrl,
-          catalogRepository: widget.catalogRepository,
-          userManagementRepository: widget.userManagementRepository,
-          productManagementRepository: widget.productManagementRepository,
-          categoriesRepository: widget.categoriesRepository,
+          apiBaseUrl: widget.adminDependencies.apiBaseUrl,
+          catalogRepository: widget.adminDependencies.catalogRepository,
+          userManagementRepository:
+              widget.adminDependencies.userManagementRepository,
+          productManagementRepository:
+              widget.adminDependencies.productManagementRepository,
+          categoriesRepository: widget.adminDependencies.categoriesRepository,
           balancesRepository: widget.balancesRepository,
-          storeSettingsRepository: widget.storeSettingsRepository,
+          storeSettingsRepository:
+              widget.adminDependencies.storeSettingsRepository,
           checkoutRepository: widget.checkoutRepository,
           shiftsRepository: widget.shiftsRepository,
-          variantGroupsRepository: widget.variantGroupsRepository,
-          discountsRepository: widget.discountsRepository,
-          paymentMethodsRepository: widget.paymentMethodsRepository,
-          inventoryRepository: widget.inventoryRepository,
-          productUnitsRepository: widget.productUnitsRepository,
-          outletsRepository: widget.outletsRepository,
-          tableAreasRepository: widget.tableAreasRepository,
-          tablesRepository: widget.tablesRepository,
-          membersRepository: widget.membersRepository,
-          membershipProgramsRepository: widget.membershipProgramsRepository,
+          variantGroupsRepository:
+              widget.adminDependencies.variantGroupsRepository,
+          discountsRepository: widget.adminDependencies.discountsRepository,
+          paymentMethodsRepository:
+              widget.adminDependencies.paymentMethodsRepository,
+          inventoryRepository: widget.adminDependencies.inventoryRepository,
+          productUnitsRepository:
+              widget.adminDependencies.productUnitsRepository,
+          outletsRepository: widget.adminDependencies.outletsRepository,
+          tableAreasRepository: widget.adminDependencies.tableAreasRepository,
+          tablesRepository: widget.adminDependencies.tablesRepository,
+          membersRepository: widget.adminDependencies.membersRepository,
+          membershipProgramsRepository:
+              widget.adminDependencies.membershipProgramsRepository,
         ),
       ),
       _ => const SizedBox.shrink(),

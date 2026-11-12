@@ -9,6 +9,7 @@ import 'package:kawula_pos/features/product_units/domain/entities/product_unit.d
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 import 'package:kawula_pos/features/products/domain/entities/product_management.dart';
 import 'package:kawula_pos/features/products/domain/repositories/product_management_repository.dart';
+import 'package:kawula_pos/features/shared/domain/value_objects/image_upload_input.dart';
 
 sealed class ProductManagementState {
   const ProductManagementState();
@@ -49,8 +50,17 @@ class ProductManagementCubit extends Cubit<ProductManagementState> {
   final ProductManagementRepository _repository;
 
   Future<List<String>?> uploadProductImages(List<XFile> images) async {
+    final uploads = images
+        .map(
+          (image) => ImageUploadInput(
+            path: image.path,
+            fileName: image.name,
+            mimeType: image.mimeType,
+          ),
+        )
+        .toList(growable: false);
     try {
-      return await _repository.uploadProductImages(images);
+      return await _repository.uploadProductImages(uploads);
     } catch (error) {
       _emitOperationError(error);
       return null;

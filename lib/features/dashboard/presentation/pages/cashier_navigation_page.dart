@@ -13,16 +13,16 @@ import 'package:kawula_pos/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:kawula_pos/features/balances/domain/repositories/balances_repository.dart';
 import 'package:kawula_pos/features/dashboard/presentation/pages/admin_dashboard_page.dart';
 import 'package:kawula_pos/features/dashboard/presentation/widgets/offline_sales_tab.dart';
-import 'package:kawula_pos/features/products/domain/repositories/catalog_repository.dart';
 import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
-import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
-import 'package:kawula_pos/features/transactions/data/services/offline_transaction_sync_service.dart';
+import 'package:kawula_pos/features/store_settings/domain/repositories/auto_close_settings_provider.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/offline_transaction_queue_repository.dart';
+import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_sync.dart';
+import 'package:kawula_pos/features/transactions/application/offline_sales_repository_factory.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/admin_transaction_report_page.dart';
 import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
-import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 
 class CashierNavigationPage extends StatefulWidget {
   const CashierNavigationPage({
@@ -30,23 +30,23 @@ class CashierNavigationPage extends StatefulWidget {
     required this.user,
     this.offlineMasterDataCache,
     required this.shiftsRepository,
-    required this.catalogRepository,
     required this.checkoutRepository,
+    required this.offlineTransactionQueueRepository,
+    required this.offlineSalesRepositoryFactory,
     required this.balancesRepository,
-    this.offlineTransactionsDao,
     this.offlineTransactionSyncService,
-    this.storeSettingsRepository,
+    required this.autoCloseSettingsProvider,
   });
 
   final AuthUser user;
   final OfflineMasterDataCache? offlineMasterDataCache;
   final ShiftsRepository shiftsRepository;
-  final CatalogRepository catalogRepository;
   final CheckoutRepository checkoutRepository;
+  final OfflineTransactionQueueRepository offlineTransactionQueueRepository;
+  final OfflineSalesRepositoryFactory offlineSalesRepositoryFactory;
   final BalancesRepository balancesRepository;
-  final OfflineTransactionsDao? offlineTransactionsDao;
-  final OfflineTransactionSyncService? offlineTransactionSyncService;
-  final StoreSettingsRepository? storeSettingsRepository;
+  final OfflineTransactionSync? offlineTransactionSyncService;
+  final AutoCloseSettingsProvider autoCloseSettingsProvider;
 
   @override
   State<CashierNavigationPage> createState() => _CashierNavigationPageState();
@@ -182,12 +182,12 @@ class _CashierNavigationPageState extends State<CashierNavigationPage>
       ),
       1 => OfflineSalesTab(
         admin: widget.user,
-        catalogRepository: widget.catalogRepository,
-        checkoutRepository: widget.checkoutRepository,
+        offlineSalesRepositoryFactory: widget.offlineSalesRepositoryFactory,
+        offlineTransactionQueueRepository:
+            widget.offlineTransactionQueueRepository,
         offlineMasterDataCache: widget.offlineMasterDataCache,
-        offlineTransactionsDao: widget.offlineTransactionsDao,
         offlineTransactionSyncService: widget.offlineTransactionSyncService,
-        storeSettingsRepository: widget.storeSettingsRepository,
+        autoCloseSettingsProvider: widget.autoCloseSettingsProvider,
       ),
       2 => AdminTransactionReportPage(
         checkoutRepository: widget.checkoutRepository,

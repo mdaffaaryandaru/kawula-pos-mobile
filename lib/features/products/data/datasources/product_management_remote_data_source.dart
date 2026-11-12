@@ -3,11 +3,11 @@ import 'dart:convert';
 
 // Package imports:
 import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
 
 // Project imports:
 import 'package:kawula_pos/features/products/data/models/product_management_models.dart';
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
+import 'package:kawula_pos/features/shared/domain/value_objects/image_upload_input.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 import 'package:kawula_pos/framework/core/network/api_header_builder.dart';
 import 'package:kawula_pos/framework/core/network/api_response_decoder.dart';
@@ -43,7 +43,9 @@ class ProductManagementRemoteDataSource {
         .toList(growable: false);
   }
 
-  Future<List<String>> uploadProductImages(List<XFile> images) async {
+  Future<List<String>> uploadProductImages(
+    List<ImageUploadInput> images,
+  ) async {
     if (images.isEmpty) return const [];
     if (images.length > 5) {
       throw const ApiException('Maksimal 5 gambar produk sekali upload.');
@@ -51,22 +53,21 @@ class ProductManagementRemoteDataSource {
 
     final request = http.MultipartRequest('POST', _uri('products/upload'));
     request.headers.addAll(await _authorizedHeaders());
-    for (final image in images) {
-      final filename = image.name;
-      final extension = filename.contains('.')
-          ? filename.split('.').last.toLowerCase()
-          : '';
-      if (!const {'jpg', 'jpeg', 'png', 'webp', 'gif'}.contains(extension)) {
-        throw ApiException('Format gambar $filename tidak didukung.');
-      }
-      final bytes = await image.readAsBytes();
-      if (bytes.length > 2 * 1024 * 1024) {
-        throw ApiException('Ukuran gambar $filename melebihi 2 MB.');
-      }
-      request.files.add(
-        http.MultipartFile.fromBytes('images', bytes, filename: filename),
-      );
-    }
+    final files = await Future.wait(
+      images.map((image) async {
+        final filename = image.fileName;
+        final extension = image.extension;
+        if (!const {'jpg', 'jpeg', 'png', 'webp', 'gif'}.contains(extension)) {
+          throw ApiException('Format gambar $filename tidak didukung.');
+        }
+        final path = image.path;
+        if (path.isEmpty) {
+          throw ApiException('Lokasi file gambar $filename tidak tersedia.');
+        }
+        return http.MultipartFile.fromPath('images', path, filename: filename);
+      }),
+    );
+    request.files.addAll(files);
     final streamedResponse = await _client.send(request);
     final response = await http.Response.fromStream(streamedResponse);
     final body = _decodeResponse(response);

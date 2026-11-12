@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 import 'package:kawula_pos/framework/core/network/auth_session_expiry_handler.dart';
-import 'package:kawula_pos/framework/core/network/http_client_factory_io.dart';
+import 'package:kawula_pos/framework/core/network/http_client_factory.dart';
 import 'package:kawula_pos/framework/core/network/session_aware_http_client.dart';
 import 'package:kawula_pos/framework/core/network/timeout_http_client.dart';
 import 'package:kawula_pos/framework/core/offline/run_with_network_cache.dart';

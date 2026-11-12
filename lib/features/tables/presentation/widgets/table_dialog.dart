@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 // Project imports:
 import 'package:kawula_pos/features/table_areas/domain/entities/table_area.dart';
-import 'package:kawula_pos/features/tables/data/models/managed_table_model.dart';
+import 'package:kawula_pos/features/tables/domain/constants/table_statuses.dart';
 import 'package:kawula_pos/features/tables/domain/entities/managed_table.dart';
 
 class TableDialog extends StatefulWidget {

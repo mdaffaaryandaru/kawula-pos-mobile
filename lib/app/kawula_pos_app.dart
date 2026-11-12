@@ -34,32 +34,17 @@ class KawulaPosApp extends StatelessWidget {
           theme: AppTheme.light,
           home: KawulaSplashScreen(
             child: AuthGate(
-              apiBaseUrl: dependencies.apiBaseUrl,
-              shiftsRepository: dependencies.shiftsRepository,
+              adminDependencies: dependencies.adminDependencies,
               masterDataCache: dependencies.masterDataCache,
-              offlineTransactionsDao:
-                  dependencies.database?.offlineTransactionsDao,
               offlineTransactionSyncService:
                   dependencies.offlineTransactionSyncService,
-              catalogRepository: dependencies.catalogRepository,
               checkoutRepository: dependencies.checkoutRepository,
+              offlineTransactionQueueRepository:
+                  dependencies.offlineTransactionQueueRepository,
+              offlineSalesRepositoryFactory:
+                  dependencies.offlineSalesRepositoryFactory,
               balancesRepository: dependencies.balancesRepository,
-              storeSettingsRepository: dependencies.storeSettingsRepository,
-              userManagementRepository: dependencies.userManagementRepository,
-              productManagementRepository:
-                  dependencies.productManagementRepository,
-              categoriesRepository: dependencies.categoriesRepository,
-              discountsRepository: dependencies.discountsRepository,
-              paymentMethodsRepository: dependencies.paymentMethodsRepository,
-              variantGroupsRepository: dependencies.variantGroupsRepository,
-              inventoryRepository: dependencies.inventoryRepository,
-              productUnitsRepository: dependencies.productUnitsRepository,
-              outletsRepository: dependencies.outletsRepository,
-              tableAreasRepository: dependencies.tableAreasRepository,
-              tablesRepository: dependencies.tablesRepository,
-              membersRepository: dependencies.membersRepository,
-              membershipProgramsRepository:
-                  dependencies.membershipProgramsRepository,
+              autoCloseSettingsProvider: dependencies.autoCloseSettingsProvider,
             ),
           ),
         ),

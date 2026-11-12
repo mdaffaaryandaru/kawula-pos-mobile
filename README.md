@@ -8,11 +8,14 @@ It uses the following technologies:
 - Dart
 - FVM (Flutter Version Management)
 
-The Flutter version is managed with FVM using the version in `.fvmrc`. Before running the app, make sure the Kawula POS API is available and configure the environment:
+The Flutter version is managed with FVM using the version in `.fvmrc`. Before running the app, configure the mobile API:
 
 - Copy `.env.example` to `.env`.
-- Set the `API_BASE_URL_ANDROID`, `API_BASE_URL_WEB`, and `API_BASE_URL_DEFAULT` values for your environment.
-- The default Android emulator URL is `http://10.0.2.2:3001/api`; web and desktop default to `http://localhost:3001/api`.
+- The default API is production: `https://kawula-api.example/api`.
+- For the Android emulator with a backend running on the development host, run with `--dart-define=API_BASE_URL=http://10.0.2.2:3001/api`.
+- For a physical device, use the production API or set `API_BASE_URL_ANDROID` to a backend address reachable from that device (for example, a LAN address during development).
+- `API_BASE_URL` supplied as a Dart define overrides `.env`. Platform-specific `.env` values override the generic `API_BASE_URL` value.
+- For a production release build, pass `--dart-define=API_BASE_URL=https://kawula-api.example/api` so a local development `.env` cannot redirect the app to an emulator or LAN server.
 
 To install dependencies and run the app, run these commands from the project directory:
 

@@ -1,5 +1,136 @@
 // Flutter imports:
 import 'package:flutter/material.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/presentation/widgets/open_bill_dialogs.dart';
+
+class CatalogOpenBillsSection extends StatefulWidget {
+  const CatalogOpenBillsSection({super.key, required this.checkoutRepository});
+
+  final CheckoutRepository checkoutRepository;
+
+  @override
+  State<CatalogOpenBillsSection> createState() =>
+      CatalogOpenBillsSectionState();
+}
+
+class CatalogOpenBillsSectionState extends State<CatalogOpenBillsSection> {
+  List<TransactionRecord> _openBills = const [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    reload();
+  }
+
+  Future<void> reload() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final transactions = await widget.checkoutRepository.getTransactions();
+      if (!mounted) return;
+      setState(() {
+        _openBills = transactions
+            .where((transaction) => transaction.isPending)
+            .toList(growable: false);
+        _errorMessage = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = error.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _showOpenBills() async {
+    await reload();
+    if (!mounted) return;
+    if (_errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Open bill gagal dimuat: $_errorMessage')),
+      );
+      return;
+    }
+    if (_openBills.isEmpty) return;
+
+    final transaction = await showOpenBillsDialog(context, _openBills);
+    if (transaction == null || !mounted) return;
+    if (transaction.id.startsWith('OFF-')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Open Bill lokal belum dapat dilunasi, dibatalkan, atau diproses melalui server.',
+          ),
+        ),
+      );
+      return;
+    }
+    await _settleOpenBill(transaction);
+  }
+
+  Future<void> _settleOpenBill(TransactionRecord transaction) async {
+    try {
+      final methods = (await widget.checkoutRepository.getPaymentMethods())
+          .where((method) => !method.isOpenBill)
+          .toList(growable: false);
+      if (!mounted) return;
+      if (methods.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tidak ada metode pembayaran aktif.')),
+        );
+        return;
+      }
+
+      final input = await showOpenBillPaymentDialog(
+        context,
+        transaction: transaction,
+        methods: methods,
+      );
+      if (input == null || !mounted) return;
+
+      await widget.checkoutRepository.payPendingTransaction(
+        transactionId: transaction.id,
+        paymentMethod: input.paymentMethod,
+        paidAmount: input.paidAmount,
+        pin: input.pin,
+      );
+      await reload();
+      if (!mounted) return;
+      if (_errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Pembayaran berhasil, tetapi daftar open bill gagal diperbarui: $_errorMessage',
+            ),
+          ),
+        );
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pembayaran open bill berhasil.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Pembayaran gagal: $error')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => CatalogOpenBillsPanel(
+    billCount: _openBills.length,
+    isLoading: _isLoading,
+    errorMessage: _errorMessage,
+    onRetry: reload,
+    onViewBills: _showOpenBills,
+  );
+}
 
 class CatalogOpenBillsPanel extends StatelessWidget {
   const CatalogOpenBillsPanel({

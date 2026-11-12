@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 
 // Package imports:
 import 'package:flutter_test/flutter_test.dart';
-import 'package:image_picker/image_picker.dart';
 
 // Project imports:
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
@@ -34,6 +33,7 @@ import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/admin_shift_detail.dart';
 import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
 import 'package:kawula_pos/features/store_settings/domain/entities/store_settings.dart';
+import 'package:kawula_pos/features/store_settings/domain/repositories/auto_close_settings_provider.dart';
 import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
 import 'package:kawula_pos/features/store_settings/presentation/pages/store_settings_page.dart';
 import 'package:kawula_pos/features/table_areas/domain/repositories/table_areas_repository.dart';
@@ -41,6 +41,11 @@ import 'package:kawula_pos/features/tables/domain/repositories/tables_repository
 import 'package:kawula_pos/features/transactions/data/models/checkout_models.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/offline_transaction_queue_item.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/offline_transaction_queue_repository.dart';
+import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_reconciliation.dart';
+import 'package:kawula_pos/features/transactions/application/offline_sales_repository_factory.dart';
+import 'package:kawula_pos/features/dashboard/application/admin_dependencies.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/admin_transaction_report_page.dart';
 import 'package:kawula_pos/features/users/domain/repositories/user_management_repository.dart';
 import 'package:kawula_pos/features/variant_groups/domain/entities/variant_group_definition.dart';
@@ -48,6 +53,7 @@ import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_g
 import 'package:kawula_pos/features/variant_groups/presentation/pages/variant_groups_management_page.dart';
 import 'package:kawula_pos/app/kawula_pos_app.dart';
 import 'package:kawula_pos/bootstrap/app_dependencies.dart';
+import 'package:kawula_pos/features/shared/domain/value_objects/image_upload_input.dart';
 
 void main() {
   testWidgets('loads and saves backend store settings', (tester) async {
@@ -550,6 +556,7 @@ void main() {
   ) async {
     final authRepository = _FakeAuthRepository(role: 'Admin');
     final shiftsRepository = _FakeShiftsRepository();
+    final catalogRepository = _FakeCatalogRepository();
     final userManagementRepository = _FakeUserManagementRepository();
     final categoriesRepository = _FakeCategoriesRepository();
     final checkoutRepository = _FakeCheckoutRepository();
@@ -585,26 +592,37 @@ void main() {
     await tester.pumpWidget(
       KawulaPosApp(
         dependencies: AppDependencies(
-          apiBaseUrl: 'http://localhost:3001/api',
           authRepository: authRepository,
-          shiftsRepository: shiftsRepository,
-          catalogRepository: _FakeCatalogRepository(),
+          adminDependencies: AdminDependencies(
+            apiBaseUrl: 'http://localhost:3001/api',
+            catalogRepository: catalogRepository,
+            offlineTransactionReconciliation:
+                _EmptyOfflineTransactionReconciliation(),
+            storeSettingsRepository: _FakeStoreSettingsRepository(),
+            userManagementRepository: userManagementRepository,
+            productManagementRepository: _FakeProductManagementRepository(),
+            categoriesRepository: categoriesRepository,
+            variantGroupsRepository: _FakeVariantGroupsRepository(),
+            discountsRepository: additionalRepositories,
+            paymentMethodsRepository: additionalRepositories,
+            inventoryRepository: additionalRepositories,
+            productUnitsRepository: additionalRepositories,
+            outletsRepository: additionalRepositories,
+            tableAreasRepository: additionalRepositories,
+            tablesRepository: additionalRepositories,
+            membersRepository: additionalRepositories,
+            membershipProgramsRepository: additionalRepositories,
+          ),
           checkoutRepository: checkoutRepository,
+          offlineTransactionQueueRepository:
+              _EmptyOfflineTransactionQueueRepository(),
+          offlineSalesRepositoryFactory: _TestOfflineSalesRepositoryFactory(
+            catalog: catalogRepository,
+            checkout: checkoutRepository,
+            shifts: shiftsRepository,
+          ),
           balancesRepository: _FakeBalancesRepository(),
-          storeSettingsRepository: _FakeStoreSettingsRepository(),
-          userManagementRepository: userManagementRepository,
-          productManagementRepository: _FakeProductManagementRepository(),
-          categoriesRepository: categoriesRepository,
-          variantGroupsRepository: _FakeVariantGroupsRepository(),
-          discountsRepository: additionalRepositories,
-          paymentMethodsRepository: additionalRepositories,
-          inventoryRepository: additionalRepositories,
-          productUnitsRepository: additionalRepositories,
-          outletsRepository: additionalRepositories,
-          tableAreasRepository: additionalRepositories,
-          tablesRepository: additionalRepositories,
-          membersRepository: additionalRepositories,
-          membershipProgramsRepository: additionalRepositories,
+          autoCloseSettingsProvider: _EmptyAutoCloseSettingsProvider(),
         ),
       ),
     );
@@ -795,26 +813,37 @@ void main() {
     await tester.pumpWidget(
       KawulaPosApp(
         dependencies: AppDependencies(
-          apiBaseUrl: 'http://localhost:3001/api',
           authRepository: repository,
-          shiftsRepository: shiftsRepository,
-          catalogRepository: catalogRepository,
+          adminDependencies: AdminDependencies(
+            apiBaseUrl: 'http://localhost:3001/api',
+            catalogRepository: catalogRepository,
+            offlineTransactionReconciliation:
+                _EmptyOfflineTransactionReconciliation(),
+            storeSettingsRepository: _FakeStoreSettingsRepository(),
+            userManagementRepository: _FakeUserManagementRepository(),
+            productManagementRepository: _FakeProductManagementRepository(),
+            categoriesRepository: _FakeCategoriesRepository(),
+            variantGroupsRepository: _FakeVariantGroupsRepository(),
+            discountsRepository: additionalRepositories,
+            paymentMethodsRepository: additionalRepositories,
+            inventoryRepository: additionalRepositories,
+            productUnitsRepository: additionalRepositories,
+            outletsRepository: additionalRepositories,
+            tableAreasRepository: additionalRepositories,
+            tablesRepository: additionalRepositories,
+            membersRepository: additionalRepositories,
+            membershipProgramsRepository: additionalRepositories,
+          ),
           checkoutRepository: checkoutRepository,
+          offlineTransactionQueueRepository:
+              _EmptyOfflineTransactionQueueRepository(),
+          offlineSalesRepositoryFactory: _TestOfflineSalesRepositoryFactory(
+            catalog: catalogRepository,
+            checkout: checkoutRepository,
+            shifts: shiftsRepository,
+          ),
           balancesRepository: balancesRepository,
-          storeSettingsRepository: _FakeStoreSettingsRepository(),
-          userManagementRepository: _FakeUserManagementRepository(),
-          productManagementRepository: _FakeProductManagementRepository(),
-          categoriesRepository: _FakeCategoriesRepository(),
-          variantGroupsRepository: _FakeVariantGroupsRepository(),
-          discountsRepository: additionalRepositories,
-          paymentMethodsRepository: additionalRepositories,
-          inventoryRepository: additionalRepositories,
-          productUnitsRepository: additionalRepositories,
-          outletsRepository: additionalRepositories,
-          tableAreasRepository: additionalRepositories,
-          tablesRepository: additionalRepositories,
-          membersRepository: additionalRepositories,
-          membershipProgramsRepository: additionalRepositories,
+          autoCloseSettingsProvider: _EmptyAutoCloseSettingsProvider(),
         ),
       ),
     );
@@ -1154,7 +1183,8 @@ class _FakeStoreSettingsRepository implements StoreSettingsRepository {
   }
 
   @override
-  Future<String> uploadLogo(XFile image) async => '/uploads/store/logo.png';
+  Future<String> uploadLogo(ImageUploadInput image) async =>
+      '/uploads/store/logo.png';
 }
 
 class _FakeBalancesRepository implements BalancesRepository {
@@ -1522,8 +1552,10 @@ class _FakeUserManagementRepository implements UserManagementRepository {
 
 class _FakeProductManagementRepository implements ProductManagementRepository {
   @override
-  Future<List<String>> uploadProductImages(List<XFile> images) async =>
-      images.map((image) => '/uploads/products/${image.name}').toList();
+  Future<List<String>> uploadProductImages(
+    List<ImageUploadInput> images,
+  ) async =>
+      images.map((image) => '/uploads/products/${image.fileName}').toList();
 
   @override
   Future<List<ManagedCategory>> getCategories() async => const [];
@@ -1845,4 +1877,85 @@ class _UnusedFeatureRepositories
         MembershipProgramsRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _EmptyOfflineTransactionQueueRepository
+    implements OfflineTransactionQueueRepository {
+  @override
+  Stream<List<OfflineTransactionQueueItem>> watchTransactionsByOutletLatest(
+    String outletId,
+  ) => Stream.value(const []);
+
+  @override
+  Stream<List<OfflineTransactionQueueItem>> watchTransactionsByOwnerLatest(
+    String ownerUserId,
+  ) => Stream.value(const []);
+
+  @override
+  Future<OfflineTransactionQueueItem?> getTransactionByLocalId(
+    String localId,
+  ) async => null;
+
+  @override
+  Future<int> getUnresolvedTransactionCount({
+    required String ownerUserId,
+    required String outletId,
+    required String shiftId,
+  }) async => 0;
+
+  @override
+  Future<List<OfflineTransactionResolutionAudit>> getResolutionAudit(
+    String localId,
+  ) async => const [];
+
+  @override
+  Future<bool> resolveManually({
+    required String localId,
+    required String outletId,
+    required String adminUserId,
+    required String adminRole,
+    required String resolutionType,
+    required String reason,
+    required DateTime resolvedAt,
+    String? remoteTransactionId,
+    String? notes,
+  }) async => false;
+}
+
+class _EmptyOfflineTransactionReconciliation extends Fake
+    implements OfflineTransactionReconciliation {}
+
+class _TestOfflineSalesRepositoryFactory
+    implements OfflineSalesRepositoryFactory {
+  const _TestOfflineSalesRepositoryFactory({
+    required this.catalog,
+    required this.checkout,
+    required this.shifts,
+  });
+
+  final CatalogRepository catalog;
+  final CheckoutRepository checkout;
+  final ShiftsRepository shifts;
+
+  @override
+  ShiftsRepository shiftsRepositoryFor(AuthUser user) => shifts;
+
+  @override
+  OfflineSalesRepositoryScope createScope({
+    required AuthUser user,
+    required ActiveShift shift,
+  }) => OfflineSalesRepositoryScope(
+    catalogRepository: catalog,
+    checkoutRepository: checkout,
+    masterDataCache: null,
+  );
+}
+
+class _EmptyAutoCloseSettingsProvider implements AutoCloseSettingsProvider {
+  @override
+  Future<AutoCloseSettingsResult> getAutoCloseSettings({
+    required String role,
+    required String userId,
+    required String? outletId,
+  }) async => const AutoCloseSettingsResult();
 }

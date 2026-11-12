@@ -1,24 +1,35 @@
-// Flutter imports:
 import 'package:flutter/foundation.dart';
-
-// Package imports:
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiConfig {
   const ApiConfig._();
 
+  static const productionBaseUrl = 'https://kawula-api.ignisys.site/api';
+  static const androidEmulatorBaseUrl = 'http://10.0.2.2:3001/api';
   static const _dartDefineBaseUrl = String.fromEnvironment('API_BASE_URL');
 
-  static String get baseUrl {
-    if (_dartDefineBaseUrl.isNotEmpty) return _dartDefineBaseUrl;
+  static String get baseUrl => resolveBaseUrl(
+    platform: defaultTargetPlatform,
+    environment: dotenv.env,
+    dartDefineBaseUrl: _dartDefineBaseUrl,
+  );
 
-    final platformKey = kIsWeb
-        ? 'API_BASE_URL_WEB'
-        : defaultTargetPlatform == TargetPlatform.android
-        ? 'API_BASE_URL_ANDROID'
-        : 'API_BASE_URL_DEFAULT';
-    return dotenv.env[platformKey] ??
-        dotenv.env['API_BASE_URL'] ??
-        'https://10.0.2.2:3001/api';
+  @visibleForTesting
+  static String resolveBaseUrl({
+    required TargetPlatform platform,
+    required Map<String, String> environment,
+    String dartDefineBaseUrl = '',
+  }) {
+    final override = dartDefineBaseUrl.trim();
+    if (override.isNotEmpty) return override;
+
+    final platformKey = switch (platform) {
+      TargetPlatform.android => 'API_BASE_URL_ANDROID',
+      TargetPlatform.iOS => 'API_BASE_URL_IOS',
+      _ => 'API_BASE_URL_DEFAULT',
+    };
+    return environment[platformKey] ??
+        environment['API_BASE_URL'] ??
+        productionBaseUrl;
   }
 }

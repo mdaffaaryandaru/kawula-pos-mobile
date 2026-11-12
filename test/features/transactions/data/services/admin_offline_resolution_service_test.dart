@@ -1,20 +1,25 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/transactions/data/repositories/offline_transaction_queue_repository_impl.dart';
 import 'package:kawula_pos/features/transactions/data/services/admin_offline_resolution_service.dart';
 import 'package:kawula_pos/features/transactions/data/models/checkout_models.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/offline_transaction_queue_repository.dart';
 import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
 import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
 
 void main() {
   late AppDatabase database;
   late OfflineTransactionsDao dao;
+  late OfflineTransactionQueueRepository queueRepository;
+  late Future<AuthUser?> Function() currentVerifier;
 
   setUp(() {
     database = AppDatabase(executor: NativeDatabase.memory());
     dao = database.offlineTransactionsDao;
+    queueRepository = OfflineTransactionQueueRepositoryImpl(dao);
   });
 
   tearDown(() async {
@@ -98,11 +103,13 @@ void main() {
   AdminOfflineResolutionService service({
     required _CheckoutRepositoryFake repository,
     required Future<AuthUser?> Function() verify,
-  }) => AdminOfflineResolutionService(
-    dao: dao,
-    checkoutRepository: repository,
-    verifyAdminSession: verify,
-  );
+  }) {
+    currentVerifier = verify;
+    return AdminOfflineResolutionService(
+      queueRepository: queueRepository,
+      checkoutRepository: repository,
+    );
+  }
 
   test(
     'candidate matching requires outlet, cashier, total, payment and items',
@@ -115,10 +122,15 @@ void main() {
         remote(id: 'same-total-only', productId: 'product-2'),
       ]);
 
-      final candidates = await service(
-        repository: repository,
-        verify: () async => admin(),
-      ).findCandidates(localId: local.localId, activeOutletId: 'outlet-1');
+      final candidates =
+          await service(
+            repository: repository,
+            verify: () async => admin(),
+          ).findCandidates(
+            localId: local.localId,
+            activeOutletId: 'outlet-1',
+            verifyAdminSession: currentVerifier,
+          );
 
       expect(candidates.map((candidate) => candidate.id), ['matching']);
       expect(
@@ -168,10 +180,15 @@ void main() {
         remote(id: 'remote-2'),
       ]);
 
-      final candidates = await service(
-        repository: repository,
-        verify: () async => admin(),
-      ).findCandidates(localId: local.localId, activeOutletId: 'outlet-1');
+      final candidates =
+          await service(
+            repository: repository,
+            verify: () async => admin(),
+          ).findCandidates(
+            localId: local.localId,
+            activeOutletId: 'outlet-1',
+            verifyAdminSession: currentVerifier,
+          );
 
       expect(candidates.map((candidate) => candidate.id), [
         'remote-1',
@@ -197,6 +214,7 @@ void main() {
       activeOutletId: 'outlet-1',
       remoteTransactionId: 'server-real-id',
       reason: 'Reviewed receipt and server transaction details.',
+      verifyAdminSession: currentVerifier,
     );
 
     final updated = await dao.getTransactionByLocalId(local.localId);
@@ -214,10 +232,15 @@ void main() {
     final local = await saveTransaction();
     final repository = _CheckoutRepositoryFake([]);
 
-    final candidates = await service(
-      repository: repository,
-      verify: () async => admin(),
-    ).findCandidates(localId: local.localId, activeOutletId: 'outlet-1');
+    final candidates =
+        await service(
+          repository: repository,
+          verify: () async => admin(),
+        ).findCandidates(
+          localId: local.localId,
+          activeOutletId: 'outlet-1',
+          verifyAdminSession: currentVerifier,
+        );
 
     expect(candidates, isEmpty);
     expect(
@@ -240,6 +263,7 @@ void main() {
         resolutionService.findCandidates(
           localId: local.localId,
           activeOutletId: 'outlet-1',
+          verifyAdminSession: currentVerifier,
         ),
         throwsStateError,
       );
@@ -254,6 +278,7 @@ void main() {
         activeOutletId: 'outlet-1',
         remoteTransactionId: 'remote-1',
         reason: 'Not verified.',
+        verifyAdminSession: currentVerifier,
       ),
       throwsStateError,
     );
@@ -280,6 +305,7 @@ void main() {
         resolutionService.findCandidates(
           localId: local.localId,
           activeOutletId: 'outlet-1',
+          verifyAdminSession: currentVerifier,
         ),
         throwsStateError,
       );
@@ -303,6 +329,7 @@ void main() {
           localId: local.localId,
           activeOutletId: 'outlet-1',
           reason: 'Handled manually.',
+          verifyAdminSession: currentVerifier,
         ),
         throwsStateError,
       );

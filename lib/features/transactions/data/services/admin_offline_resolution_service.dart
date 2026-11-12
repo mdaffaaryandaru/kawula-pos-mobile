@@ -1,29 +1,32 @@
+// ignore_for_file: prefer_initializing_formals
+
 import 'dart:convert';
 
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
+import 'package:kawula_pos/features/transactions/domain/entities/offline_transaction_queue_item.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
-import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
-import 'package:kawula_pos/framework/core/offline/database/daos/offline_transactions_dao.dart';
+import 'package:kawula_pos/features/transactions/domain/repositories/offline_transaction_queue_repository.dart';
+import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_reconciliation.dart';
 
-typedef AdminSessionVerifier = Future<AuthUser?> Function();
-
-class AdminOfflineResolutionService {
+class AdminOfflineResolutionService
+    implements OfflineTransactionReconciliation {
   const AdminOfflineResolutionService({
-    required this._dao,
-    required this._checkoutRepository,
-    required this._verifyAdminSession,
-  });
+    required OfflineTransactionQueueRepository queueRepository,
+    required CheckoutRepository checkoutRepository,
+  }) : _queueRepository = queueRepository,
+       _checkoutRepository = checkoutRepository;
 
-  final OfflineTransactionsDao _dao;
+  final OfflineTransactionQueueRepository _queueRepository;
   final CheckoutRepository _checkoutRepository;
-  final AdminSessionVerifier _verifyAdminSession;
 
+  @override
   Future<List<TransactionRecord>> findCandidates({
     required String localId,
     required String activeOutletId,
+    required AdminSessionVerifier verifyAdminSession,
   }) async {
-    await _verifiedAdmin();
+    await _verifiedAdmin(verifyAdminSession);
     final local = await _getScopedResolvableTransaction(
       localId: localId,
       activeOutletId: activeOutletId,
@@ -45,14 +48,16 @@ class AdminOfflineResolutionService {
     return candidates;
   }
 
+  @override
   Future<void> matchExistingRemote({
     required String localId,
     required String activeOutletId,
     required String remoteTransactionId,
     required String reason,
+    required AdminSessionVerifier verifyAdminSession,
     String? notes,
   }) async {
-    final admin = await _verifiedAdmin();
+    final admin = await _verifiedAdmin(verifyAdminSession);
     final local = await _getScopedResolvableTransaction(
       localId: localId,
       activeOutletId: activeOutletId,
@@ -67,7 +72,7 @@ class AdminOfflineResolutionService {
       );
     }
 
-    final saved = await _dao.resolveManually(
+    final saved = await _queueRepository.resolveManually(
       localId: local.localId,
       outletId: activeOutletId,
       adminUserId: admin.id,
@@ -83,24 +88,26 @@ class AdminOfflineResolutionService {
     }
   }
 
+  @override
   Future<void> handleFailedOutsideServer({
     required String localId,
     required String activeOutletId,
     required String reason,
+    required AdminSessionVerifier verifyAdminSession,
     String? notes,
   }) async {
-    final admin = await _verifiedAdmin();
+    final admin = await _verifiedAdmin(verifyAdminSession);
     final local = await _getScopedResolvableTransaction(
       localId: localId,
       activeOutletId: activeOutletId,
     );
-    if (local.status != OfflineTransactionStatus.failed.databaseValue) {
+    if (local.status != 'failed') {
       throw StateError(
         'Hanya transaksi yang ditolak secara pasti dapat ditangani di luar server.',
       );
     }
 
-    final saved = await _dao.resolveManually(
+    final saved = await _queueRepository.resolveManually(
       localId: local.localId,
       outletId: activeOutletId,
       adminUserId: admin.id,
@@ -115,8 +122,10 @@ class AdminOfflineResolutionService {
     }
   }
 
-  Future<AuthUser> _verifiedAdmin() async {
-    final admin = await _verifyAdminSession();
+  Future<AuthUser> _verifiedAdmin(
+    AdminSessionVerifier verifyAdminSession,
+  ) async {
+    final admin = await verifyAdminSession();
     if (admin == null ||
         admin.role != 'Admin' ||
         admin.isOfflineSession ||
@@ -128,26 +137,23 @@ class AdminOfflineResolutionService {
     return admin;
   }
 
-  Future<OfflineTransaction> _getScopedResolvableTransaction({
+  Future<OfflineTransactionQueueItem> _getScopedResolvableTransaction({
     required String localId,
     required String activeOutletId,
   }) async {
     if (activeOutletId.trim().isEmpty) {
       throw ArgumentError.value(activeOutletId, 'activeOutletId');
     }
-    final transaction = await _dao.getTransactionByLocalId(localId);
+    final transaction = await _queueRepository.getTransactionByLocalId(localId);
     if (transaction == null ||
         transaction.outletId != activeOutletId ||
-        !{
-          OfflineTransactionStatus.failed.databaseValue,
-          OfflineTransactionStatus.needsReconciliation.databaseValue,
-        }.contains(transaction.status)) {
+        !{'failed', 'needs_reconciliation'}.contains(transaction.status)) {
       throw StateError('Transaksi tidak tersedia dalam scope outlet aktif.');
     }
     return transaction;
   }
 
-  bool _matches(OfflineTransaction local, TransactionRecord remote) {
+  bool _matches(OfflineTransactionQueueItem local, TransactionRecord remote) {
     if (remote.outletId != local.outletId ||
         remote.cashierId != local.ownerUserId ||
         remote.createdAt == null ||
@@ -173,19 +179,19 @@ class AdminOfflineResolutionService {
     return _sameValues(localItems, remoteItems.cast<String>().toList());
   }
 
-  String _localPaymentMethod(OfflineTransaction local) {
+  String _localPaymentMethod(OfflineTransactionQueueItem local) {
     final payload = _decodeMap(local.payloadJson);
     final method = payload?['payment_method'];
     return method is String ? method.trim() : '';
   }
 
-  num? _localTotal(OfflineTransaction local) {
+  num? _localTotal(OfflineTransactionQueueItem local) {
     final payload = _decodeMap(local.payloadJson);
     final amount = payload?['total_amount'];
     return amount is num ? amount : null;
   }
 
-  List<String>? _localItemKeys(OfflineTransaction local) {
+  List<String>? _localItemKeys(OfflineTransactionQueueItem local) {
     final payload = _decodeMap(local.payloadJson);
     final items = payload?['items'];
     if (items is! List) return null;
