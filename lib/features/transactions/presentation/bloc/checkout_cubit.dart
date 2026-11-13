@@ -4,11 +4,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 // Project imports:
 import 'package:kawula_pos/features/members/domain/entities/member.dart';
 import 'package:kawula_pos/features/members/domain/entities/member_reward_claim.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_checkout_mode_provider.dart';
 import 'package:kawula_pos/features/products/domain/entities/cart_item.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
-import 'package:kawula_pos/features/transactions/domain/exceptions/offline_checkout_exception.dart';
+import 'package:kawula_pos/features/offline/domain/exceptions/offline_checkout_exception.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart'
-    show CheckoutModeProvider, CheckoutRepository;
+    show CheckoutRepository;
 import 'package:kawula_pos/features/transactions/presentation/bloc/checkout_state.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 

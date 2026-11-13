@@ -7,7 +7,7 @@ import 'package:kawula_pos/features/store_settings/domain/repositories/auto_clos
 import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 import 'package:kawula_pos/framework/core/network/platform_network_exception.dart';
-import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
+import 'package:kawula_pos/features/offline/data/cache/offline_master_data_cache.dart';
 
 class AutoCloseSettingsProviderImpl implements AutoCloseSettingsProvider {
   const AutoCloseSettingsProviderImpl({

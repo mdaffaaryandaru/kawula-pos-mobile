@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 // Project imports:
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
-import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
+import 'package:kawula_pos/features/offline/domain/policies/offline_sales_policy.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
 import 'package:kawula_pos/features/shifts/presentation/widgets/shift_close_form.dart';
@@ -110,7 +110,7 @@ class _ShiftActionDialogState extends State<_ShiftActionDialog> {
                 'dan shift ini yang belum terselesaikan. Status pending_sync, '
                 'syncing, failed, dan needs_reconciliation semuanya '
                 'memblokir tutup shift. Transaksi gagal atau yang perlu '
-                'rekonsiliasi harus ditindaklanjuti bersama manajemen; '
+                'pencocokan harus ditindaklanjuti bersama manajemen; '
                 'jangan hapus transaksi untuk melewati pemeriksaan.',
               ),
               actions: [

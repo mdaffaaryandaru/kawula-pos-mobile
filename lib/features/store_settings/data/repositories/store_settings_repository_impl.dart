@@ -6,7 +6,7 @@ import 'package:kawula_pos/features/store_settings/data/datasources/store_settin
 import 'package:kawula_pos/features/store_settings/data/models/store_settings_model.dart';
 import 'package:kawula_pos/features/store_settings/domain/entities/store_settings.dart';
 import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
-import 'package:kawula_pos/framework/core/offline/database/daos/cached_records_dao.dart';
+import 'package:kawula_pos/features/offline/data/database/daos/cached_records_dao.dart';
 
 class StoreSettingsRepositoryImpl implements StoreSettingsRepository {
   const StoreSettingsRepositoryImpl(

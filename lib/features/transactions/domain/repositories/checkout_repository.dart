@@ -48,7 +48,3 @@ abstract interface class CheckoutRepository {
     String? tableNumber,
   });
 }
-
-abstract interface class CheckoutModeProvider {
-  bool get isOffline;
-}

@@ -14,12 +14,12 @@ import 'package:kawula_pos/features/balances/domain/repositories/balances_reposi
 import 'package:kawula_pos/features/dashboard/application/admin_dependencies.dart';
 import 'package:kawula_pos/features/dashboard/presentation/pages/admin_navigation_page.dart';
 import 'package:kawula_pos/features/dashboard/presentation/pages/cashier_navigation_page.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_network_status_controller.dart';
 import 'package:kawula_pos/features/store_settings/domain/repositories/auto_close_settings_provider.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
-import 'package:kawula_pos/features/transactions/domain/repositories/offline_transaction_queue_repository.dart';
-import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_sync.dart';
-import 'package:kawula_pos/features/transactions/application/offline_sales_repository_factory.dart';
-import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
+import 'package:kawula_pos/features/offline/domain/repositories/offline_transaction_queue_repository.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_transaction_sync.dart';
+import 'package:kawula_pos/features/offline/application/offline_sales_repository_factory.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({
@@ -30,7 +30,7 @@ class AuthGate extends StatelessWidget {
     required this.offlineSalesRepositoryFactory,
     required this.balancesRepository,
     required this.autoCloseSettingsProvider,
-    this.masterDataCache,
+    this.offlineNetworkStatusController,
     this.offlineTransactionSyncService,
   });
 
@@ -40,7 +40,7 @@ class AuthGate extends StatelessWidget {
   final OfflineSalesRepositoryFactory offlineSalesRepositoryFactory;
   final BalancesRepository balancesRepository;
   final AutoCloseSettingsProvider autoCloseSettingsProvider;
-  final OfflineMasterDataCache? masterDataCache;
+  final OfflineNetworkStatusController? offlineNetworkStatusController;
   final OfflineTransactionSync? offlineTransactionSyncService;
 
   @override
@@ -58,7 +58,7 @@ class AuthGate extends StatelessWidget {
               adminDependencies: adminDependencies,
               shiftsRepository: offlineSalesRepositoryFactory
                   .shiftsRepositoryFor(state.user),
-              masterDataCache: masterDataCache,
+              offlineNetworkStatusController: offlineNetworkStatusController,
               offlineTransactionSyncService: offlineTransactionSyncService,
               checkoutRepository: checkoutRepository,
               offlineTransactionQueueRepository:
@@ -68,11 +68,12 @@ class AuthGate extends StatelessWidget {
               autoCloseSettingsProvider: autoCloseSettingsProvider,
             ),
           AuthAuthenticated()
-              when state.user.role == 'Kasir' && masterDataCache != null =>
+              when state.user.role == 'Kasir' &&
+                  offlineNetworkStatusController != null =>
             CashierNavigationPage(
               key: ValueKey<(String, String)>((state.user.id, state.user.role)),
               user: state.user,
-              offlineMasterDataCache: masterDataCache,
+              offlineNetworkStatusController: offlineNetworkStatusController,
               shiftsRepository: offlineSalesRepositoryFactory
                   .shiftsRepositoryFor(state.user),
               checkoutRepository: checkoutRepository,

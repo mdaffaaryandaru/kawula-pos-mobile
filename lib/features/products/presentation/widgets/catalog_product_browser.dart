@@ -12,11 +12,13 @@ class CatalogProductBrowser extends StatelessWidget {
     required this.state,
     required this.searchController,
     required this.onProductTap,
+    required this.refreshVersion,
   });
 
   final CatalogLoaded state;
   final TextEditingController searchController;
   final ValueChanged<CatalogProduct> onProductTap;
+  final int refreshVersion;
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +106,8 @@ class CatalogProductBrowser extends StatelessWidget {
             Expanded(
               child: CatalogProductGrid(
                 products: state.visibleProducts,
-                contentKey: '${state.selectedCategoryId}-${state.searchQuery}',
+                contentKey:
+                    '${state.selectedCategoryId}-${state.searchQuery}-$refreshVersion',
                 onProductTap: onProductTap,
               ),
             ),

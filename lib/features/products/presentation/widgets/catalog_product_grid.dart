@@ -51,6 +51,7 @@ class CatalogProductGrid extends StatelessWidget {
               ? 3
               : 2;
           return GridView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: columns,

@@ -21,6 +21,7 @@ import 'package:kawula_pos/features/members/data/datasources/members_remote_data
 import 'package:kawula_pos/features/members/data/repositories/members_repository_impl.dart';
 import 'package:kawula_pos/features/membership_programs/data/datasources/membership_programs_remote_data_source.dart';
 import 'package:kawula_pos/features/membership_programs/data/repositories/membership_programs_repository_impl.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_network_status_controller.dart';
 import 'package:kawula_pos/features/outlets/data/datasources/outlets_remote_data_source.dart';
 import 'package:kawula_pos/features/outlets/data/repositories/outlets_repository_impl.dart';
 import 'package:kawula_pos/features/payment_method/data/datasources/payment_methods_remote_data_source.dart';
@@ -43,14 +44,14 @@ import 'package:kawula_pos/features/tables/data/datasources/tables_remote_data_s
 import 'package:kawula_pos/features/tables/data/repositories/tables_repository_impl.dart';
 import 'package:kawula_pos/features/transactions/data/datasources/checkout_remote_data_source.dart';
 import 'package:kawula_pos/features/transactions/data/repositories/checkout_repository_impl.dart';
-import 'package:kawula_pos/features/transactions/data/repositories/offline_transaction_queue_repository_impl.dart';
-import 'package:kawula_pos/features/transactions/data/repositories/offline_sales_repository_factory_impl.dart';
-import 'package:kawula_pos/features/transactions/data/services/admin_offline_resolution_service.dart';
-import 'package:kawula_pos/features/transactions/data/services/offline_transaction_sync_service.dart';
+import 'package:kawula_pos/features/offline/data/repositories/offline_transaction_queue_repository_impl.dart';
+import 'package:kawula_pos/bootstrap/offline_sales_repository_factory_impl.dart';
+import 'package:kawula_pos/features/offline/data/services/admin_offline_resolution_service.dart';
+import 'package:kawula_pos/features/offline/data/services/offline_transaction_sync_service.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
-import 'package:kawula_pos/features/transactions/domain/repositories/offline_transaction_queue_repository.dart';
-import 'package:kawula_pos/features/transactions/application/offline_sales_repository_factory.dart';
-import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_sync.dart';
+import 'package:kawula_pos/features/offline/domain/repositories/offline_transaction_queue_repository.dart';
+import 'package:kawula_pos/features/offline/application/offline_sales_repository_factory.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_transaction_sync.dart';
 import 'package:kawula_pos/features/users/data/datasources/users_remote_data_source.dart';
 import 'package:kawula_pos/features/users/data/repositories/user_management_repository_impl.dart';
 import 'package:kawula_pos/features/variant_groups/data/datasources/variant_groups_remote_data_source.dart';
@@ -59,13 +60,13 @@ import 'package:kawula_pos/framework/core/network/auth_session_expiry_handler.da
 import 'package:kawula_pos/framework/core/network/session_aware_http_client.dart';
 import 'package:kawula_pos/framework/core/network/http_client_factory.dart';
 import 'package:kawula_pos/framework/core/network/timeout_http_client.dart';
-import 'package:kawula_pos/framework/core/offline/database/app_database.dart';
-import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
+import 'package:kawula_pos/features/offline/data/database/app_database.dart';
+import 'package:kawula_pos/features/offline/data/cache/offline_master_data_cache.dart';
 
 class AppDependencies {
   const AppDependencies({
     this.database,
-    this.masterDataCache,
+    this.offlineNetworkStatusController,
     required this.authRepository,
     this.sessionExpiryHandler,
     required this.adminDependencies,
@@ -211,7 +212,7 @@ class AppDependencies {
 
     return AppDependencies(
       database: database,
-      masterDataCache: masterDataCache,
+      offlineNetworkStatusController: masterDataCache,
       authRepository: authRepository,
       sessionExpiryHandler: sessionExpiryHandler,
       adminDependencies: AdminDependencies(
@@ -243,7 +244,7 @@ class AppDependencies {
   }
 
   final AppDatabase? database;
-  final OfflineMasterDataCache? masterDataCache;
+  final OfflineNetworkStatusController? offlineNetworkStatusController;
   final AuthRepository authRepository;
   final AuthSessionExpiryHandler? sessionExpiryHandler;
   final AdminDependencies adminDependencies;

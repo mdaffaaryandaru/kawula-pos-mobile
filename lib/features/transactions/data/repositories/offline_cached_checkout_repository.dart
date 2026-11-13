@@ -7,8 +7,8 @@ import 'package:kawula_pos/features/products/domain/entities/cart_item.dart';
 import 'package:kawula_pos/features/transactions/data/models/checkout_models.dart';
 import 'package:kawula_pos/features/transactions/domain/entities/checkout.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
-import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
-import 'package:kawula_pos/framework/core/offline/run_with_network_cache.dart';
+import 'package:kawula_pos/features/offline/data/cache/offline_master_data_cache.dart';
+import 'package:kawula_pos/features/offline/data/cache/run_with_network_cache.dart';
 
 class OfflineCachedCheckoutRepository implements CheckoutRepository {
   const OfflineCachedCheckoutRepository(this._delegate, this._cache);

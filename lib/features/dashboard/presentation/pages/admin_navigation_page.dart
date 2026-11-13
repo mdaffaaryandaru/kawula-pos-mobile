@@ -15,18 +15,18 @@ import 'package:kawula_pos/features/balances/domain/repositories/balances_reposi
 import 'package:kawula_pos/features/dashboard/presentation/pages/admin_dashboard_page.dart';
 import 'package:kawula_pos/features/dashboard/presentation/pages/admin_management_page.dart';
 import 'package:kawula_pos/features/dashboard/presentation/widgets/offline_sales_tab.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_network_status_controller.dart';
 import 'package:kawula_pos/features/products/presentation/pages/catalog_page.dart';
 import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
 import 'package:kawula_pos/features/store_settings/domain/repositories/auto_close_settings_provider.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
-import 'package:kawula_pos/features/transactions/domain/repositories/offline_transaction_queue_repository.dart';
+import 'package:kawula_pos/features/offline/domain/repositories/offline_transaction_queue_repository.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/admin_transaction_report_page.dart';
-import 'package:kawula_pos/features/transactions/application/offline_sales_repository_factory.dart';
-import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
-import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
-import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_sync.dart';
+import 'package:kawula_pos/features/offline/application/offline_sales_repository_factory.dart';
+import 'package:kawula_pos/features/offline/domain/policies/offline_sales_policy.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_transaction_sync.dart';
 
 class AdminNavigationPage extends StatefulWidget {
   const AdminNavigationPage({
@@ -34,7 +34,7 @@ class AdminNavigationPage extends StatefulWidget {
     required this.admin,
     required this.adminDependencies,
     required this.shiftsRepository,
-    this.masterDataCache,
+    this.offlineNetworkStatusController,
     this.offlineTransactionSyncService,
     required this.checkoutRepository,
     required this.offlineTransactionQueueRepository,
@@ -46,7 +46,7 @@ class AdminNavigationPage extends StatefulWidget {
   final AuthUser admin;
   final AdminDependencies adminDependencies;
   final ShiftsRepository shiftsRepository;
-  final OfflineMasterDataCache? masterDataCache;
+  final OfflineNetworkStatusController? offlineNetworkStatusController;
   final OfflineTransactionSync? offlineTransactionSyncService;
   final CheckoutRepository checkoutRepository;
   final OfflineTransactionQueueRepository offlineTransactionQueueRepository;
@@ -80,12 +80,12 @@ class _AdminNavigationPageState extends State<AdminNavigationPage>
     _pages = List<Widget?>.filled(3, null);
     _pages[0] = _pageAt(0);
     if (canUseOfflineSales(widget.admin.role) &&
-        widget.masterDataCache != null) {
+        widget.offlineNetworkStatusController != null) {
       WidgetsBinding.instance.addObserver(this);
       _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
         _onConnectivityChanged,
         onError: (Object error, StackTrace stackTrace) {
-          widget.masterDataCache?.markOffline();
+          widget.offlineNetworkStatusController?.markOffline();
           if (mounted) setState(() {});
         },
       );
@@ -158,7 +158,7 @@ class _AdminNavigationPageState extends State<AdminNavigationPage>
       final results = await _connectivity.checkConnectivity();
       await _onConnectivityChanged(results);
     } on Exception {
-      widget.masterDataCache?.markOffline();
+      widget.offlineNetworkStatusController?.markOffline();
       if (mounted) setState(() {});
     }
   }
@@ -167,21 +167,23 @@ class _AdminNavigationPageState extends State<AdminNavigationPage>
     final isConnected = results.any(
       (result) => result != ConnectivityResult.none,
     );
-    final cache = widget.masterDataCache;
+    final networkStatus = widget.offlineNetworkStatusController;
     if (!isConnected) {
-      cache?.markOffline();
+      networkStatus?.markOffline();
       if (mounted) setState(() {});
       return;
     }
-    if (cache?.isOfflineKnown == true || widget.admin.isOfflineSession) {
-      cache?.markChecking();
+    if (networkStatus?.status == OfflineNetworkStatus.offline ||
+        widget.admin.isOfflineSession) {
+      networkStatus?.markChecking();
       if (mounted) setState(() {});
       await _verifyServerSession();
     }
   }
 
   Future<void> _retryRecoveryWhenOffline() async {
-    if (widget.masterDataCache?.isOfflineKnown == true) {
+    if (widget.offlineNetworkStatusController?.status ==
+        OfflineNetworkStatus.offline) {
       await _refreshConnectivity();
     }
   }
@@ -189,7 +191,7 @@ class _AdminNavigationPageState extends State<AdminNavigationPage>
   Future<void> _verifyServerSession() async {
     if (_isVerifyingServer || !mounted) return;
     _isVerifyingServer = true;
-    final cache = widget.masterDataCache;
+    final networkStatus = widget.offlineNetworkStatusController;
     try {
       final verified = await context
           .read<AuthCubit>()
@@ -197,12 +199,12 @@ class _AdminNavigationPageState extends State<AdminNavigationPage>
       if (!mounted) return;
       if (verified) {
         await _shiftsCubit.refreshActive();
-      } else if (cache?.networkStatus == OfflineNetworkStatus.checking) {
-        cache?.markOffline();
+      } else if (networkStatus?.status == OfflineNetworkStatus.checking) {
+        networkStatus?.markOffline();
       }
     } on Exception {
-      if (cache?.networkStatus == OfflineNetworkStatus.checking) {
-        cache?.markOffline();
+      if (networkStatus?.status == OfflineNetworkStatus.checking) {
+        networkStatus?.markOffline();
       }
     } finally {
       _isVerifyingServer = false;
@@ -288,7 +290,7 @@ class _AdminNavigationPageState extends State<AdminNavigationPage>
             widget.offlineTransactionQueueRepository,
         offlineTransactionReconciliation:
             widget.adminDependencies.offlineTransactionReconciliation,
-        offlineMasterDataCache: widget.masterDataCache,
+        offlineNetworkStatusController: widget.offlineNetworkStatusController,
         offlineTransactionSyncService: widget.offlineTransactionSyncService,
         autoCloseSettingsProvider: widget.autoCloseSettingsProvider,
         catalogPageKey: _catalogPageKey,
@@ -328,45 +330,54 @@ class _AdminNavigationPageState extends State<AdminNavigationPage>
     };
   }
 
-  Widget _onlineOnly(Widget child) =>
-      _OnlineOnlyAdminPage(cache: widget.masterDataCache, child: child);
+  Widget _onlineOnly(Widget child) => _OnlineOnlyAdminPage(
+    statusController: widget.offlineNetworkStatusController,
+    child: child,
+  );
 }
 
 class _OnlineOnlyAdminPage extends StatelessWidget {
-  const _OnlineOnlyAdminPage({required this.cache, required this.child});
+  const _OnlineOnlyAdminPage({
+    required this.statusController,
+    required this.child,
+  });
 
-  final OfflineMasterDataCache? cache;
+  final OfflineNetworkStatusController? statusController;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final statusListenable = cache?.networkStatusListenable;
-    if (statusListenable == null) return child;
-    return ValueListenableBuilder<OfflineNetworkStatus>(
-      valueListenable: statusListenable,
-      builder: (context, status, _) => status != OfflineNetworkStatus.online
-          ? Scaffold(
-              body: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.cloud_off_outlined, size: 48),
-                      const SizedBox(height: 16),
-                      Text(
-                        status == OfflineNetworkStatus.checking
-                            ? 'Memverifikasi koneksi dan sesi...'
-                            : 'Halaman ini memerlukan koneksi internet.',
-                        style: Theme.of(context).textTheme.titleMedium,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+    final controller = statusController;
+    if (controller == null) return child;
+    return StreamBuilder<OfflineNetworkStatus>(
+      stream: controller.statusChanges,
+      initialData: controller.status,
+      builder: (context, snapshot) {
+        final status = snapshot.data ?? controller.status;
+        return status != OfflineNetworkStatus.online
+            ? Scaffold(
+                body: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.cloud_off_outlined, size: 48),
+                        const SizedBox(height: 16),
+                        Text(
+                          status == OfflineNetworkStatus.checking
+                              ? 'Memverifikasi koneksi dan sesi...'
+                              : 'Halaman ini memerlukan koneksi internet.',
+                          style: Theme.of(context).textTheme.titleMedium,
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            )
-          : child,
+              )
+            : child;
+      },
     );
   }
 }

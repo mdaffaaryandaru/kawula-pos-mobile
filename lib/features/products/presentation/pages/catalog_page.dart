@@ -9,6 +9,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Project imports:
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_checkout_mode_provider.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_network_status_controller.dart';
 import 'package:kawula_pos/features/products/domain/entities/catalog_product.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/catalog_cubit.dart';
@@ -25,11 +27,10 @@ import 'package:kawula_pos/features/shifts/presentation/widgets/auto_close_shift
 import 'package:kawula_pos/features/store_settings/domain/entities/store_settings.dart';
 import 'package:kawula_pos/features/store_settings/domain/repositories/auto_close_settings_provider.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
-import 'package:kawula_pos/features/transactions/domain/repositories/offline_transaction_queue_repository.dart';
-import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_sync.dart';
-import 'package:kawula_pos/features/transactions/presentation/pages/offline_transaction_queue_page.dart';
-import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
-import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
+import 'package:kawula_pos/features/offline/domain/repositories/offline_transaction_queue_repository.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_transaction_sync.dart';
+import 'package:kawula_pos/features/offline/presentation/pages/offline_transaction_queue_page.dart';
+import 'package:kawula_pos/features/offline/domain/policies/offline_sales_policy.dart';
 import 'package:kawula_pos/theme/app_colors.dart';
 
 class CatalogPage extends StatefulWidget {
@@ -44,7 +45,7 @@ class CatalogPage extends StatefulWidget {
     this.onOpenOfflineReconciliation,
     this.offlineTransactionSyncService,
     required this.autoCloseSettingsProvider,
-    this.offlineMasterDataCache,
+    this.offlineNetworkStatusController,
   });
 
   final AuthUser user;
@@ -56,7 +57,7 @@ class CatalogPage extends StatefulWidget {
   final VoidCallback? onOpenOfflineReconciliation;
   final OfflineTransactionSync? offlineTransactionSyncService;
   final AutoCloseSettingsProvider autoCloseSettingsProvider;
-  final OfflineMasterDataCache? offlineMasterDataCache;
+  final OfflineNetworkStatusController? offlineNetworkStatusController;
 
   @override
   State<CatalogPage> createState() => CatalogPageState();
@@ -70,6 +71,7 @@ class CatalogPageState extends State<CatalogPage> {
   StoreSettings? _autoCloseSettings;
   bool _autoCloseSettingsAreEstimated = false;
   String? _autoCloseSettingsError;
+  int _catalogRefreshVersion = 0;
 
   @override
   void dispose() {
@@ -101,6 +103,10 @@ class CatalogPageState extends State<CatalogPage> {
     if (catalogState is CatalogLoaded) {
       context.read<CartCubit>().updateStockFromProducts(catalogState.products);
     }
+
+    setState(() {
+      _catalogRefreshVersion++;
+    });
   }
 
   @override
@@ -129,7 +135,7 @@ class CatalogPageState extends State<CatalogPage> {
           if (widget.user.role == 'Admin' &&
               widget.onOpenOfflineReconciliation != null)
             IconButton(
-              tooltip: 'Rekonsiliasi transaksi offline',
+              tooltip: 'Pencocokan transaksi offline',
               onPressed: widget.onOpenOfflineReconciliation,
               icon: const Icon(Icons.fact_check_outlined),
             ),
@@ -175,20 +181,24 @@ class CatalogPageState extends State<CatalogPage> {
             checkoutRepository: widget.checkoutRepository,
           ),
           Expanded(
-            child: BlocBuilder<CatalogCubit, CatalogState>(
-              builder: (context, state) {
-                return switch (state) {
-                  CatalogLoading() => const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                  CatalogFailure() => _CatalogFailure(message: state.message),
-                  CatalogLoaded() => CatalogProductBrowser(
-                    state: state,
-                    searchController: _searchController,
-                    onProductTap: (product) => _addToCart(context, product),
-                  ),
-                };
-              },
+            child: RefreshIndicator(
+              onRefresh: refreshCatalog,
+              child: BlocBuilder<CatalogCubit, CatalogState>(
+                builder: (context, state) {
+                  return switch (state) {
+                    CatalogLoading() => const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                    CatalogFailure() => _CatalogFailure(message: state.message),
+                    CatalogLoaded() => CatalogProductBrowser(
+                      state: state,
+                      searchController: _searchController,
+                      onProductTap: (product) => _addToCart(context, product),
+                      refreshVersion: _catalogRefreshVersion,
+                    ),
+                  };
+                },
+              ),
             ),
           ),
         ],
@@ -268,7 +278,7 @@ class CatalogPageState extends State<CatalogPage> {
           shiftId: widget.activeShift.id,
           queueRepository: widget.offlineTransactionQueueRepository,
           syncService: syncService,
-          offlineMasterDataCache: widget.offlineMasterDataCache,
+          offlineNetworkStatusController: widget.offlineNetworkStatusController,
         ),
       ),
     );
@@ -281,9 +291,8 @@ class CatalogPageState extends State<CatalogPage> {
       return const SizedBox.shrink();
     }
 
-    final statusListenable =
-        widget.offlineMasterDataCache?.networkStatusListenable;
-    if (statusListenable == null) {
+    final networkStatus = widget.offlineNetworkStatusController;
+    if (networkStatus == null) {
       final isOffline =
           widget.checkoutRepository is CheckoutModeProvider &&
           (widget.checkoutRepository as CheckoutModeProvider).isOffline;
@@ -303,10 +312,11 @@ class CatalogPageState extends State<CatalogPage> {
       );
     }
 
-    return ValueListenableBuilder<OfflineNetworkStatus>(
-      valueListenable: statusListenable,
-      builder: (context, status, _) => CatalogOfflineStatusBanner(
-        status: status,
+    return StreamBuilder<OfflineNetworkStatus>(
+      stream: networkStatus.statusChanges,
+      initialData: networkStatus.status,
+      builder: (context, snapshot) => CatalogOfflineStatusBanner(
+        status: snapshot.data ?? networkStatus.status,
         queueCount: _queueCountFuture,
         autoCloseSettingsError: _autoCloseSettingsError,
         onOpenQueue: () => _openQueuePage(context),

@@ -13,22 +13,22 @@ import 'package:kawula_pos/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:kawula_pos/features/balances/domain/repositories/balances_repository.dart';
 import 'package:kawula_pos/features/dashboard/presentation/pages/admin_dashboard_page.dart';
 import 'package:kawula_pos/features/dashboard/presentation/widgets/offline_sales_tab.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_network_status_controller.dart';
 import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
 import 'package:kawula_pos/features/store_settings/domain/repositories/auto_close_settings_provider.dart';
 import 'package:kawula_pos/features/transactions/domain/repositories/checkout_repository.dart';
-import 'package:kawula_pos/features/transactions/domain/repositories/offline_transaction_queue_repository.dart';
-import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_sync.dart';
-import 'package:kawula_pos/features/transactions/application/offline_sales_repository_factory.dart';
+import 'package:kawula_pos/features/offline/domain/repositories/offline_transaction_queue_repository.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_transaction_sync.dart';
+import 'package:kawula_pos/features/offline/application/offline_sales_repository_factory.dart';
 import 'package:kawula_pos/features/transactions/presentation/pages/admin_transaction_report_page.dart';
-import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
 
 class CashierNavigationPage extends StatefulWidget {
   const CashierNavigationPage({
     super.key,
     required this.user,
-    this.offlineMasterDataCache,
+    this.offlineNetworkStatusController,
     required this.shiftsRepository,
     required this.checkoutRepository,
     required this.offlineTransactionQueueRepository,
@@ -39,7 +39,7 @@ class CashierNavigationPage extends StatefulWidget {
   });
 
   final AuthUser user;
-  final OfflineMasterDataCache? offlineMasterDataCache;
+  final OfflineNetworkStatusController? offlineNetworkStatusController;
   final ShiftsRepository shiftsRepository;
   final CheckoutRepository checkoutRepository;
   final OfflineTransactionQueueRepository offlineTransactionQueueRepository;
@@ -69,12 +69,13 @@ class _CashierNavigationPageState extends State<CashierNavigationPage>
     _shiftsCubit = ShiftsCubit(widget.shiftsRepository)..loadActive();
     _pages = List<Widget?>.filled(3, null);
     _pages[0] = _pageAt(0);
-    if (widget.user.role == 'Kasir' && widget.offlineMasterDataCache != null) {
+    if (widget.user.role == 'Kasir' &&
+        widget.offlineNetworkStatusController != null) {
       WidgetsBinding.instance.addObserver(this);
       _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
         _onConnectivityChanged,
         onError: (Object error, StackTrace stackTrace) {
-          widget.offlineMasterDataCache?.markOffline();
+          widget.offlineNetworkStatusController?.markOffline();
           if (mounted) setState(() {});
         },
       );
@@ -103,14 +104,15 @@ class _CashierNavigationPageState extends State<CashierNavigationPage>
   }
 
   Future<void> _refreshConnectivity() async {
-    if (widget.user.role != 'Kasir' || widget.offlineMasterDataCache == null) {
+    if (widget.user.role != 'Kasir' ||
+        widget.offlineNetworkStatusController == null) {
       return;
     }
     try {
       final results = await _connectivity.checkConnectivity();
       await _onConnectivityChanged(results);
     } on Exception {
-      widget.offlineMasterDataCache?.markOffline();
+      widget.offlineNetworkStatusController?.markOffline();
       if (mounted) setState(() {});
     }
   }
@@ -119,9 +121,9 @@ class _CashierNavigationPageState extends State<CashierNavigationPage>
     _hasNetworkConnectivity = results.any(
       (result) => result != ConnectivityResult.none,
     );
-    final cache = widget.offlineMasterDataCache;
+    final networkStatus = widget.offlineNetworkStatusController;
     if (!_hasNetworkConnectivity) {
-      cache?.markOffline();
+      networkStatus?.markOffline();
       if (mounted) setState(() {});
       return;
     }
@@ -129,10 +131,10 @@ class _CashierNavigationPageState extends State<CashierNavigationPage>
     final shiftState = _shiftsCubit.state;
     final hasOfflineSnapshot =
         shiftState is ShiftsActive && shiftState.shift.isOfflineSnapshot;
-    if (cache?.isOfflineKnown == true ||
+    if (networkStatus?.status == OfflineNetworkStatus.offline ||
         widget.user.isOfflineSession ||
         hasOfflineSnapshot) {
-      cache?.markChecking();
+      networkStatus?.markChecking();
       if (mounted) setState(() {});
       await _verifyServerSession();
     }
@@ -140,7 +142,8 @@ class _CashierNavigationPageState extends State<CashierNavigationPage>
 
   Future<void> _retryRecoveryWhenOffline() async {
     if (!_hasNetworkConnectivity ||
-        widget.offlineMasterDataCache?.isOfflineKnown != true) {
+        widget.offlineNetworkStatusController?.status !=
+            OfflineNetworkStatus.offline) {
       return;
     }
     await _refreshConnectivity();
@@ -149,7 +152,7 @@ class _CashierNavigationPageState extends State<CashierNavigationPage>
   Future<void> _verifyServerSession() async {
     if (_isVerifyingServer || !mounted) return;
     _isVerifyingServer = true;
-    final cache = widget.offlineMasterDataCache;
+    final networkStatus = widget.offlineNetworkStatusController;
     try {
       final verified = await context
           .read<AuthCubit>()
@@ -157,12 +160,12 @@ class _CashierNavigationPageState extends State<CashierNavigationPage>
       if (!mounted) return;
       if (verified) {
         await _shiftsCubit.refreshActive();
-      } else if (cache?.networkStatus == OfflineNetworkStatus.checking) {
-        cache?.markOffline();
+      } else if (networkStatus?.status == OfflineNetworkStatus.checking) {
+        networkStatus?.markOffline();
       }
     } on Exception {
-      if (cache?.networkStatus == OfflineNetworkStatus.checking) {
-        cache?.markOffline();
+      if (networkStatus?.status == OfflineNetworkStatus.checking) {
+        networkStatus?.markOffline();
       }
     } finally {
       _isVerifyingServer = false;
@@ -185,7 +188,7 @@ class _CashierNavigationPageState extends State<CashierNavigationPage>
         offlineSalesRepositoryFactory: widget.offlineSalesRepositoryFactory,
         offlineTransactionQueueRepository:
             widget.offlineTransactionQueueRepository,
-        offlineMasterDataCache: widget.offlineMasterDataCache,
+        offlineNetworkStatusController: widget.offlineNetworkStatusController,
         offlineTransactionSyncService: widget.offlineTransactionSyncService,
         autoCloseSettingsProvider: widget.autoCloseSettingsProvider,
       ),

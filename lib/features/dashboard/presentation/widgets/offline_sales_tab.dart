@@ -6,7 +6,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 // Project imports:
 import 'package:kawula_pos/features/auth/domain/entities/auth_user.dart';
-import 'package:kawula_pos/features/transactions/application/offline_sales_repository_factory.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_network_status_controller.dart';
+import 'package:kawula_pos/features/offline/application/offline_sales_repository_factory.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/cart_cubit.dart';
 import 'package:kawula_pos/features/products/presentation/bloc/catalog_cubit.dart';
 import 'package:kawula_pos/features/products/presentation/pages/catalog_page.dart';
@@ -14,14 +15,13 @@ import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_cubit.dart';
 import 'package:kawula_pos/features/shifts/presentation/bloc/shifts_state.dart';
 import 'package:kawula_pos/features/shifts/domain/entities/active_shift.dart';
 import 'package:kawula_pos/features/shifts/presentation/widgets/shift_action_dialog.dart';
-import 'package:kawula_pos/features/transactions/domain/repositories/offline_transaction_queue_repository.dart';
-import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_sync.dart';
-import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_reconciliation.dart';
-import 'package:kawula_pos/features/transactions/presentation/pages/offline_transaction_queue_page.dart';
-import 'package:kawula_pos/features/transactions/presentation/pages/admin_offline_reconciliation_page.dart';
+import 'package:kawula_pos/features/offline/domain/repositories/offline_transaction_queue_repository.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_transaction_sync.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_transaction_reconciliation.dart';
+import 'package:kawula_pos/features/offline/presentation/pages/offline_transaction_queue_page.dart';
+import 'package:kawula_pos/features/offline/presentation/pages/admin_offline_reconciliation_page.dart';
 import 'package:kawula_pos/features/store_settings/domain/repositories/auto_close_settings_provider.dart';
-import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
-import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
+import 'package:kawula_pos/features/offline/domain/policies/offline_sales_policy.dart';
 
 class OfflineSalesTab extends StatelessWidget {
   const OfflineSalesTab({
@@ -31,7 +31,7 @@ class OfflineSalesTab extends StatelessWidget {
     required this.offlineTransactionQueueRepository,
     this.offlineTransactionReconciliation,
     this.offlineTransactionSyncService,
-    this.offlineMasterDataCache,
+    this.offlineNetworkStatusController,
     required this.autoCloseSettingsProvider,
     this.catalogPageKey,
   });
@@ -41,7 +41,7 @@ class OfflineSalesTab extends StatelessWidget {
   final OfflineTransactionQueueRepository offlineTransactionQueueRepository;
   final OfflineTransactionReconciliation? offlineTransactionReconciliation;
   final OfflineTransactionSync? offlineTransactionSyncService;
-  final OfflineMasterDataCache? offlineMasterDataCache;
+  final OfflineNetworkStatusController? offlineNetworkStatusController;
   final AutoCloseSettingsProvider autoCloseSettingsProvider;
   final GlobalKey<CatalogPageState>? catalogPageKey;
 
@@ -63,7 +63,7 @@ class OfflineSalesTab extends StatelessWidget {
       user: admin,
       shift: shift,
     );
-    final scopedCache = scope.masterDataCache;
+    final networkStatus = scope.networkStatus;
     final offlineTransactionSyncService = this.offlineTransactionSyncService;
     final offlineTransactionReconciliation =
         this.offlineTransactionReconciliation;
@@ -90,7 +90,7 @@ class OfflineSalesTab extends StatelessWidget {
         activeShift: shift,
         offlineTransactionSyncService: offlineTransactionSyncService,
         autoCloseSettingsProvider: autoCloseSettingsProvider,
-        offlineMasterDataCache: scopedCache,
+        offlineNetworkStatusController: networkStatus,
         onOpenOfflineReconciliation:
             admin.role == 'Admin' &&
                 offlineTransactionReconciliation != null &&
@@ -113,15 +113,15 @@ class OfflineSalesTab extends StatelessWidget {
                         return state is ShiftsActive &&
                             state.shift.outletId == shift.outletId;
                       }),
-                      offlineMasterDataCache: scopedCache,
+                      offlineNetworkStatusController: networkStatus,
                     ),
                   ),
                 );
               }
             : null,
         onManageShift: () {
-          if (scopedCache != null &&
-              scopedCache.networkStatus != OfflineNetworkStatus.online) {
+          if (networkStatus != null &&
+              networkStatus.status != OfflineNetworkStatus.online) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Pengelolaan shift memerlukan koneksi internet.'),
@@ -147,7 +147,7 @@ class OfflineSalesTab extends StatelessWidget {
                           shiftId: shift.id,
                           queueRepository: offlineTransactionQueueRepository,
                           syncService: offlineTransactionSyncService,
-                          offlineMasterDataCache: scopedCache,
+                          offlineNetworkStatusController: networkStatus,
                         ),
                       ),
                     );
@@ -168,8 +168,8 @@ class OfflineSalesTab extends StatelessWidget {
           body: Center(child: CircularProgressIndicator()),
         ),
         ShiftsNeedsOpening()
-            when offlineMasterDataCache != null &&
-                offlineMasterDataCache!.networkStatus !=
+            when offlineNetworkStatusController != null &&
+                offlineNetworkStatusController!.status !=
                     OfflineNetworkStatus.online =>
           _shiftRequiresConnection(context),
         ShiftsNeedsOpening() => Scaffold(

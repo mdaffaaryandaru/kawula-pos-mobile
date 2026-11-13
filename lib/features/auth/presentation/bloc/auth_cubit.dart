@@ -6,7 +6,7 @@ import 'package:kawula_pos/features/auth/domain/repositories/auth_repository.dar
 import 'package:kawula_pos/features/auth/presentation/bloc/auth_state.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 import 'package:kawula_pos/framework/core/network/auth_session_expiry_handler.dart';
-import 'package:kawula_pos/framework/core/offline/offline_sales_policy.dart';
+import 'package:kawula_pos/features/offline/domain/policies/offline_sales_policy.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   AuthCubit(this._repository, {this.sessionExpiryHandler})

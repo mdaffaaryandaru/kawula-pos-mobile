@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_network_status_controller.dart';
 import 'package:kawula_pos/theme/app_colors.dart';
 
 class CatalogOfflineQueueButton extends StatelessWidget {

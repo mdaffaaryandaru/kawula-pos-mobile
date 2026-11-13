@@ -8,7 +8,7 @@ import 'package:kawula_pos/features/shifts/domain/entities/admin_shift_detail.da
 import 'package:kawula_pos/features/shifts/domain/repositories/shifts_repository.dart';
 import 'package:kawula_pos/framework/core/exceptions/api_exception.dart';
 import 'package:kawula_pos/framework/core/network/platform_network_exception.dart';
-import 'package:kawula_pos/framework/core/offline/offline_master_data_cache.dart';
+import 'package:kawula_pos/features/offline/data/cache/offline_master_data_cache.dart';
 
 class OfflineCachedShiftsRepository implements ShiftsRepository {
   const OfflineCachedShiftsRepository(

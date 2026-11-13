@@ -11,7 +11,7 @@ import 'package:kawula_pos/features/products/domain/repositories/product_managem
 import 'package:kawula_pos/features/store_settings/domain/repositories/store_settings_repository.dart';
 import 'package:kawula_pos/features/table_areas/domain/repositories/table_areas_repository.dart';
 import 'package:kawula_pos/features/tables/domain/repositories/tables_repository.dart';
-import 'package:kawula_pos/features/transactions/domain/services/offline_transaction_reconciliation.dart';
+import 'package:kawula_pos/features/offline/domain/services/offline_transaction_reconciliation.dart';
 import 'package:kawula_pos/features/users/domain/repositories/user_management_repository.dart';
 import 'package:kawula_pos/features/variant_groups/domain/repositories/variant_groups_repository.dart';
 
