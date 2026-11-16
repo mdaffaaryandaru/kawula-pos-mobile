@@ -4,8 +4,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class ApiConfig {
   const ApiConfig._();
 
-  static const productionBaseUrl = 'https://kawula-api.ignisys.site/api';
-  static const androidEmulatorBaseUrl = 'https://kawula-api.ignisys.site/api';
+  static const productionBaseUrl = 'https://10.0.2.2:3001/api';
+  static const androidEmulatorBaseUrl = 'https://10.0.2.2:3001/api';
   static const _dartDefineBaseUrl = String.fromEnvironment('API_BASE_URL');
 
   static String get baseUrl => resolveBaseUrl(
