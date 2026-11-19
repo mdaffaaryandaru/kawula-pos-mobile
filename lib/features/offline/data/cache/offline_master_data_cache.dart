@@ -125,7 +125,6 @@ class OfflineMasterDataCache implements OfflineNetworkStatusController {
     final legacyRecord =
         record ??
         (cacheRole == null || cacheRole == 'Kasir'
-            // TODO: Keep this legacy cache key until the minimum supported app version is known.
             ? await dao.getCache('cashier_session_profile', userId)
             : null);
     if (legacyRecord == null) return null;
